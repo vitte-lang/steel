@@ -1,0 +1,488 @@
+# main.vit — Muffin (Vitte) — MAX
+#
+# CLI entrypoint for Muffin:
+# - `build muffin` : validate workspace config and emit Muffinconfig (.mcf)
+# - `build steel`  : (delegated to Steel binary; Muffin can still provide subcommands)
+#
+# This file wires:
+# - argument parsing
+# - runtime backends (interface::Runtime)
+# - loadapi to parse/resolve
+# - optional listing/printing utilities
+#
+# Constraints:
+# - no braces; blocks end with .end
+# - keep deterministic output; stable sorting
+#
+# NOTE:
+# - Actual filesystem/process implementations are extern (provided by host runtime).
+# - This is "maximum" but still a clean, production-grade CLI skeleton.
+# -----------------------------------------------------------------------------
+
+mod muffin/main
+
+use std/string
+use std/result
+
+use muffin/interface
+use muffin/loadapi
+use muffin/debug
+use muffin/config
+
+export all
+
+# -----------------------------------------------------------------------------
+# Exit codes
+# -----------------------------------------------------------------------------
+
+const EXIT_OK: i32 = 0
+const EXIT_USAGE: i32 = 2
+const EXIT_FAIL: i32 = 1
+
+# -----------------------------------------------------------------------------
+# CLI model
+# -----------------------------------------------------------------------------
+
+enum CmdKind
+  Help
+  Version
+  Validate           # build muffin (default)
+  ListTargets
+  PrintMcf
+  PrintResolved
+.end
+
+struct Cli
+  cmd: CmdKind
+  start_dir: str
+  manifest: str
+  profile: str
+  target: str
+  toolchain: str
+  mcf_path: str
+  verbose: bool
+  json: bool
+.end
+
+fn cli_default() -> Cli
+  ret Cli(
+    cmd: CmdKind::Validate,
+    start_dir: ".",
+    manifest: "",
+    profile: "",
+    target: "",
+    toolchain: "",
+    mcf_path: "",
+    verbose: false,
+    json: false
+  )
+.end
+
+# -----------------------------------------------------------------------------
+# Entrypoint
+# -----------------------------------------------------------------------------
+
+fn main(argv: list[str]) -> i32
+  let rt: interface::Runtime = interface::default_runtime()
+
+  let rr: result::Result[Cli, str] = parse_cli(argv)
+  if result::is_err(rr)
+    eprint("muffin: " + result::unwrap_err(rr) + "\n")
+    eprint(usage_text())
+    ret EXIT_USAGE
+  .end
+  let cli: Cli = result::unwrap(rr)
+
+  if cli.cmd == CmdKind::Help
+    print(usage_text())
+    ret EXIT_OK
+  .end
+
+  if cli.cmd == CmdKind::Version
+    print(version_text())
+    ret EXIT_OK
+  .end
+
+  # Configure debug verbosity early
+  debug::set_enabled(cli.verbose)
+
+  if cli.cmd == CmdKind::Validate
+    ret cmd_validate(rt, cli)
+  .end
+
+  if cli.cmd == CmdKind::ListTargets
+    ret cmd_list_targets(rt, cli)
+  .end
+
+  if cli.cmd == CmdKind::PrintMcf
+    ret cmd_print_mcf(rt, cli)
+  .end
+
+  if cli.cmd == CmdKind::PrintResolved
+    ret cmd_print_resolved(rt, cli)
+  .end
+
+  ret EXIT_OK
+.end
+
+# -----------------------------------------------------------------------------
+# Commands
+# -----------------------------------------------------------------------------
+
+fn cmd_validate(rt: interface::Runtime, cli: Cli) -> i32
+  # validate + emit .mcf
+  let mut opt: loadapi::LoadApiOptions = loadapi::loadapi_options_default()
+  opt.start_dir = cli.start_dir
+  opt.manifest = cli.manifest
+  opt.profile = cli.profile
+  opt.target = cli.target
+  opt.toolchain = cli.toolchain
+  opt.emit_mcf = true
+  opt.mcf_path = cli.mcf_path
+  opt.validate_only = true
+  opt.verbose = cli.verbose
+
+  let rr: loadapi::ApiRes[loadapi::LoadApiResult] = loadapi::load_workspace(rt, opt)
+  if result::is_err(rr)
+    eprint(format_api_error(result::unwrap_err(rr), cli.json))
+    ret EXIT_FAIL
+  .end
+
+  let res: loadapi::LoadApiResult = result::unwrap(rr)
+
+  if cli.json
+    print(json_ok_validate(res))
+  else
+    print("ok: manifest=" + res.manifest_path + "\n")
+    if res.mcf_path != ""
+      print("mcf: " + res.mcf_path + "\n")
+    .end
+  .end
+
+  ret EXIT_OK
+.end
+
+fn cmd_list_targets(rt: interface::Runtime, cli: Cli) -> i32
+  let rr: loadapi::ApiRes[list[str]] = loadapi::list_targets(rt, cli.start_dir)
+  if result::is_err(rr)
+    eprint(format_api_error(result::unwrap_err(rr), cli.json))
+    ret EXIT_FAIL
+  .end
+
+  let xs: list[str] = result::unwrap(rr)
+  if cli.json
+    print(json_targets(xs))
+  else
+    let mut i: i32 = 0
+    while i < len(xs)
+      print(xs[i] + "\n")
+      i = i + 1
+    .end
+  .end
+  ret EXIT_OK
+.end
+
+fn cmd_print_mcf(rt: interface::Runtime, cli: Cli) -> i32
+  # build .mcf then print its content
+  let mut opt: loadapi::LoadApiOptions = loadapi::loadapi_options_default()
+  opt.start_dir = cli.start_dir
+  opt.manifest = cli.manifest
+  opt.profile = cli.profile
+  opt.target = cli.target
+  opt.toolchain = cli.toolchain
+  opt.emit_mcf = true
+  opt.mcf_path = cli.mcf_path
+  opt.validate_only = true
+  opt.verbose = cli.verbose
+
+  let rr: loadapi::ApiRes[loadapi::LoadApiResult] = loadapi::load_workspace(rt, opt)
+  if result::is_err(rr)
+    eprint(format_api_error(result::unwrap_err(rr), cli.json))
+    ret EXIT_FAIL
+  .end
+  let res: loadapi::LoadApiResult = result::unwrap(rr)
+
+  if res.mcf_path == ""
+    eprint("muffin: mcf not emitted\n")
+    ret EXIT_FAIL
+  .end
+
+  let rr_txt: interface::IoRes[str] = rt.fs.read_text(rt.fs.ctx, res.mcf_path)
+  if result::is_err(rr_txt)
+    eprint("muffin: cannot read mcf: " + res.mcf_path + "\n")
+    ret EXIT_FAIL
+  .end
+  print(result::unwrap(rr_txt))
+  ret EXIT_OK
+.end
+
+fn cmd_print_resolved(rt: interface::Runtime, cli: Cli) -> i32
+  let mut opt: loadapi::LoadApiOptions = loadapi::loadapi_options_default()
+  opt.start_dir = cli.start_dir
+  opt.manifest = cli.manifest
+  opt.profile = cli.profile
+  opt.target = cli.target
+  opt.toolchain = cli.toolchain
+  opt.emit_mcf = false
+  opt.validate_only = true
+  opt.verbose = cli.verbose
+
+  let rr: loadapi::ApiRes[loadapi::LoadApiResult] = loadapi::load_workspace(rt, opt)
+  if result::is_err(rr)
+    eprint(format_api_error(result::unwrap_err(rr), cli.json))
+    ret EXIT_FAIL
+  .end
+  let res: loadapi::LoadApiResult = result::unwrap(rr)
+
+  if cli.json
+    print(json_resolved(res.resolved))
+  else
+    print(pretty_resolved(res.resolved))
+  .end
+  ret EXIT_OK
+.end
+
+# -----------------------------------------------------------------------------
+# CLI parsing
+# -----------------------------------------------------------------------------
+
+fn parse_cli(argv: list[str]) -> result::Result[Cli, str]
+  let mut c: Cli = cli_default()
+
+  # drop argv[0]
+  let mut args: list[str] = []
+  let mut i: i32 = 0
+  while i < len(argv)
+    if i > 0 args = args + [argv[i]] .end
+    i = i + 1
+  .end
+
+  if len(args) == 0
+    # default: validate
+    return result::Ok(c)
+  .end
+
+  # subcommand style:
+  # muffin help|version|validate|list-targets|print-mcf|print-resolved
+  let head: str = args[0]
+  if head == "help" || head == "-h" || head == "--help"
+    c.cmd = CmdKind::Help
+    return result::Ok(c)
+  .end
+
+  if head == "version" || head == "--version"
+    c.cmd = CmdKind::Version
+    return result::Ok(c)
+  .end
+
+  if head == "validate"
+    c.cmd = CmdKind::Validate
+    args = slice_str(args, 1, len(args))
+  elif head == "list-targets"
+    c.cmd = CmdKind::ListTargets
+    args = slice_str(args, 1, len(args))
+  elif head == "print-mcf"
+    c.cmd = CmdKind::PrintMcf
+    args = slice_str(args, 1, len(args))
+  elif head == "print-resolved"
+    c.cmd = CmdKind::PrintResolved
+    args = slice_str(args, 1, len(args))
+  else
+    # no subcommand: treat as flags for default validate
+  .end
+
+  # parse flags
+  let mut k: i32 = 0
+  while k < len(args)
+    let a: str = args[k]
+
+    if a == "-v" || a == "--verbose"
+      c.verbose = true
+      k = k + 1
+      continue
+    .end
+
+    if a == "--json"
+      c.json = true
+      k = k + 1
+      continue
+    .end
+
+    if a == "-C"
+      if k + 1 >= len(args) return result::Err("missing value for -C") .end
+      c.start_dir = args[k + 1]
+      k = k + 2
+      continue
+    .end
+
+    if a == "--manifest"
+      if k + 1 >= len(args) return result::Err("missing value for --manifest") .end
+      c.manifest = args[k + 1]
+      k = k + 2
+      continue
+    .end
+
+    if a == "--profile"
+      if k + 1 >= len(args) return result::Err("missing value for --profile") .end
+      c.profile = args[k + 1]
+      k = k + 2
+      continue
+    .end
+
+    if a == "--target"
+      if k + 1 >= len(args) return result::Err("missing value for --target") .end
+      c.target = args[k + 1]
+      k = k + 2
+      continue
+    .end
+
+    if a == "--toolchain"
+      if k + 1 >= len(args) return result::Err("missing value for --toolchain") .end
+      c.toolchain = args[k + 1]
+      k = k + 2
+      continue
+    .end
+
+    if a == "--mcf"
+      if k + 1 >= len(args) return result::Err("missing value for --mcf") .end
+      c.mcf_path = args[k + 1]
+      k = k + 2
+      continue
+    .end
+
+    if a == "-h" || a == "--help"
+      c.cmd = CmdKind::Help
+      k = k + 1
+      continue
+    .end
+
+    return result::Err("unknown arg: " + a)
+  .end
+
+  return result::Ok(c)
+.end
+
+# -----------------------------------------------------------------------------
+# Formatting helpers
+# -----------------------------------------------------------------------------
+
+fn format_api_error(e: loadapi::ApiError, json: bool) -> str
+  if json
+    return "{\"ok\":false,\"error\":\"" + escape_json(e.message) + "\"}\n"
+  .end
+  return "error: " + e.message + "\n"
+.end
+
+fn json_ok_validate(r: loadapi::LoadApiResult) -> str
+  let mut out: str = "{"
+  out = out + "\"ok\":true,"
+  out = out + "\"manifest\":\"" + escape_json(r.manifest_path) + "\","
+  out = out + "\"mcf\":\"" + escape_json(r.mcf_path) + "\""
+  out = out + "}\n"
+  ret out
+.end
+
+fn json_targets(xs: list[str]) -> str
+  let mut out: str = "{"
+  out = out + "\"ok\":true,"
+  out = out + "\"targets\":["
+  let mut i: i32 = 0
+  while i < len(xs)
+    if i > 0 out = out + "," .end
+    out = out + "\"" + escape_json(xs[i]) + "\""
+    i = i + 1
+  .end
+  out = out + "]}"
+  out = out + "\n"
+  ret out
+.end
+
+fn json_resolved(r: Resolved) -> str
+  # minimal JSON for tooling (not full schema)
+  let mut out: str = "{"
+  out = out + "\"workspace\":{\"root\":\"" + escape_json(r.workspace.root) + "\",\"file\":\"" + escape_json(r.workspace.file) + "\"},"
+  out = out + "\"selection\":{\"profile\":\"" + escape_json(r.selection.profile) + "\",\"target\":\"" + escape_json(r.selection.target) + "\",\"toolchain\":\"" + escape_json(r.selection.toolchain) + "\"},"
+  out = out + "\"counts\":{\"profiles\":" + i32_to_str(len(r.profiles)) + ",\"targets\":" + i32_to_str(len(r.targets)) + ",\"tools\":" + i32_to_str(len(r.tools)) + "}"
+  out = out + "}\n"
+  ret out
+.end
+
+fn pretty_resolved(r: Resolved) -> str
+  let mut out: str = ""
+  out = out + "workspace.root: " + r.workspace.root + "\n"
+  out = out + "workspace.file: " + r.workspace.file + "\n"
+  out = out + "selection.profile: " + r.selection.profile + "\n"
+  out = out + "selection.target: " + r.selection.target + "\n"
+  out = out + "selection.toolchain: " + r.selection.toolchain + "\n"
+  out = out + "profiles: " + i32_to_str(len(r.profiles)) + "\n"
+  out = out + "targets: " + i32_to_str(len(r.targets)) + "\n"
+  out = out + "tools: " + i32_to_str(len(r.tools)) + "\n"
+  ret out
+.end
+
+fn escape_json(s: str) -> str
+  # minimal escape: backslash, quote, newline, tab
+  let mut out: str = ""
+  let mut i: i32 = 0
+  while i < string::len(s)
+    let c: i32 = string::codepoint_at(s, i)
+    if c == 92 out = out + "\\\\"
+    elif c == 34 out = out + "\\\""
+    elif c == 10 out = out + "\\n"
+    elif c == 9 out = out + "\\t"
+    else out = out + string::from_codepoint(c)
+    .end
+    i = i + 1
+  .end
+  ret out
+.end
+
+# -----------------------------------------------------------------------------
+# Help/version text
+# -----------------------------------------------------------------------------
+
+fn usage_text() -> str
+  let mut out: str = ""
+  out = out + "muffin — build configuration validator\n"
+  out = out + "\n"
+  out = out + "USAGE:\n"
+  out = out + "  muffin [command] [options]\n"
+  out = out + "\n"
+  out = out + "COMMANDS:\n"
+  out = out + "  validate           Validate workspace and emit .mcf (default)\n"
+  out = out + "  list-targets        List available targets\n"
+  out = out + "  print-mcf           Emit .mcf then print it\n"
+  out = out + "  print-resolved      Print resolved config\n"
+  out = out + "  version             Show version\n"
+  out = out + "  help                Show help\n"
+  out = out + "\n"
+  out = out + "OPTIONS:\n"
+  out = out + "  -C <dir>            Start directory (workspace discovery)\n"
+  out = out + "  --manifest <path>   Explicit manifest path\n"
+  out = out + "  --profile <name>    Override selected profile\n"
+  out = out + "  --target <name>     Override selected target\n"
+  out = out + "  --toolchain <name>  Override selected toolchain\n"
+  out = out + "  --mcf <path>        Output .mcf path\n"
+  out = out + "  -v, --verbose       Verbose diagnostics\n"
+  out = out + "  --json              JSON output\n"
+  out = out + "\n"
+  out = out + "INTEGRATION:\n"
+  out = out + "  build muffin        calls: muffin validate\n"
+  out = out + "  build steel         calls: steel (which embeds Muffin load/planning)\n"
+  ret out
+.end
+
+fn version_text() -> str
+  # static placeholder; real project reads from manifest/version module
+  ret "muffin 0.1.0 (vitte)\n"
+.end
+
+# -----------------------------------------------------------------------------
+# Externs (stdio + ints)
+# -----------------------------------------------------------------------------
+
+extern fn print(s: str) -> bool
+extern fn eprint(s: str) -> bool
+extern fn len[T](xs: list[T]) -> i32
+extern fn i32_to_str(x: i32) -> str
+extern fn slice_str(xs: list[str], a: i32, b: i32) -> list[str]

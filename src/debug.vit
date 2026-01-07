@@ -1,0 +1,512 @@
+# debug.vit — Muffin (Vitte) — MAX MAX
+#
+# Debug / Trace / Logging / Timing / Pretty formatting
+# -----------------------------------------------------------------------------
+# Objectifs:
+# - logs structurés + niveaux + catégories
+# - traces de parsing/résolution/build
+# - timers (scope + instant)
+# - dump helpers pour Resolved / MCF / args
+# - compat "quiet/verbose" + env MUFFIN_LOG, MUFFIN_TRACE
+#
+# Conventions:
+# - pas de { } ; blocs .end
+# - API "toolchain-first": aucune dépendance lourde
+# -----------------------------------------------------------------------------
+
+mod muffin/debug
+
+use std/io
+use std/string
+use std/result
+
+export all
+
+# -----------------------------------------------------------------------------
+# Log level
+# -----------------------------------------------------------------------------
+
+enum LogLevel
+  Off = 0
+  Error = 1
+  Warn = 2
+  Info = 3
+  Debug = 4
+  Trace = 5
+.end
+
+fn level_to_str(lv: LogLevel) -> str
+  if lv == LogLevel::Off ret "off"
+  elif lv == LogLevel::Error ret "error"
+  elif lv == LogLevel::Warn ret "warn"
+  elif lv == LogLevel::Info ret "info"
+  elif lv == LogLevel::Debug ret "debug"
+  else ret "trace"
+  .end
+.end
+
+fn parse_level(s0: str) -> LogLevel
+  let s: str = string::lower(s0)
+  if s == "0" || s == "off" ret LogLevel::Off
+  elif s == "1" || s == "error" ret LogLevel::Error
+  elif s == "2" || s == "warn" || s == "warning" ret LogLevel::Warn
+  elif s == "3" || s == "info" ret LogLevel::Info
+  elif s == "4" || s == "debug" ret LogLevel::Debug
+  elif s == "5" || s == "trace" ret LogLevel::Trace
+  .end
+  # default: info
+  ret LogLevel::Info
+.end
+
+# -----------------------------------------------------------------------------
+# Global state (simple)
+# -----------------------------------------------------------------------------
+# Note: si tu as un runtime avec atomics, remplace ces globals par atomics.
+
+struct LogConfig
+  level: LogLevel
+  quiet: bool
+  color: bool
+  timestamps: bool
+  category_filter: str       # empty => allow all
+  trace_enabled: bool
+.end
+
+fn default_config() -> LogConfig
+  ret LogConfig(
+    level: LogLevel::Info,
+    quiet: false,
+    color: true,
+    timestamps: false,
+    category_filter: "",
+    trace_enabled: false
+  )
+.end
+
+# global (simple)
+let mut G_CFG: LogConfig = default_config()
+
+fn init_from_env() -> void
+  # MUFFIN_LOG: off|error|warn|info|debug|trace
+  # MUFFIN_QUIET: 1
+  # MUFFIN_COLOR: 0/1/auto (auto -> true)
+  # MUFFIN_TIME: 1 timestamps
+  # MUFFIN_CAT: filter prefix
+  # MUFFIN_TRACE: 1 enable trace spans
+  let lv: str = env_get("MUFFIN_LOG")
+  if lv != "" G_CFG.level = parse_level(lv) .end
+
+  let q: str = env_get("MUFFIN_QUIET")
+  if q == "1" || q == "true" G_CFG.quiet = true .end
+
+  let c: str = env_get("MUFFIN_COLOR")
+  if c == "0" || c == "false" G_CFG.color = false
+  elif c == "1" || c == "true" G_CFG.color = true
+  .end
+
+  let t: str = env_get("MUFFIN_TIME")
+  if t == "1" || t == "true" G_CFG.timestamps = true .end
+
+  let cat: str = env_get("MUFFIN_CAT")
+  if cat != "" G_CFG.category_filter = cat .end
+
+  let tr: str = env_get("MUFFIN_TRACE")
+  if tr == "1" || tr == "true" G_CFG.trace_enabled = true .end
+.end
+
+fn set_level(lv: LogLevel) -> void
+  G_CFG.level = lv
+.end
+
+fn set_quiet(v: bool) -> void
+  G_CFG.quiet = v
+.end
+
+fn set_color(v: bool) -> void
+  G_CFG.color = v
+.end
+
+fn set_timestamps(v: bool) -> void
+  G_CFG.timestamps = v
+.end
+
+fn set_category_filter(prefix: str) -> void
+  G_CFG.category_filter = prefix
+.end
+
+fn enable_trace(v: bool) -> void
+  G_CFG.trace_enabled = v
+.end
+
+fn cfg() -> LogConfig
+  ret G_CFG
+.end
+
+# -----------------------------------------------------------------------------
+# Categories
+# -----------------------------------------------------------------------------
+
+enum Cat
+  Core
+  Cli
+  Parse
+  Resolve
+  Emit
+  Steel
+  Exec
+  Fs
+  Net
+  Cache
+  Perf
+.end
+
+fn cat_to_str(c: Cat) -> str
+  if c == Cat::Core ret "core"
+  elif c == Cat::Cli ret "cli"
+  elif c == Cat::Parse ret "parse"
+  elif c == Cat::Resolve ret "resolve"
+  elif c == Cat::Emit ret "emit"
+  elif c == Cat::Steel ret "steel"
+  elif c == Cat::Exec ret "exec"
+  elif c == Cat::Fs ret "fs"
+  elif c == Cat::Net ret "net"
+  elif c == Cat::Cache ret "cache"
+  else ret "perf"
+  .end
+.end
+
+fn cat_allowed(c: Cat) -> bool
+  let f: str = G_CFG.category_filter
+  if f == "" ret true .end
+  let s: str = cat_to_str(c)
+  # prefix match
+  ret string::starts_with(s, f)
+.end
+
+# -----------------------------------------------------------------------------
+# Color (ANSI) - minimal
+# -----------------------------------------------------------------------------
+
+fn ansi_reset() -> str ret "\u001b[0m" .end
+fn ansi_dim() -> str ret "\u001b[2m" .end
+fn ansi_bold() -> str ret "\u001b[1m" .end
+fn ansi_red() -> str ret "\u001b[31m" .end
+fn ansi_yellow() -> str ret "\u001b[33m" .end
+fn ansi_blue() -> str ret "\u001b[34m" .end
+fn ansi_magenta() -> str ret "\u001b[35m" .end
+fn ansi_cyan() -> str ret "\u001b[36m" .end
+fn ansi_gray() -> str ret "\u001b[90m" .end
+
+fn paint(s: str, code: str) -> str
+  if !G_CFG.color ret s .end
+  ret code + s + ansi_reset()
+.end
+
+fn level_color(lv: LogLevel) -> str
+  if lv == LogLevel::Error ret ansi_red()
+  elif lv == LogLevel::Warn ret ansi_yellow()
+  elif lv == LogLevel::Info ret ansi_blue()
+  elif lv == LogLevel::Debug ret ansi_magenta()
+  elif lv == LogLevel::Trace ret ansi_cyan()
+  else ret ansi_gray()
+  .end
+.end
+
+# -----------------------------------------------------------------------------
+# Timestamp / time
+# -----------------------------------------------------------------------------
+
+fn now_ms() -> i64
+  ret sys_now_ms()
+.end
+
+fn ts_prefix() -> str
+  if !G_CFG.timestamps ret "" .end
+  let ms: i64 = now_ms()
+  ret "[" + i64_to_str(ms) + "ms] "
+.end
+
+# -----------------------------------------------------------------------------
+# Core logging
+# -----------------------------------------------------------------------------
+
+fn enabled(lv: LogLevel, c: Cat) -> bool
+  if G_CFG.quiet ret false .end
+  if !cat_allowed(c) ret false .end
+  ret (lv as i32) <= (G_CFG.level as i32)
+.end
+
+fn log(lv: LogLevel, c: Cat, msg: str) -> void
+  if !enabled(lv, c) ret .end
+
+  let lvs: str = level_to_str(lv)
+  let cs: str = cat_to_str(c)
+
+  let head: str = ts_prefix() + paint(lvs, level_color(lv)) + paint(":", ansi_gray()) + paint(cs, ansi_gray()) + " "
+  io::println(head + msg)
+.end
+
+fn error(c: Cat, msg: str) -> void
+  log(LogLevel::Error, c, msg)
+.end
+
+fn warn(c: Cat, msg: str) -> void
+  log(LogLevel::Warn, c, msg)
+.end
+
+fn info(c: Cat, msg: str) -> void
+  log(LogLevel::Info, c, msg)
+.end
+
+fn debug(c: Cat, msg: str) -> void
+  log(LogLevel::Debug, c, msg)
+.end
+
+fn trace(c: Cat, msg: str) -> void
+  log(LogLevel::Trace, c, msg)
+.end
+
+# -----------------------------------------------------------------------------
+# Formatting helpers (kv, lists, blocks)
+# -----------------------------------------------------------------------------
+
+fn kv(k: str, v: str) -> str
+  ret k + "=" + "\"" + escape(v) + "\""
+.end
+
+fn join_list(xs: list[str], sep: str) -> str
+  let mut out: str = ""
+  let mut i: i32 = 0
+  while i < len(xs)
+    if i > 0 out = out + sep .end
+    out = out + xs[i]
+    i = i + 1
+  .end
+  ret out
+.end
+
+fn indent_lines(s: str, pad: str) -> str
+  let lines: list[str] = string::split_lines(s)
+  let mut out: str = ""
+  let mut i: i32 = 0
+  while i < len(lines)
+    out = out + pad + lines[i] + "\n"
+    i = i + 1
+  .end
+  ret out
+.end
+
+fn escape(s: str) -> str
+  let mut out: str = ""
+  let mut i: i32 = 0
+  while i < string::len(s)
+    let c: i32 = string::codepoint_at(s, i)
+    i = i + 1
+    if c == 92 out = out + "\\\\"
+    elif c == 34 out = out + "\\\""
+    elif c == 10 out = out + "\\n"
+    else out = out + string::from_codepoint(c)
+    .end
+  .end
+  ret out
+.end
+
+# -----------------------------------------------------------------------------
+# Tracing spans (RAII-like via explicit begin/end)
+# -----------------------------------------------------------------------------
+
+struct SpanGuard
+  cat: Cat
+  name: str
+  t0: i64
+  active: bool
+.end
+
+fn span_begin(c: Cat, name: str) -> SpanGuard
+  if !G_CFG.trace_enabled || !enabled(LogLevel::Trace, c)
+    ret SpanGuard(cat: c, name: name, t0: 0, active: false)
+  .end
+  trace(c, ">> " + name)
+  ret SpanGuard(cat: c, name: name, t0: now_ms(), active: true)
+.end
+
+fn span_end(g: SpanGuard) -> void
+  if !g.active ret .end
+  let dt: i64 = now_ms() - g.t0
+  trace(g.cat, "<< " + g.name + " (" + i64_to_str(dt) + "ms)")
+.end
+
+# -----------------------------------------------------------------------------
+# Timers (manual)
+# -----------------------------------------------------------------------------
+
+struct Timer
+  name: str
+  t0: i64
+.end
+
+fn timer_start(name: str) -> Timer
+  ret Timer(name: name, t0: now_ms())
+.end
+
+fn timer_stop(t: Timer) -> i64
+  ret now_ms() - t.t0
+.end
+
+fn timer_log(c: Cat, t: Timer, msg: str) -> void
+  let dt: i64 = timer_stop(t)
+  debug(c, msg + " (" + i64_to_str(dt) + "ms)")
+.end
+
+# -----------------------------------------------------------------------------
+# Hex dump / bytes (for debugging parsers)
+# -----------------------------------------------------------------------------
+
+fn hexdump(bytes: list[i32], max: i32) -> str
+  let mut n: i32 = len(bytes)
+  if max > 0 && n > max n = max .end
+  let mut out: str = ""
+  let mut i: i32 = 0
+  while i < n
+    if i > 0 out = out + " " .end
+    out = out + u8_hex(bytes[i] & 255)
+    i = i + 1
+  .end
+  if len(bytes) > n out = out + " …" .end
+  ret out
+.end
+
+fn u8_hex(x: i32) -> str
+  let hi: i32 = (x >> 4) & 15
+  let lo: i32 = x & 15
+  ret hex_digit(hi) + hex_digit(lo)
+.end
+
+fn hex_digit(x: i32) -> str
+  if x < 10 ret string::from_codepoint(48 + x) .end
+  ret string::from_codepoint(87 + x) # 'a'..'f'
+.end
+
+# -----------------------------------------------------------------------------
+# Dump helpers for configs (generic string dump)
+# -----------------------------------------------------------------------------
+# Intégration: tes types Resolved/Target/Step etc vivent dans config.vit.
+# Ici, on dump via callbacks pour éviter import cycle.
+
+type DumpFn = fn() -> str
+
+fn dump(c: Cat, title: str, f: DumpFn) -> void
+  if !enabled(LogLevel::Debug, c) ret .end
+  let body: str = f()
+  debug(c, title + ":\n" + indent_lines(body, "  "))
+.end
+
+# -----------------------------------------------------------------------------
+# Panic / Internal errors
+# -----------------------------------------------------------------------------
+
+fn panic(msg: str) -> void
+  # standard: log + abort
+  error(Cat::Core, "panic: " + msg)
+  sys_abort()
+.end
+
+fn assert(cond: bool, msg: str) -> void
+  if cond ret .end
+  panic("assert failed: " + msg)
+.end
+
+# -----------------------------------------------------------------------------
+# CLI plumbing helpers
+# -----------------------------------------------------------------------------
+
+fn parse_bool_flag(argv: list[str], name: str) -> bool
+  let mut i: i32 = 0
+  while i < len(argv)
+    if argv[i] == name ret true .end
+    i = i + 1
+  .end
+  ret false
+.end
+
+fn parse_str_opt(argv: list[str], name: str, fallback: str) -> str
+  let mut i: i32 = 0
+  while i < len(argv)
+    if argv[i] == name && i + 1 < len(argv)
+      ret argv[i + 1]
+    .end
+    i = i + 1
+  .end
+  ret fallback
+.end
+
+fn apply_cli_overrides(argv: list[str]) -> void
+  # -q / --quiet
+  if parse_bool_flag(argv, "-q") || parse_bool_flag(argv, "--quiet")
+    set_quiet(true)
+  .end
+
+  # -v increments: -v => debug, -vv => trace (simple)
+  let mut vcount: i32 = 0
+  let mut i: i32 = 0
+  while i < len(argv)
+    if argv[i] == "-v" vcount = vcount + 1 .end
+    if argv[i] == "-vv" vcount = vcount + 2 .end
+    i = i + 1
+  .end
+  if vcount >= 2 set_level(LogLevel::Trace)
+  elif vcount == 1 set_level(LogLevel::Debug)
+  .end
+
+  # --log LEVEL
+  let lv: str = parse_str_opt(argv, "--log", "")
+  if lv != "" set_level(parse_level(lv)) .end
+
+  # --no-color
+  if parse_bool_flag(argv, "--no-color") set_color(false) .end
+
+  # --time
+  if parse_bool_flag(argv, "--time") set_timestamps(true) .end
+
+  # --cat PREFIX
+  let cat: str = parse_str_opt(argv, "--cat", "")
+  if cat != "" set_category_filter(cat) .end
+
+  # --trace
+  if parse_bool_flag(argv, "--trace") enable_trace(true) .end
+.end
+
+# -----------------------------------------------------------------------------
+# Compact error formatting for Result
+# -----------------------------------------------------------------------------
+
+type AnyErr = str
+
+fn fmt_err(e: AnyErr) -> str
+  ret "error: " + e
+.end
+
+fn print_err(e: AnyErr) -> void
+  error(Cat::Core, e)
+.end
+
+# -----------------------------------------------------------------------------
+# Integration points: these are meant to be called by build_muf / commands
+# -----------------------------------------------------------------------------
+
+fn init(argv: list[str]) -> void
+  init_from_env()
+  apply_cli_overrides(argv)
+.end
+
+# -----------------------------------------------------------------------------
+# Externs
+# -----------------------------------------------------------------------------
+
+extern fn env_get(name: str) -> str
+
+extern fn sys_now_ms() -> i64
+extern fn sys_abort() -> void
+
+extern fn i64_to_str(x: i64) -> str
+extern fn len[T](xs: list[T]) -> i32

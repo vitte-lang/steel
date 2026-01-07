@@ -1,0 +1,788 @@
+# arscan.vit — Muffin / Vitte
+#
+# Artefact Resolver SCAN (ARSCAN)
+# -----------------------------------------------------------------------------
+# Objectif:
+# - fournir une implémentation portable et déterministe de “file discovery”
+#   (remplacement du glob shell / Make) pour Muffin.
+# - exposer des helpers: glob(), rglob(), scan(), exclude(), normalize(), sort+dedup.
+# - supporter des patterns contemporains: *, ?, ** (récursif), classes [] (optionnel),
+#   avec séparation de chemins indépendante OS.
+#
+# Principes:
+# - Déterminisme: sortie triée lexicographiquement, chemins normalisés, déduplication.
+# - Portabilité: pas de shell-out à `find`, comportement stable multi-OS.
+# - Sécurité: pas de suivi de symlinks par défaut (configurable), limite de profondeur.
+#
+# Notes d’intégration:
+# - Muffin (resolve) doit figer les listes résultantes dans Muffinconfig.mcf.
+# - Steel ne doit PAS re-globber: il consomme la liste figée.
+# -----------------------------------------------------------------------------
+
+mod muffin/arscan
+
+use std/string
+use std/io
+use std/collections/list
+use std/collections/map
+
+export all
+
+# ---------------------------------------------------------------------------
+# Types
+# ---------------------------------------------------------------------------
+
+enum FsKind
+  File
+  Dir
+  Symlink
+  Other
+.end
+
+struct FsEntry
+  path: str          # chemin normalisé (slash '/')
+  name: str          # basename
+  kind: FsKind
+  size: i64
+  mtime: i64
+.end
+
+enum ScanErrKind
+  Io
+  InvalidPattern
+  TooDeep
+.end
+
+struct ScanError
+  kind: ScanErrKind
+  path: str
+  message: str
+.end
+
+type ScanResult[T] = std/result::Result[T, ScanError]
+
+struct ScanOptions
+  follow_symlinks: bool
+  include_hidden: bool
+  max_depth: i32              # -1 = illimité
+  max_entries: i32            # -1 = illimité (anti OOM)
+  exclude_dirs: list[str]     # patterns (segments) appliqués sur dir-name
+.end
+
+fn scan_options_default() -> ScanOptions
+  ret ScanOptions(
+    follow_symlinks: false,
+    include_hidden: false,
+    max_depth: -1,
+    max_entries: -1,
+    exclude_dirs: ["**/.git/**", "**/dist/**", "**/build/**", "**/target/**"]
+  )
+.end
+
+# ---------------------------------------------------------------------------
+# Path utilities (portable, déterministe)
+# ---------------------------------------------------------------------------
+
+fn is_sep(c: i32) -> bool
+  ret c == 47 || c == 92   # '/' or '\\'
+.end
+
+fn normalize_path(p: str) -> str
+  # - convert backslashes to '/'
+  # - remove duplicate separators
+  # - remove trailing '/' (except root "/")
+  # - keep relative paths as-is (no FS access)
+  let mut out: str = ""
+  let mut i: i32 = 0
+  let mut prev_sep: bool = false
+
+  while i < string::len(p)
+    let c: i32 = string::codepoint_at(p, i)
+    i = i + 1
+
+    if c == 92
+      # backslash -> slash
+      if !prev_sep
+        out = out + "/"
+      .end
+      prev_sep = true
+      continue
+    .end
+
+    if c == 47
+      if !prev_sep
+        out = out + "/"
+      .end
+      prev_sep = true
+      continue
+    .end
+
+    out = out + string::from_codepoint(c)
+    prev_sep = false
+  .end
+
+  # trim trailing '/'
+  while string::len(out) > 1 && string::ends_with(out, "/")
+    out = string::slice(out, 0, string::len(out) - 1)
+  .end
+
+  ret out
+.end
+
+fn join_path(a: str, b: str) -> str
+  if a == ""
+    ret normalize_path(b)
+  .end
+  if b == ""
+    ret normalize_path(a)
+  .end
+
+  let aa: str = normalize_path(a)
+  let bb: str = normalize_path(b)
+
+  if string::ends_with(aa, "/")
+    ret normalize_path(aa + bb)
+  .end
+  ret normalize_path(aa + "/" + bb)
+.end
+
+fn basename(p: str) -> str
+  let s: str = normalize_path(p)
+  let mut i: i32 = string::len(s) - 1
+  while i >= 0
+    let c: i32 = string::codepoint_at(s, i)
+    if c == 47
+      ret string::slice(s, i + 1, string::len(s))
+    .end
+    i = i - 1
+  .end
+  ret s
+.end
+
+fn dirname(p: str) -> str
+  let s: str = normalize_path(p)
+  let mut i: i32 = string::len(s) - 1
+  while i >= 0
+    let c: i32 = string::codepoint_at(s, i)
+    if c == 47
+      if i == 0
+        ret "/"
+      .end
+      ret string::slice(s, 0, i)
+    .end
+    i = i - 1
+  .end
+  ret ""
+.end
+
+fn is_hidden_name(name: str) -> bool
+  ret string::starts_with(name, ".") && name != "." && name != ".."
+.end
+
+fn split_segments(p: str) -> list[str]
+  let s: str = normalize_path(p)
+  let mut segs: list[str] = []
+  let mut cur: str = ""
+  let mut i: i32 = 0
+  while i < string::len(s)
+    let c: i32 = string::codepoint_at(s, i)
+    i = i + 1
+    if c == 47
+      segs = segs + [cur]
+      cur = ""
+    else
+      cur = cur + string::from_codepoint(c)
+    .end
+  .end
+  segs = segs + [cur]
+  ret segs
+.end
+
+# ---------------------------------------------------------------------------
+# Glob pattern engine
+#   - segment-aware matching
+#   - supports: * ? ** and basic char class [a-z] (optional)
+# ---------------------------------------------------------------------------
+
+enum PatTok
+  Lit(text: str)       # literal chunk (may be length>1)
+  Star                 # *
+  Qm                   # ?
+  Class(neg: bool, chars: str)  # [abc] or [^abc] simplified (no ranges expansion)
+.end
+
+struct SegPattern
+  # pattern for one segment (no '/')
+  toks: list[PatTok]
+.end
+
+enum PathSeg
+  AnyDepth             # ** (can match zero or more segments)
+  Seg(p: SegPattern)   # normal segment matcher
+.end
+
+struct GlobPattern
+  raw: str
+  segs: list[PathSeg]  # split by '/'
+.end
+
+fn pat_err(msg: str, at: str) -> ScanError
+  ret ScanError(kind: ScanErrKind::InvalidPattern, path: at, message: msg)
+.end
+
+fn compile_segment(seg: str) -> ScanResult[SegPattern]
+  let mut toks: list[PatTok] = []
+  let mut lit: str = ""
+  let mut i: i32 = 0
+
+  fn flush_lit(mut toks: list[PatTok], mut lit: str) -> list[PatTok]
+    if lit != ""
+      toks = toks + [PatTok::Lit(text: lit)]
+    .end
+    ret toks
+  .end
+
+  while i < string::len(seg)
+    let c: i32 = string::codepoint_at(seg, i)
+
+    if c == 42  # '*'
+      toks = flush_lit(toks, lit)
+      lit = ""
+      toks = toks + [PatTok::Star]
+      i = i + 1
+      continue
+    .end
+
+    if c == 63  # '?'
+      toks = flush_lit(toks, lit)
+      lit = ""
+      toks = toks + [PatTok::Qm]
+      i = i + 1
+      continue
+    .end
+
+    if c == 91  # '[' class
+      toks = flush_lit(toks, lit)
+      lit = ""
+      i = i + 1
+      if i >= string::len(seg)
+        ret std/result::Err(pat_err("unterminated character class", seg))
+      .end
+
+      let mut neg: bool = false
+      let first: i32 = string::codepoint_at(seg, i)
+      if first == 94 # '^'
+        neg = true
+        i = i + 1
+      .end
+
+      let mut buf: str = ""
+      while i < string::len(seg)
+        let d: i32 = string::codepoint_at(seg, i)
+        if d == 93
+          i = i + 1
+          break
+        .end
+        buf = buf + string::from_codepoint(d)
+        i = i + 1
+      .end
+
+      if buf == ""
+        ret std/result::Err(pat_err("empty character class", seg))
+      .end
+
+      toks = toks + [PatTok::Class(neg: neg, chars: buf)]
+      continue
+    .end
+
+    # literal char
+    lit = lit + string::from_codepoint(c)
+    i = i + 1
+  .end
+
+  toks = flush_lit(toks, lit)
+  ret std/result::Ok(SegPattern(toks: toks))
+.end
+
+fn compile_glob(pattern: str) -> ScanResult[GlobPattern]
+  let raw: str = normalize_path(pattern)
+  let parts: list[str] = split_segments(raw)
+
+  let mut segs: list[PathSeg] = []
+  let mut i: i32 = 0
+  while i < len(parts)
+    let s: str = parts[i]
+    i = i + 1
+
+    if s == "**"
+      segs = segs + [PathSeg::AnyDepth]
+      continue
+    .end
+
+    let sp: ScanResult[SegPattern] = compile_segment(s)
+    if std/result::is_err(sp)
+      ret std/result::Err(std/result::unwrap_err(sp))
+    .end
+    segs = segs + [PathSeg::Seg(p: std/result::unwrap(sp))]
+  .end
+
+  ret std/result::Ok(GlobPattern(raw: raw, segs: segs))
+.end
+
+fn class_contains(chars: str, c: i32) -> bool
+  let mut i: i32 = 0
+  while i < string::len(chars)
+    if string::codepoint_at(chars, i) == c
+      ret true
+    .end
+    i = i + 1
+  .end
+  ret false
+.end
+
+fn match_segment(segpat: SegPattern, text: str) -> bool
+  # simple backtracking for Star
+  let toks: list[PatTok] = segpat.toks
+
+  fn rec(toks: list[PatTok], ti: i32, text: str, xi: i32) -> bool
+    if ti >= len(toks)
+      ret xi == string::len(text)
+    .end
+
+    let t: PatTok = toks[ti]
+    match t
+      PatTok::Lit(s) =>
+        let n: i32 = string::len(s)
+        if xi + n > string::len(text)
+          ret false
+        .end
+        if string::slice(text, xi, xi + n) != s
+          ret false
+        .end
+        ret rec(toks, ti + 1, text, xi + n)
+
+      PatTok::Qm =>
+        if xi >= string::len(text)
+          ret false
+        .end
+        ret rec(toks, ti + 1, text, xi + 1)
+
+      PatTok::Class(neg, chars) =>
+        if xi >= string::len(text)
+          ret false
+        .end
+        let c: i32 = string::codepoint_at(text, xi)
+        let has: bool = class_contains(chars, c)
+        if (neg && has) || (!neg && !has)
+          ret false
+        .end
+        ret rec(toks, ti + 1, text, xi + 1)
+
+      PatTok::Star =>
+        # match zero or more chars
+        let mut k: i32 = xi
+        while k <= string::len(text)
+          if rec(toks, ti + 1, text, k)
+            ret true
+          .end
+          k = k + 1
+        .end
+        ret false
+    .end
+  .end
+
+  ret rec(toks, 0, text, 0)
+.end
+
+fn match_path(glob: GlobPattern, path: str) -> bool
+  let p: str = normalize_path(path)
+  let segs: list[str] = split_segments(p)
+  let pats: list[PathSeg] = glob.segs
+
+  fn rec(pats: list[PathSeg], pi: i32, segs: list[str], si: i32) -> bool
+    if pi >= len(pats)
+      ret si == len(segs)
+    .end
+
+    let ps: PathSeg = pats[pi]
+    match ps
+      PathSeg::AnyDepth =>
+        # ** matches zero or more segments
+        let mut k: i32 = si
+        while k <= len(segs)
+          if rec(pats, pi + 1, segs, k)
+            ret true
+          .end
+          k = k + 1
+        .end
+        ret false
+
+      PathSeg::Seg(p) =>
+        if si >= len(segs)
+          ret false
+        .end
+        if !match_segment(p, segs[si])
+          ret false
+        .end
+        ret rec(pats, pi + 1, segs, si + 1)
+    .end
+  .end
+
+  ret rec(pats, 0, segs, 0)
+.end
+
+# ---------------------------------------------------------------------------
+# FS abstraction (externs) — à mapper sur ta stdlib réelle
+# ---------------------------------------------------------------------------
+
+extern fn fs_read_dir(path: str) -> ScanResult[list[FsEntry]]
+extern fn fs_is_dir(path: str) -> bool
+extern fn fs_exists(path: str) -> bool
+
+# ---------------------------------------------------------------------------
+# Core scanning
+# ---------------------------------------------------------------------------
+
+fn should_exclude_dir(opts: ScanOptions, rel: str) -> bool
+  # rel: path relatif normalisé depuis la racine du scan
+  let mut i: i32 = 0
+  while i < len(opts.exclude_dirs)
+    let pat_s: str = opts.exclude_dirs[i]
+    i = i + 1
+
+    let pr: ScanResult[GlobPattern] = compile_glob(pat_s)
+    if std/result::is_err(pr)
+      continue
+    .end
+    if match_path(std/result::unwrap(pr), rel)
+      ret true
+    .end
+  .end
+  ret false
+.end
+
+fn push_sorted_unique(mut xs: list[str], x: str) -> list[str]
+  # naive (determinism first). In prod: use set then sort.
+  let mut i: i32 = 0
+  while i < len(xs)
+    if xs[i] == x
+      ret xs
+    .end
+    i = i + 1
+  .end
+  xs = xs + [x]
+  ret xs
+.end
+
+fn sort_lex(mut xs: list[str]) -> list[str]
+  # simple O(n^2) sort placeholder (replace with std sort)
+  let mut i: i32 = 0
+  while i < len(xs)
+    let mut j: i32 = i + 1
+    while j < len(xs)
+      if xs[j] < xs[i]
+        let tmp: str = xs[i]
+        xs[i] = xs[j]
+        xs[j] = tmp
+      .end
+      j = j + 1
+    .end
+    i = i + 1
+  .end
+  ret xs
+.end
+
+fn dedup_sorted(xs: list[str]) -> list[str]
+  if len(xs) == 0
+    ret []
+  .end
+  let mut out: list[str] = [xs[0]]
+  let mut i: i32 = 1
+  while i < len(xs)
+    if xs[i] != xs[i - 1]
+      out = out + [xs[i]]
+    .end
+    i = i + 1
+  .end
+  ret out
+.end
+
+fn finalize_paths(xs: list[str]) -> list[str]
+  # normalize + sort + dedup
+  let mut tmp: list[str] = []
+  let mut i: i32 = 0
+  while i < len(xs)
+    tmp = tmp + [normalize_path(xs[i])]
+    i = i + 1
+  .end
+  tmp = sort_lex(tmp)
+  tmp = dedup_sorted(tmp)
+  ret tmp
+.end
+
+fn walk_recursive(root: str, opts: ScanOptions) -> ScanResult[list[str]]
+  let r: str = normalize_path(root)
+  if !fs_exists(r)
+    ret std/result::Ok([])
+  .end
+
+  let mut out: list[str] = []
+  let mut stack: list[tuple[str, i32, str]] = []  # (abs, depth, rel)
+  stack = stack + [(r, 0, "")]
+
+  loop
+    if len(stack) == 0
+      break
+    .end
+
+    let item: tuple[str, i32, str] = stack[len(stack) - 1]
+    stack = list::pop(stack)
+
+    let abs: str = item.0
+    let depth: i32 = item.1
+    let rel: str = item.2
+
+    if opts.max_depth >= 0 && depth > opts.max_depth
+      ret std/result::Err(ScanError(kind: ScanErrKind::TooDeep, path: abs, message: "max_depth reached"))
+    .end
+
+    if rel != "" && should_exclude_dir(opts, rel)
+      continue
+    .end
+
+    let rd: ScanResult[list[FsEntry]] = fs_read_dir(abs)
+    if std/result::is_err(rd)
+      ret std/result::Err(std/result::unwrap_err(rd))
+    .end
+
+    let ents: list[FsEntry] = std/result::unwrap(rd)
+    let mut i: i32 = 0
+    while i < len(ents)
+      let e: FsEntry = ents[i]
+      i = i + 1
+
+      if !opts.include_hidden && is_hidden_name(e.name)
+        continue
+      .end
+
+      # record entry path (for filtering later)
+      out = out + [e.path]
+
+      if opts.max_entries >= 0 && len(out) > opts.max_entries
+        ret std/result::Err(ScanError(kind: ScanErrKind::Io, path: abs, message: "max_entries exceeded"))
+      .end
+
+      if e.kind == FsKind::Dir
+        let next_rel: str = (rel == "") ? e.name : (rel + "/" + e.name)
+        stack = stack + [(e.path, depth + 1, next_rel)]
+      .end
+
+      if e.kind == FsKind::Symlink && opts.follow_symlinks
+        # simple: if symlink points to dir, treat as dir (FS layer should resolve kind).
+        # left as policy; keep minimal here.
+      .end
+    .end
+  .end
+
+  ret std/result::Ok(finalize_paths(out))
+.end
+
+# ---------------------------------------------------------------------------
+# Public API
+# ---------------------------------------------------------------------------
+
+fn rglob(root: str, pattern: str) -> ScanResult[list[str]]
+  let opts: ScanOptions = scan_options_default()
+  ret rglob_with(root, pattern, opts)
+.end
+
+fn rglob_with(root: str, pattern: str, opts: ScanOptions) -> ScanResult[list[str]]
+  let pr: ScanResult[GlobPattern] = compile_glob(pattern)
+  if std/result::is_err(pr)
+    ret std/result::Err(std/result::unwrap_err(pr))
+  .end
+  let gp: GlobPattern = std/result::unwrap(pr)
+
+  let all: ScanResult[list[str]] = walk_recursive(root, opts)
+  if std/result::is_err(all)
+    ret std/result::Err(std/result::unwrap_err(all))
+  .end
+
+  let xs: list[str] = std/result::unwrap(all)
+
+  let rootn: str = normalize_path(root)
+  let mut out: list[str] = []
+  let mut i: i32 = 0
+  while i < len(xs)
+    let p: str = xs[i]
+    i = i + 1
+
+    # make path relative for matching semantics if pattern is relative to root
+    let rel: str =
+      string::starts_with(p, rootn) ?
+        string::slice(p, string::len(rootn) + 1, string::len(p)) :
+        p
+
+    if match_path(gp, rel)
+      out = out + [p]
+    .end
+  .end
+
+  ret std/result::Ok(finalize_paths(out))
+.end
+
+fn glob(pattern: str) -> ScanResult[list[str]]
+  # non-recursive glob: split dirname + segment pattern
+  let patn: str = normalize_path(pattern)
+  let base: str = dirname(patn)
+  let seg: str = basename(patn)
+
+  let opts: ScanOptions = scan_options_default()
+
+  let pr: ScanResult[SegPattern] = compile_segment(seg)
+  if std/result::is_err(pr)
+    ret std/result::Err(std/result::unwrap_err(pr))
+  .end
+  let sp: SegPattern = std/result::unwrap(pr)
+
+  let dirp: str = (base == "") ? "." : base
+  let rd: ScanResult[list[FsEntry]] = fs_read_dir(dirp)
+  if std/result::is_err(rd)
+    ret std/result::Err(std/result::unwrap_err(rd))
+  .end
+
+  let ents: list[FsEntry] = std/result::unwrap(rd)
+
+  let mut out: list[str] = []
+  let mut i: i32 = 0
+  while i < len(ents)
+    let e: FsEntry = ents[i]
+    i = i + 1
+
+    if !opts.include_hidden && is_hidden_name(e.name)
+      continue
+    .end
+
+    if match_segment(sp, e.name)
+      out = out + [e.path]
+    .end
+  .end
+
+  ret std/result::Ok(finalize_paths(out))
+.end
+
+# Higher-level: scan(root, includes[], excludes[], opts)
+struct ScanSpec
+  root: str
+  includes: list[str]     # glob patterns relative to root (supports **)
+  excludes: list[str]     # same
+  opts: ScanOptions
+.end
+
+fn scan_spec_new(root: str) -> ScanSpec
+  ret ScanSpec(root: root, includes: [], excludes: [], opts: scan_options_default())
+.end
+
+fn scan(mut spec: ScanSpec) -> ScanResult[list[str]]
+  let all: ScanResult[list[str]] = walk_recursive(spec.root, spec.opts)
+  if std/result::is_err(all)
+    ret std/result::Err(std/result::unwrap_err(all))
+  .end
+  let xs: list[str] = std/result::unwrap(all)
+
+  let rootn: str = normalize_path(spec.root)
+
+  # compile patterns
+  let mut incp: list[GlobPattern] = []
+  let mut excp: list[GlobPattern] = []
+
+  let mut i: i32 = 0
+  while i < len(spec.includes)
+    let pr: ScanResult[GlobPattern] = compile_glob(spec.includes[i])
+    if std/result::is_err(pr)
+      ret std/result::Err(std/result::unwrap_err(pr))
+    .end
+    incp = incp + [std/result::unwrap(pr)]
+    i = i + 1
+  .end
+
+  i = 0
+  while i < len(spec.excludes)
+    let pr: ScanResult[GlobPattern] = compile_glob(spec.excludes[i])
+    if std/result::is_err(pr)
+      ret std/result::Err(std/result::unwrap_err(pr))
+    .end
+    excp = excp + [std/result::unwrap(pr)]
+    i = i + 1
+  .end
+
+  fn any_match(pats: list[GlobPattern], rel: str) -> bool
+    let mut k: i32 = 0
+    while k < len(pats)
+      if match_path(pats[k], rel)
+        ret true
+      .end
+      k = k + 1
+    .end
+    ret false
+  .end
+
+  let mut out: list[str] = []
+  i = 0
+  while i < len(xs)
+    let p: str = xs[i]
+    i = i + 1
+
+    let rel: str =
+      string::starts_with(p, rootn) ?
+        string::slice(p, string::len(rootn) + 1, string::len(p)) :
+        p
+
+    # include logic:
+    # - if includes empty => include all
+    # - else include if any include matches
+    let included: bool = (len(incp) == 0) ? true : any_match(incp, rel)
+    if !included
+      continue
+    .end
+
+    # exclude logic
+    if any_match(excp, rel)
+      continue
+    .end
+
+    out = out + [p]
+  .end
+
+  ret std/result::Ok(finalize_paths(out))
+.end
+
+# ---------------------------------------------------------------------------
+# Tests (scenarios) — syntax + logique de matching
+# ---------------------------------------------------------------------------
+
+scn test_match_segment() -> void
+  let sp: SegPattern = std/result::unwrap(compile_segment("ab*.vit"))
+  assert(match_segment(sp, "abc.vit"))
+  assert(match_segment(sp, "ab.vit"))
+  assert(!match_segment(sp, "xa.vit"))
+.end
+
+scn test_match_path_double_star() -> void
+  let gp: GlobPattern = std/result::unwrap(compile_glob("src/**/mod.vit"))
+  assert(match_path(gp, "src/mod.vit"))
+  assert(match_path(gp, "src/a/mod.vit"))
+  assert(match_path(gp, "src/a/b/mod.vit"))
+  assert(!match_path(gp, "src/a/b/mod.rs"))
+.end
+
+scn test_normalize() -> void
+  assert(normalize_path("a\\\\b\\\\c") == "a/b/c")
+  assert(normalize_path("a//b///c/") == "a/b/c")
+.end
+
+# Minimal assert
+extern fn assert(x: bool) -> void
+
+# std placeholders required by this file (à mapper)
+extern fn len[T](xs: list[T]) -> i32

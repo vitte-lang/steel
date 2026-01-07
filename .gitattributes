@@ -1,0 +1,22 @@
+* text=auto
+
+# Keep repository stats focused on Vitte sources.
+*.vit linguist-detectable=true
+*.vit linguist-language=Vitte
+
+*.am linguist-detectable=false
+*.bat linguist-detectable=false
+*.conf linguist-detectable=false
+*.in linguist-detectable=false
+*.m4 linguist-detectable=false
+*.mcf linguist-detectable=false
+*.py linguist-detectable=false
+*.sample linguist-detectable=false
+*.sh linguist-detectable=false
+*.template linguist-detectable=false
+*.1 linguist-detectable=false
+
+README* linguist-documentation
+COPYING linguist-documentation
+NEWS linguist-documentation
+doc/** linguist-documentation
