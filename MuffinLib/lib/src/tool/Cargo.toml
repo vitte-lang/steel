@@ -1,0 +1,28 @@
+[package]
+name = "muffin_tool"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Tool execution/probing layer for Muffin (std-only, sync)."
+repository = "https://github.com/gogin/muffin"
+keywords = ["muffin", "tool", "process", "runner", "probe"]
+categories = ["development-tools"]
+
+[lib]
+name = "muffin_tool"
+path = "src/lib.rs"
+
+[features]
+default = ["std-only"]
+std-only = []
+
+# Future extension points (empty for now)
+with-async = []
+with-process-tree-kill = []
+with-pty = []
+
+[dependencies]
+# std-only
+
+[dev-dependencies]
+# std-only

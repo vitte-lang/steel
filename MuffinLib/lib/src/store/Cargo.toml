@@ -1,0 +1,28 @@
+[package]
+name = "muffin_store"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Store layer for Muffin: content-addressable storage (CAS), index, and garbage collection (std-only)."
+repository = "https://github.com/gogin/muffin"
+keywords = ["muffin", "store", "cas", "artifact", "gc"]
+categories = ["development-tools"]
+
+[lib]
+name = "muffin_store"
+path = "src/lib.rs"
+
+[features]
+default = ["std-only"]
+std-only = []
+
+# Future extension points (empty for now; wire later if needed)
+with-sha256 = []
+with-blake3 = []
+with-compression = []
+
+[dependencies]
+# std-only
+
+[dev-dependencies]
+# std-only

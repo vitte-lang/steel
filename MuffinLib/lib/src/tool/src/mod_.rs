@@ -1,22 +1,11 @@
-//! Tool abstraction for Muffin (mod.rs) — MAX (std-only).
+// C:\Users\gogin\Documents\GitHub\muffin\MuffinLib\lib\src\tool\src\mod_.rs
+//! Core tool types (renamed file) — MAX.
 //!
-//! This module defines:
-//! - `ToolSpec`: declarative description of a tool (exe + args + env + cwd)
-//! - `ToolRunner`: execution with stdout/stderr capture, timeouts (best-effort std-only)
-//! - `ToolError` + `ToolStatus`
-//! - `ToolOutput`: captured outputs
-//!
-//! Design goals:
-//! - deterministic command lines (stable args ordering when built from maps)
-//! - portable across Windows/macOS/Linux/BSD
-//! - allow Muffin "capsule" policy layers to constrain tool execution (wired elsewhere)
-//!
-//! Notes:
-//! - std-only: no async, no kill-timeout on all platforms (best-effort).
-//! - For strict timeouts/process trees, add feature-gated platform backends.
+//! If you want `src/mod.rs` instead, rename this file to `mod.rs`
+//! and update `lib.rs` accordingly.
 
 use std::collections::BTreeMap;
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
@@ -26,7 +15,6 @@ use std::time::{Duration, Instant};
 pub enum ToolError {
     Io(std::io::Error),
     Invalid(&'static str),
-    Spawn(String),
     Timeout { elapsed: Duration },
     NonZeroExit { code: Option<i32> },
 }
@@ -36,7 +24,6 @@ impl fmt::Display for ToolError {
         match self {
             ToolError::Io(e) => write!(f, "io: {e}"),
             ToolError::Invalid(s) => write!(f, "invalid: {s}"),
-            ToolError::Spawn(s) => write!(f, "spawn: {s}"),
             ToolError::Timeout { elapsed } => write!(f, "timeout after {:?}", elapsed),
             ToolError::NonZeroExit { code } => write!(f, "non-zero exit: {:?}", code),
         }
@@ -51,7 +38,6 @@ impl From<std::io::Error> for ToolError {
     }
 }
 
-/// Tool execution status.
 #[derive(Debug, Clone)]
 pub enum ToolStatus {
     Success { status: ExitStatus },
@@ -59,7 +45,6 @@ pub enum ToolStatus {
     Timeout { elapsed: Duration },
 }
 
-/// Captured output.
 #[derive(Debug, Clone)]
 pub struct ToolOutput {
     pub status: ToolStatus,
@@ -77,16 +62,13 @@ impl ToolOutput {
     }
 }
 
-/// Declarative tool specification.
 #[derive(Debug, Clone)]
 pub struct ToolSpec {
     pub program: PathBuf,
     pub args: Vec<OsString>,
     pub cwd: Option<PathBuf>,
     pub env: BTreeMap<OsString, OsString>,
-    /// If set, max duration to wait. Best-effort in std-only mode.
     pub timeout: Option<Duration>,
-    /// If true, inherit stdin (interactive tools).
     pub inherit_stdin: bool,
 }
 
@@ -139,18 +121,8 @@ impl ToolSpec {
     pub fn program(&self) -> &Path {
         &self.program
     }
-
-    pub fn argv_lossy(&self) -> Vec<String> {
-        let mut v = Vec::new();
-        v.push(self.program.to_string_lossy().to_string());
-        for a in &self.args {
-            v.push(a.to_string_lossy().to_string());
-        }
-        v
-    }
 }
 
-/// Tool runner (sync, std-only).
 #[derive(Debug, Default)]
 pub struct ToolRunner;
 
@@ -159,7 +131,6 @@ impl ToolRunner {
         Self
     }
 
-    /// Execute tool and capture output.
     pub fn run(&self, spec: &ToolSpec) -> Result<ToolOutput, ToolError> {
         if spec.program.as_os_str().is_empty() {
             return Err(ToolError::Invalid("empty program"));
@@ -174,7 +145,6 @@ impl ToolRunner {
             cmd.current_dir(cwd);
         }
 
-        // env: start from inherited env; then override.
         for (k, v) in &spec.env {
             cmd.env(k, v);
         }
@@ -187,20 +157,17 @@ impl ToolRunner {
             cmd.stdin(Stdio::null());
         }
 
-        // std-only timeout: run via `wait_with_output` and poll by elapsed.
-        // We implement a best-effort loop: spawn child, then periodically try_wait.
-        let mut child = cmd.spawn().map_err(ToolError::Io)?;
+        let mut child = cmd.spawn()?;
 
         if spec.timeout.is_none() {
             let out = child.wait_with_output()?;
             let dur = start.elapsed();
-            let status = if out.status.success() {
-                ToolStatus::Success { status: out.status }
-            } else {
-                ToolStatus::Failed { status: out.status }
-            };
             return Ok(ToolOutput {
-                status,
+                status: if out.status.success() {
+                    ToolStatus::Success { status: out.status }
+                } else {
+                    ToolStatus::Failed { status: out.status }
+                },
                 stdout: out.stdout,
                 stderr: out.stderr,
                 duration: dur,
@@ -210,24 +177,14 @@ impl ToolRunner {
         let timeout = spec.timeout.unwrap();
         let poll = Duration::from_millis(10);
 
-        // We cannot capture stdout/stderr incrementally without extra threads.
-        // So we do a fallback:
-        // - If it exits before timeout, use wait_with_output.
-        // - If not, try to kill, then collect whatever wait_with_output returns.
         loop {
             if start.elapsed() >= timeout {
-                // timeout
                 let _ = child.kill();
-                // Try to wait and capture output after kill
-                let out = child.wait_with_output().unwrap_or_else(|_| {
-                    // Minimal fallback
-                    std::process::Output {
-                        status: fake_status_failure(),
-                        stdout: Vec::new(),
-                        stderr: Vec::new(),
-                    }
+                let out = child.wait_with_output().unwrap_or_else(|_| std::process::Output {
+                    status: fake_status_failure(),
+                    stdout: Vec::new(),
+                    stderr: Vec::new(),
                 });
-
                 let dur = start.elapsed();
                 return Ok(ToolOutput {
                     status: ToolStatus::Timeout { elapsed: dur },
@@ -238,30 +195,25 @@ impl ToolRunner {
             }
 
             match child.try_wait()? {
-                Some(_status) => {
-                    // child exited; now capture outputs
+                Some(_st) => {
                     let out = child.wait_with_output()?;
                     let dur = start.elapsed();
-                    let status = if out.status.success() {
-                        ToolStatus::Success { status: out.status }
-                    } else {
-                        ToolStatus::Failed { status: out.status }
-                    };
                     return Ok(ToolOutput {
-                        status,
+                        status: if out.status.success() {
+                            ToolStatus::Success { status: out.status }
+                        } else {
+                            ToolStatus::Failed { status: out.status }
+                        },
                         stdout: out.stdout,
                         stderr: out.stderr,
                         duration: dur,
                     });
                 }
-                None => {
-                    std::thread::sleep(poll);
-                }
+                None => std::thread::sleep(poll),
             }
         }
     }
 
-    /// Execute tool and error on non-zero exit (convenience).
     pub fn run_checked(&self, spec: &ToolSpec) -> Result<ToolOutput, ToolError> {
         let out = self.run(spec)?;
         match &out.status {
@@ -271,8 +223,6 @@ impl ToolRunner {
         }
     }
 }
-
-/* ------------------------------ Helpers ------------------------------ */
 
 fn fake_status_failure() -> ExitStatus {
     #[cfg(unix)]
@@ -287,31 +237,6 @@ fn fake_status_failure() -> ExitStatus {
     }
     #[cfg(not(any(unix, windows)))]
     {
-        // unreachable in practice, but keep compile.
-        // There's no stable way; return a successful status? Prefer failure-ish.
-        // We'll just spawn a "true" status using std::process::Command is not acceptable here.
-        // So: panic in tests would reveal.
         panic!("unsupported platform for fake_status_failure");
-    }
-}
-
-/* -------------------------------- Tests -------------------------------- */
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn argv_lossy_includes_program() {
-        let spec = ToolSpec::new("echo").arg("hello");
-        let v = spec.argv_lossy();
-        assert!(!v.is_empty());
-        assert_eq!(v[0], "echo");
-    }
-
-    #[test]
-    fn env_set_roundtrip() {
-        let spec = ToolSpec::new("echo").env("A", "B");
-        assert_eq!(spec.env.get(OsStr::new("A")), Some(&OsString::from("B")));
     }
 }
