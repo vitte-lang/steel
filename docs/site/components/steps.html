@@ -1,1 +1,570 @@
 <!-- steps.html component placeholder -->
+
+<!--
+  Muffin docs component: steps
+
+  Purpose:
+    Step-by-step flow component for docs: install guides, pipelines, checklists.
+
+  Features:
+    - ordered steps with title + body
+    - optional status pill (ok/warn/danger/neutral)
+    - optional per-step tone/variant
+    - data-driven rendering via JSON
+
+  Usage (inline):
+
+    <ol class="mf-steps mf-steps--tone-indigo mf-steps--subtle mf-steps--cols-1">
+      <li class="mf-step">
+        <div class="mf-step__head">
+          <div class="mf-step__index"></div>
+          <div class="mf-step__title">Install</div>
+          <span class="mf-step__pill mf-step__pill--ok">OK</span>
+        </div>
+        <div class="mf-step__body">
+          <p>Install packages.</p>
+          <pre data-mf-code data-lang="bash" data-title="Debian" data-lines="off">sudo apt update</pre>
+        </div>
+      </li>
+      <li class="mf-step">
+        <div class="mf-step__head">
+          <div class="mf-step__index"></div>
+          <div class="mf-step__title">Configure</div>
+        </div>
+        <div class="mf-step__body">
+          <p>Run the config wizard.</p>
+        </div>
+      </li>
+    </ol>
+
+  Usage (data-driven):
+
+    <div data-mf-steps
+         data-tone="indigo"
+         data-variant="subtle"
+         data-columns="1"
+         data-items='[
+           {"title":"Configure","body":"Run configuration.","status":"ok"},
+           {"title":"Build","body":"Execute the plan.","status":"warn","pill":"Optional"}
+         ]'></div>
+
+  Options:
+    - data-tone: neutral|indigo|green|amber|red
+    - data-variant: solid|outline|subtle|ghost
+    - data-columns: 1|2
+    - data-compact: on|off
+
+  Step item fields:
+    - title (string)
+    - body (string) OR bodyHtml (string)
+    - status: ok|warn|danger|neutral (optional)
+    - pill: custom pill label (optional)
+    - tone: neutral|indigo|green|amber|red (optional)
+    - variant: solid|outline|subtle|ghost (optional)
+
+  Notes:
+    - If you include <pre data-mf-code ...>, the codeblock component can upgrade it.
+-->
+
+<style id="mf-steps-style">
+  :root {
+    --mf-steps-radius: 18px;
+    --mf-steps-border: rgba(255,255,255,0.12);
+    --mf-steps-bg: rgba(255,255,255,0.06);
+    --mf-steps-bg-2: rgba(255,255,255,0.10);
+    --mf-steps-fg: rgba(255,255,255,0.92);
+    --mf-steps-muted: rgba(255,255,255,0.72);
+    --mf-steps-shadow: 0 18px 55px rgba(0,0,0,0.30);
+
+    --mf-tone-neutral: 200 8% 72%;
+    --mf-tone-indigo: 250 90% 70%;
+    --mf-tone-green: 150 70% 60%;
+    --mf-tone-amber: 40 95% 65%;
+    --mf-tone-red: 0 85% 65%;
+  }
+
+  .mf-steps {
+    --mf-tone: var(--mf-tone-neutral);
+
+    list-style: none;
+    padding: 0;
+    margin: 18px 0;
+
+    display: grid;
+    gap: 14px;
+  }
+
+  .mf-steps--cols-1 { grid-template-columns: 1fr; }
+  .mf-steps--cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+  @media (max-width: 860px) {
+    .mf-steps--cols-2 { grid-template-columns: 1fr; }
+  }
+
+  .mf-step {
+    --mf-accent: hsl(var(--mf-tone));
+    --mf-accent-soft: hsl(var(--mf-tone) / 0.14);
+    --mf-accent-soft-2: hsl(var(--mf-tone) / 0.22);
+    --mf-accent-border: hsl(var(--mf-tone) / 0.28);
+
+    position: relative;
+    border-radius: var(--mf-steps-radius);
+    border: 1px solid var(--mf-steps-border);
+    background: var(--mf-steps-bg);
+    color: var(--mf-steps-fg);
+    overflow: hidden;
+
+    padding: 14px 14px 12px 14px;
+
+    transition:
+      transform 160ms ease,
+      background 160ms ease,
+      border-color 160ms ease,
+      box-shadow 220ms ease,
+      opacity 140ms ease;
+
+    font: 550 14px/1.5 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    letter-spacing: 0.1px;
+  }
+
+  .mf-step:hover {
+    transform: translateY(-1px);
+    background: var(--mf-steps-bg-2);
+    border-color: rgba(255,255,255,0.18);
+    box-shadow: var(--mf-steps-shadow);
+  }
+
+  .mf-steps--compact .mf-step {
+    padding: 12px 12px 10px 12px;
+  }
+
+  /* Left accent bar */
+  .mf-step::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: hsl(var(--mf-tone) / 0.55);
+  }
+
+  .mf-step__head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    min-width: 0;
+  }
+
+  .mf-step__index {
+    width: 30px;
+    height: 30px;
+    border-radius: 10px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.18);
+    color: rgba(255,255,255,0.88);
+
+    font: 850 12px/1.0 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    letter-spacing: 0.2px;
+    flex: 0 0 auto;
+  }
+
+  .mf-step__title {
+    font-weight: 850;
+    font-size: 13px;
+    letter-spacing: 0.25px;
+    color: rgba(255,255,255,0.94);
+
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  .mf-step__pill {
+    margin-left: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.18);
+
+    font: 800 12px/1.0 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    letter-spacing: 0.18px;
+    color: rgba(255,255,255,0.88);
+    flex: 0 0 auto;
+  }
+
+  .mf-step__pill--neutral { color: rgba(255,255,255,0.78); border-color: rgba(255,255,255,0.10); }
+  .mf-step__pill--ok      { color: hsl(var(--mf-tone-green) / 0.95); border-color: hsl(var(--mf-tone-green) / 0.30); }
+  .mf-step__pill--warn    { color: hsl(var(--mf-tone-amber) / 0.95); border-color: hsl(var(--mf-tone-amber) / 0.34); }
+  .mf-step__pill--danger  { color: hsl(var(--mf-tone-red) / 0.95); border-color: hsl(var(--mf-tone-red) / 0.34); }
+
+  .mf-step__body {
+    color: rgba(255,255,255,0.84);
+  }
+
+  .mf-step__body p { margin: 0.45em 0; }
+  .mf-step__body p:first-child { margin-top: 0; }
+  .mf-step__body p:last-child { margin-bottom: 0; }
+
+  .mf-step__body code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+    font-size: 0.95em;
+    padding: 0.08em 0.35em;
+    border-radius: 8px;
+    background: rgba(0,0,0,0.22);
+    border: 1px solid rgba(255,255,255,0.10);
+  }
+
+  /* Variants (container + per-step) */
+  .mf-steps--solid .mf-step,
+  .mf-step--solid {
+    background: var(--mf-accent-soft);
+    border-color: var(--mf-accent-border);
+  }
+
+  .mf-steps--solid .mf-step:hover,
+  .mf-step--solid:hover {
+    background: var(--mf-accent-soft-2);
+    border-color: hsl(var(--mf-tone) / 0.36);
+  }
+
+  .mf-steps--outline .mf-step,
+  .mf-step--outline {
+    background: transparent;
+    border-color: var(--mf-accent-border);
+  }
+
+  .mf-steps--outline .mf-step:hover,
+  .mf-step--outline:hover {
+    background: hsl(var(--mf-tone) / 0.10);
+    border-color: hsl(var(--mf-tone) / 0.34);
+  }
+
+  .mf-steps--subtle .mf-step,
+  .mf-step--subtle {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.10);
+  }
+
+  .mf-steps--ghost .mf-step,
+  .mf-step--ghost {
+    background: transparent;
+    border-color: rgba(255,255,255,0.10);
+  }
+
+  .mf-steps--ghost .mf-step:hover,
+  .mf-step--ghost:hover {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.14);
+  }
+
+  /* Container tones */
+  .mf-steps--tone-neutral { --mf-tone: var(--mf-tone-neutral); }
+  .mf-steps--tone-indigo  { --mf-tone: var(--mf-tone-indigo); }
+  .mf-steps--tone-green   { --mf-tone: var(--mf-tone-green); }
+  .mf-steps--tone-amber   { --mf-tone: var(--mf-tone-amber); }
+  .mf-steps--tone-red     { --mf-tone: var(--mf-tone-red); }
+
+  /* Per-step tones */
+  .mf-step--neutral { --mf-tone: var(--mf-tone-neutral); }
+  .mf-step--indigo  { --mf-tone: var(--mf-tone-indigo); }
+  .mf-step--green   { --mf-tone: var(--mf-tone-green); }
+  .mf-step--amber   { --mf-tone: var(--mf-tone-amber); }
+  .mf-step--red     { --mf-tone: var(--mf-tone-red); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mf-step { transition: none; }
+    .mf-step:hover { transform: none; box-shadow: none; }
+  }
+</style>
+
+<template id="mf-step-template">
+  <li class="mf-step" data-mfs-step>
+    <div class="mf-step__head">
+      <div class="mf-step__index" data-mfs-index></div>
+      <div class="mf-step__title" data-mfs-title></div>
+      <span class="mf-step__pill" data-mfs-pill></span>
+    </div>
+    <div class="mf-step__body" data-mfs-body></div>
+  </li>
+</template>
+
+<template id="mf-steps-template">
+  <ol class="mf-steps mf-steps--cols-1 mf-steps--subtle mf-steps--tone-neutral" data-mfs-root></ol>
+</template>
+
+<script id="mf-steps-script">
+  (function () {
+    if (window.__mfStepsInit) return;
+    window.__mfStepsInit = true;
+
+    function truthy(v) {
+      if (v == null) return false;
+      v = String(v).trim().toLowerCase();
+      return v === '1' || v === 'true' || v === 'yes' || v === 'on';
+    }
+
+    function normalizeVariant(v) {
+      v = (v || '').trim().toLowerCase();
+      if (v === 'solid' || v === 'outline' || v === 'subtle' || v === 'ghost') return v;
+      return 'subtle';
+    }
+
+    function normalizeTone(t) {
+      t = (t || '').trim().toLowerCase();
+      if (t === 'neutral' || t === 'indigo' || t === 'green' || t === 'amber' || t === 'red') return t;
+      return 'neutral';
+    }
+
+    function normalizeStatus(s) {
+      s = (s || '').trim().toLowerCase();
+      if (s === 'ok' || s === 'warn' || s === 'danger' || s === 'neutral') return s;
+      return '';
+    }
+
+    function parseJsonAttr(node, attr) {
+      var raw = node.getAttribute(attr);
+      if (!raw) return null;
+      try { return JSON.parse(raw); } catch (_) { return null; }
+    }
+
+    function escapeHtml(text) {
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function sanitizeHtml(raw) {
+      // Minimal sanitizer for docs-controlled content.
+      // Allows: p, a, code, pre, em, strong, ul/ol/li, br, span.
+      // Strips on* attributes and inline style.
+      if (!raw) return '';
+
+      var container = document.createElement('div');
+      container.innerHTML = raw;
+
+      var allowed = { P: true, A: true, CODE: true, PRE: true, EM: true, STRONG: true, UL: true, OL: true, LI: true, BR: true, SPAN: true };
+      var walker = document.createTreeWalker(container, NodeFilter.SHOW_ELEMENT, null);
+      var toRemove = [];
+
+      while (walker.nextNode()) {
+        var node = walker.currentNode;
+        if (!allowed[node.tagName]) {
+          toRemove.push(node);
+          continue;
+        }
+
+        for (var i = node.attributes.length - 1; i >= 0; i--) {
+          var a = node.attributes[i];
+          var name = a.name.toLowerCase();
+          var value = a.value || '';
+
+          if (name.startsWith('on')) { node.removeAttribute(a.name); continue; }
+          if (name === 'style') { node.removeAttribute('style'); continue; }
+
+          if (node.tagName === 'A' && name === 'href') {
+            var href = value.trim();
+            if (href.toLowerCase().startsWith('javascript:')) node.removeAttribute('href');
+          }
+        }
+
+        if (node.tagName === 'A') {
+          node.setAttribute('rel', 'noopener noreferrer');
+        }
+      }
+
+      for (var j = 0; j < toRemove.length; j++) {
+        var n = toRemove[j];
+        if (n && n.parentNode) n.replaceWith(document.createTextNode(n.textContent || ''));
+      }
+
+      return container.innerHTML;
+    }
+
+    function statusPillText(status) {
+      switch (status) {
+        case 'ok': return 'OK';
+        case 'warn': return 'WARN';
+        case 'danger': return 'DANGER';
+        case 'neutral': return 'NOTE';
+        default: return '';
+      }
+    }
+
+    function statusPillClass(status) {
+      switch (status) {
+        case 'ok': return 'mf-step__pill--ok';
+        case 'warn': return 'mf-step__pill--warn';
+        case 'danger': return 'mf-step__pill--danger';
+        case 'neutral': return 'mf-step__pill--neutral';
+        default: return '';
+      }
+    }
+
+    function buildStep(opts, index1, containerTone, containerVariant) {
+      var tpl = document.getElementById('mf-step-template');
+      var li = tpl.content.firstElementChild.cloneNode(true);
+
+      var title = li.querySelector('[data-mfs-title]');
+      var idx = li.querySelector('[data-mfs-index]');
+      var pill = li.querySelector('[data-mfs-pill]');
+      var body = li.querySelector('[data-mfs-body]');
+
+      idx.textContent = String(index1);
+      title.textContent = opts.title || '';
+
+      var st = normalizeStatus(opts.status);
+      var pillLabel = (opts.pill || '').trim();
+
+      pill.className = 'mf-step__pill';
+      if (st) pill.classList.add(statusPillClass(st));
+
+      if (pillLabel) {
+        pill.textContent = pillLabel;
+        pill.style.display = '';
+      } else if (st) {
+        pill.textContent = statusPillText(st);
+        pill.style.display = '';
+      } else {
+        pill.style.display = 'none';
+      }
+
+      // Per-step tone/variant
+      var tone = normalizeTone(opts.tone || containerTone || 'neutral');
+      li.classList.add('mf-step--' + tone);
+
+      var variant = normalizeVariant(opts.variant || containerVariant || 'subtle');
+      li.classList.add('mf-step--' + variant);
+
+      // Body content
+      if (opts.bodyHtml) {
+        body.innerHTML = sanitizeHtml(opts.bodyHtml);
+      } else {
+        var text = (opts.body || '').toString();
+        if (!text) {
+          body.innerHTML = '';
+        } else {
+          // Split paragraphs on blank lines
+          var parts = text.split(/\n\n+/);
+          var html = '';
+          for (var i = 0; i < parts.length; i++) {
+            var p = parts[i].trim();
+            if (!p) continue;
+            html += '<p>' + escapeHtml(p).replace(/\n/g, '<br>') + '</p>';
+          }
+          body.innerHTML = html;
+        }
+      }
+
+      return li;
+    }
+
+    function buildSteps(opts) {
+      var tpl = document.getElementById('mf-steps-template');
+      var ol = tpl.content.firstElementChild.cloneNode(true);
+
+      var tone = normalizeTone(opts.tone || 'neutral');
+      var variant = normalizeVariant(opts.variant || 'subtle');
+
+      ol.classList.remove('mf-steps--tone-neutral','mf-steps--tone-indigo','mf-steps--tone-green','mf-steps--tone-amber','mf-steps--tone-red');
+      ol.classList.add('mf-steps--tone-' + tone);
+
+      ol.classList.remove('mf-steps--solid','mf-steps--outline','mf-steps--subtle','mf-steps--ghost');
+      ol.classList.add('mf-steps--' + variant);
+
+      var cols = opts.columns === 2 ? 2 : 1;
+      ol.classList.remove('mf-steps--cols-1','mf-steps--cols-2');
+      ol.classList.add('mf-steps--cols-' + cols);
+
+      if (opts.compact) ol.classList.add('mf-steps--compact');
+
+      var items = Array.isArray(opts.items) ? opts.items : [];
+      for (var i = 0; i < items.length; i++) {
+        var it = items[i] || {};
+        var li = buildStep(it, i + 1, tone, variant);
+        ol.appendChild(li);
+      }
+
+      return ol;
+    }
+
+    function upgradeInline(root) {
+      // Fill missing indices for author-written markup.
+      var lists = (root || document).querySelectorAll('ol.mf-steps');
+      for (var i = 0; i < lists.length; i++) {
+        var ol = lists[i];
+        if (ol.__mfStepsInlineDone) continue;
+        ol.__mfStepsInlineDone = true;
+
+        var steps = ol.querySelectorAll('li.mf-step');
+        for (var j = 0; j < steps.length; j++) {
+          var idx = steps[j].querySelector('.mf-step__index');
+          if (!idx) continue;
+          if (idx.textContent && idx.textContent.trim() !== '') continue;
+          idx.textContent = String(j + 1);
+        }
+      }
+    }
+
+    function upgradeData(root) {
+      // Upgrade: <div data-mf-steps ...>
+      var nodes = (root || document).querySelectorAll('[data-mf-steps]');
+      for (var i = 0; i < nodes.length; i++) {
+        var host = nodes[i];
+        if (host.__mfStepsUpgraded) continue;
+        host.__mfStepsUpgraded = true;
+
+        var tone = host.getAttribute('data-tone') || 'neutral';
+        var variant = host.getAttribute('data-variant') || 'subtle';
+        var cols = parseInt(host.getAttribute('data-columns') || '1', 10);
+        if (!(cols === 1 || cols === 2)) cols = 1;
+        var compact = truthy(host.getAttribute('data-compact'));
+
+        var items = parseJsonAttr(host, 'data-items') || [];
+
+        var built = buildSteps({
+          tone: tone,
+          variant: variant,
+          columns: cols,
+          compact: compact,
+          items: items
+        });
+
+        host.replaceWith(built);
+
+        // If codeblock component exists, let it upgrade nested <pre data-mf-code>.
+        if (window.MuffinCodeblock && typeof window.MuffinCodeblock.upgrade === 'function') {
+          window.MuffinCodeblock.upgrade(document);
+        }
+      }
+    }
+
+    function upgrade(root) {
+      upgradeData(root);
+      upgradeInline(root);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function () { upgrade(document); });
+    } else {
+      upgrade(document);
+    }
+
+    window.MuffinSteps = {
+      upgrade: upgrade,
+      create: buildSteps
+    };
+  })();
+</script>

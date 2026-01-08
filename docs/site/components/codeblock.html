@@ -1,1 +1,536 @@
-<!-- codeblock.html component placeholder -->
+
+<!--
+  Muffin docs component: codeblock
+
+  Purpose:
+    Modern code block with:
+      - optional header (language + title)
+      - copy-to-clipboard button
+      - line numbers (optional)
+      - highlight lines (optional)
+      - soft wrapping (optional)
+
+  Usage (inline):
+
+    <div class="mf-codeblock" data-lang="muf" data-title="build.muf">
+      <pre><code>
+      muffin bake 2
+      plan default
+        run exports
+      .end
+      </code></pre>
+    </div>
+
+  Usage (data-driven):
+
+    <pre data-mf-code
+         data-lang="bash"
+         data-title="Install"
+         data-lines="on"
+         data-wrap="off"
+         data-highlight="2,4-5">
+      sudo apt update
+      sudo apt install -y rclone
+      rclone config
+      rclone lsd remote:
+      rclone mount remote: ~/GoogleDrive --vfs-cache-mode writes
+    </pre>
+
+  Attributes:
+    - data-lang: language label (display only)
+    - data-title: header title
+    - data-lines: on|off (line numbers)
+    - data-wrap: on|off (soft wrap)
+    - data-highlight: comma list (e.g. "2,4-6")
+
+  Notes:
+    - This component does not do syntax highlighting (keeps dependencies minimal).
+    - You can integrate a highlighter later (Prism/Shiki) and keep the wrapper.
+-->
+
+<style id="mf-codeblock-style">
+  :root {
+    --mf-code-radius: 18px;
+    --mf-code-border: rgba(255,255,255,0.12);
+    --mf-code-bg: rgba(0,0,0,0.28);
+    --mf-code-bg-2: rgba(0,0,0,0.34);
+    --mf-code-fg: rgba(255,255,255,0.90);
+    --mf-code-muted: rgba(255,255,255,0.70);
+    --mf-code-shadow: 0 18px 55px rgba(0,0,0,0.35);
+    --mf-code-accent: rgba(255,255,255,0.10);
+    --mf-code-accent-2: rgba(255,255,255,0.14);
+    --mf-code-highlight: rgba(255,255,255,0.06);
+    --mf-code-highlight-border: rgba(255,255,255,0.12);
+
+    --mf-code-font: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  .mf-codeblock {
+    border: 1px solid var(--mf-code-border);
+    border-radius: var(--mf-code-radius);
+    overflow: hidden;
+    background: var(--mf-code-bg);
+    box-shadow: none;
+    margin: 16px 0;
+  }
+
+  .mf-codeblock:hover {
+    box-shadow: var(--mf-code-shadow);
+    border-color: rgba(255,255,255,0.16);
+    background: var(--mf-code-bg-2);
+  }
+
+  .mf-codeblock__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.04);
+    border-bottom: 1px solid rgba(255,255,255,0.10);
+  }
+
+  .mf-codeblock__left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-width: 0;
+  }
+
+  .mf-codeblock__lang {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.18);
+    color: var(--mf-code-muted);
+    font: 800 11px/1.0 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    letter-spacing: 0.2px;
+    text-transform: lowercase;
+  }
+
+  .mf-codeblock__title {
+    color: rgba(255,255,255,0.88);
+    font: 700 12px/1.0 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    letter-spacing: 0.15px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mf-codeblock__actions {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+  }
+
+  .mf-codeblock__btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.18);
+    color: rgba(255,255,255,0.86);
+    cursor: pointer;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+
+    font: 750 12px/1.0 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    letter-spacing: 0.15px;
+
+    transition: transform 120ms ease, background 120ms ease, border-color 120ms ease, opacity 120ms ease;
+  }
+
+  .mf-codeblock__btn:hover {
+    transform: translateY(-1px);
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.16);
+  }
+
+  .mf-codeblock__btn:active {
+    transform: translateY(0);
+    opacity: 0.96;
+  }
+
+  .mf-codeblock__btn:focus-visible {
+    outline: 2px solid rgba(255,255,255,0.22);
+    outline-offset: 2px;
+  }
+
+  .mf-codeblock__btn svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.92;
+  }
+
+  .mf-codeblock__body {
+    position: relative;
+  }
+
+  .mf-codeblock pre {
+    margin: 0;
+    padding: 12px;
+    overflow: auto;
+    color: var(--mf-code-fg);
+    font-family: var(--mf-code-font);
+    font-size: 12.5px;
+    line-height: 1.55;
+    tab-size: 2;
+  }
+
+  .mf-codeblock--wrap pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .mf-codeblock code {
+    font-family: inherit;
+  }
+
+  /* Line table */
+  .mf-codeblock__table {
+    display: grid;
+    grid-template-columns: auto 1fr;
+  }
+
+  .mf-codeblock__gutter {
+    user-select: none;
+    padding: 12px 10px 12px 12px;
+    border-right: 1px solid rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.52);
+    text-align: right;
+    font-family: var(--mf-code-font);
+    font-size: 12.5px;
+    line-height: 1.55;
+    background: rgba(255,255,255,0.02);
+  }
+
+  .mf-codeblock__lines {
+    padding: 12px;
+    overflow: auto;
+    font-family: var(--mf-code-font);
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--mf-code-fg);
+  }
+
+  .mf-codeblock__line {
+    white-space: pre;
+  }
+
+  .mf-codeblock--wrap .mf-codeblock__line {
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  .mf-codeblock__line.is-highlight {
+    background: var(--mf-code-highlight);
+    outline: 1px solid var(--mf-code-highlight-border);
+    outline-offset: -1px;
+    border-radius: 6px;
+  }
+
+  .mf-codeblock__line.is-highlight + .mf-codeblock__line.is-highlight {
+    border-radius: 0;
+  }
+
+  .mf-codeblock__toast {
+    position: absolute;
+    right: 12px;
+    top: 12px;
+    padding: 8px 10px;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.55);
+    color: rgba(255,255,255,0.90);
+    font: 750 12px/1.0 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    letter-spacing: 0.15px;
+    opacity: 0;
+    transform: translateY(-6px);
+    pointer-events: none;
+    transition: opacity 160ms ease, transform 160ms ease;
+  }
+
+  .mf-codeblock__toast.is-show {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mf-codeblock * { transition: none !important; }
+  }
+</style>
+
+<template id="mf-codeblock-template">
+  <div class="mf-codeblock" data-mfc-root>
+    <div class="mf-codeblock__head" data-mfc-head>
+      <div class="mf-codeblock__left">
+        <div class="mf-codeblock__lang" data-mfc-lang></div>
+        <div class="mf-codeblock__title" data-mfc-title></div>
+      </div>
+      <div class="mf-codeblock__actions">
+        <button class="mf-codeblock__btn" type="button" data-mfc-copy>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 9h10v10H9z"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          Copy
+        </button>
+      </div>
+    </div>
+    <div class="mf-codeblock__body" data-mfc-body>
+      <div class="mf-codeblock__toast" data-mfc-toast>Copied</div>
+      <div class="mf-codeblock__table" data-mfc-table>
+        <div class="mf-codeblock__gutter" data-mfc-gutter></div>
+        <div class="mf-codeblock__lines" data-mfc-lines></div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script id="mf-codeblock-script">
+  (function () {
+    if (window.__mfCodeblockInit) return;
+    window.__mfCodeblockInit = true;
+
+    function truthy(v) {
+      if (v == null) return false;
+      v = String(v).trim().toLowerCase();
+      return v === '1' || v === 'true' || v === 'yes' || v === 'on';
+    }
+
+    function parseHighlight(spec) {
+      // "2,4-6" -> set of line numbers (1-based)
+      var set = Object.create(null);
+      if (!spec) return set;
+      var parts = String(spec).split(',');
+      for (var i = 0; i < parts.length; i++) {
+        var p = parts[i].trim();
+        if (!p) continue;
+        var m = p.match(/^([0-9]+)\s*-\s*([0-9]+)$/);
+        if (m) {
+          var a = parseInt(m[1], 10);
+          var b = parseInt(m[2], 10);
+          if (a > b) { var t = a; a = b; b = t; }
+          for (var k = a; k <= b; k++) set[k] = true;
+          continue;
+        }
+        var n = parseInt(p, 10);
+        if (isFinite(n) && n > 0) set[n] = true;
+      }
+      return set;
+    }
+
+    function stripLeadingNewline(text) {
+      // Many inline <pre> blocks start with a newline due to indentation.
+      if (text.startsWith('\n')) return text.slice(1);
+      if (text.startsWith('\r\n')) return text.slice(2);
+      return text;
+    }
+
+    function normalizeEol(text) {
+      return text.replace(/\r\n/g, '\n');
+    }
+
+    function buildFromText(opts) {
+      var tpl = document.getElementById('mf-codeblock-template');
+      var root = tpl.content.firstElementChild.cloneNode(true);
+
+      var lang = (opts.lang || '').trim();
+      var title = (opts.title || '').trim();
+      var showLines = opts.lines;
+      var wrap = opts.wrap;
+      var highlight = parseHighlight(opts.highlight);
+
+      if (wrap) root.classList.add('mf-codeblock--wrap');
+
+      var head = root.querySelector('[data-mfc-head]');
+      var langEl = root.querySelector('[data-mfc-lang]');
+      var titleEl = root.querySelector('[data-mfc-title]');
+      var gutter = root.querySelector('[data-mfc-gutter]');
+      var linesEl = root.querySelector('[data-mfc-lines]');
+      var copyBtn = root.querySelector('[data-mfc-copy]');
+      var toast = root.querySelector('[data-mfc-toast]');
+      var table = root.querySelector('[data-mfc-table]');
+
+      if (lang) {
+        langEl.textContent = lang;
+      } else {
+        langEl.style.display = 'none';
+      }
+
+      if (title) {
+        titleEl.textContent = title;
+      } else {
+        titleEl.style.display = 'none';
+      }
+
+      if (!lang && !title) {
+        head.style.display = 'none';
+      }
+
+      var raw = normalizeEol(stripLeadingNewline(opts.text || ''));
+      // Trim a final newline if present for nicer display.
+      if (raw.endsWith('\n')) raw = raw.slice(0, -1);
+
+      var rows = raw.split('\n');
+
+      // If line numbers are off, we can fallback to a single <pre> for speed.
+      if (!showLines) {
+        table.style.display = 'none';
+        var pre = document.createElement('pre');
+        var code = document.createElement('code');
+        code.textContent = raw;
+        pre.appendChild(code);
+        pre.style.margin = '0';
+        pre.style.padding = '12px';
+        pre.style.overflow = 'auto';
+        pre.style.color = 'var(--mf-code-fg)';
+        pre.style.fontFamily = 'var(--mf-code-font)';
+        pre.style.fontSize = '12.5px';
+        pre.style.lineHeight = '1.55';
+        pre.style.tabSize = '2';
+        if (wrap) {
+          pre.style.whiteSpace = 'pre-wrap';
+          pre.style.wordBreak = 'break-word';
+        }
+        root.querySelector('[data-mfc-body]').appendChild(pre);
+
+        copyBtn.addEventListener('click', function () {
+          copyText(raw, toast);
+        });
+
+        return root;
+      }
+
+      // Render with gutters.
+      gutter.textContent = '';
+      linesEl.textContent = '';
+
+      for (var i = 0; i < rows.length; i++) {
+        var n = i + 1;
+        gutter.appendChild(document.createTextNode(String(n) + '\n'));
+
+        var line = document.createElement('div');
+        line.className = 'mf-codeblock__line' + (highlight[n] ? ' is-highlight' : '');
+        line.textContent = rows[i];
+        linesEl.appendChild(line);
+      }
+
+      // Keep scroll in sync.
+      linesEl.addEventListener('scroll', function () {
+        gutter.scrollTop = linesEl.scrollTop;
+      });
+
+      copyBtn.addEventListener('click', function () {
+        copyText(raw, toast);
+      });
+
+      return root;
+    }
+
+    function copyText(text, toast) {
+      if (!text) return;
+
+      function show() {
+        if (!toast) return;
+        toast.classList.add('is-show');
+        window.clearTimeout(toast.__t);
+        toast.__t = window.setTimeout(function () {
+          toast.classList.remove('is-show');
+        }, 900);
+      }
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(show).catch(function () {
+          fallbackCopy(text); show();
+        });
+        return;
+      }
+
+      fallbackCopy(text);
+      show();
+    }
+
+    function fallbackCopy(text) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      ta.style.top = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try { document.execCommand('copy'); } catch (_) {}
+      document.body.removeChild(ta);
+    }
+
+    function upgrade(root) {
+      // Upgrade: <pre data-mf-code ...> ... </pre>
+      var nodes = (root || document).querySelectorAll('pre[data-mf-code]');
+      for (var i = 0; i < nodes.length; i++) {
+        var pre = nodes[i];
+        if (pre.__mfCodeUpgraded) continue;
+        pre.__mfCodeUpgraded = true;
+
+        var opts = {
+          lang: pre.getAttribute('data-lang') || '',
+          title: pre.getAttribute('data-title') || '',
+          lines: truthy(pre.getAttribute('data-lines')),
+          wrap: truthy(pre.getAttribute('data-wrap')),
+          highlight: pre.getAttribute('data-highlight') || '',
+          text: pre.textContent || ''
+        };
+
+        var block = buildFromText(opts);
+        pre.replaceWith(block);
+      }
+
+      // Upgrade: <div class="mf-codeblock"> with nested <pre><code>
+      var divs = (root || document).querySelectorAll('.mf-codeblock');
+      for (var j = 0; j < divs.length; j++) {
+        var host = divs[j];
+        if (host.hasAttribute('data-mfc-root')) continue; // already built
+        if (host.__mfCodeUpgradedDiv) continue;
+        host.__mfCodeUpgradedDiv = true;
+
+        var code = host.querySelector('pre code');
+        var pre2 = host.querySelector('pre');
+        var text = '';
+        if (code) text = code.textContent || '';
+        else if (pre2) text = pre2.textContent || '';
+
+        var opts2 = {
+          lang: host.getAttribute('data-lang') || '',
+          title: host.getAttribute('data-title') || '',
+          lines: truthy(host.getAttribute('data-lines')),
+          wrap: truthy(host.getAttribute('data-wrap')),
+          highlight: host.getAttribute('data-highlight') || '',
+          text: text
+        };
+
+        var built = buildFromText(opts2);
+        host.replaceWith(built);
+      }
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function () { upgrade(document); });
+    } else {
+      upgrade(document);
+    }
+
+    window.MuffinCodeblock = {
+      upgrade: upgrade,
+      create: buildFromText
+    };
+  })();
+</script>

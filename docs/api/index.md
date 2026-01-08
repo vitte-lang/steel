@@ -1,205 +1,116 @@
----
-title: "API"
-slug: "/api"
-description: "Référence API interne de Muffin : resolver, generator, schémas, sérialisation, diagnostics."
-sidebar:
-  order: 40
-  label: "API"
-toc: true
----
+# API — Muffin
 
-# API
+Cette section documente l’API interne (Rust) exposée par **Muffin** : modèles de données, schémas, lecture/écriture de `.mff`, parsing/validation des buildfiles `.muf/.muff`, exécution (graph + tools), sandbox (`capsule`) et introspection (`decompile`, `why`, `graph`).
 
-Cette section documente l’API interne/exposée de **Muffin** (librairie et modules), utilisée par le CLI, les générateurs, et les intégrations (CI, IDE, tooling). L’objectif est de fournir une **référence stable**, orientée “contrats” : types, invariants, erreurs, et flux d’exécution.
-
-> Pour les usages “utilisateur final”, privilégier **/reference** et **/manual**.  
-> Ici, on suppose une compréhension du pipeline Muffin : parsing → validation → resolve → graph → jobs → exécution → artefacts.
+> Objectif : une API stable, portable et outillable, utilisable par la CLI, CI, IDE, plugins, et intégrations multi-langages.
 
 ---
 
-## Vue d’ensemble
+## Modules
 
-### Couches principales
-
-- **Schema** : description normative des formats (mcfg/muff/muf/targets), validation et compat.
-- **Serializer** : lecture/écriture des formats et normalisation (canonical form).
-- **Diagnostics** : collecte d’erreurs, warnings, notes, spans, suggestions, codes.
-- **Resolver** : construction du modèle projet (config per-dir, graph, dépendances, targets).
-- **Generator** : production des sorties (rsp, commandes, artefacts, arborescences out).
-- **Hashing / Cache** : empreintes, clés de cache, invalidation, store.
-- **VMS** : modélisation “progname / jobs / dir / functions” pour la résolution multi-répertoires.
-
----
-
-## Index des modules
-
-- [`resolver`](./resolver.md) — chargement projet, résolution graph, targets, profils.
-- [`generator`](./generator.md) — génération des commandes/outils, rsp, outputs.
-- [`schema`](./schema.md) — schémas, validation, compatibilité.
-- [`serializer`](./serializer.md) — parsing/émission, canonicalisation.
-- [`diagnostics`](./diagnostics.md) — erreurs/warnings, spans, rendering.
-- [`hashing`](./hashing.md) — hashing stable, clés, fingerprints.
-- (optionnel) [`vms`](../spec/vms/index.md) — la spec VMS (référence normative).
+- **diag** : diagnostics structurés (codes, messages, rendering)
+- **span** : positions, fichiers, spans
+- **path** : normalisation cross-platform, globs, canon
+- **hash** : empreintes (fingerprint) et clés de cache
+- **capsule** : policy sandbox (env/fs/net/time) + backends OS
+- **store** : cache CAS (content-addressed) + index + GC
+- **tool** : description et exécution d’outils (probe, runner)
+- **graph** : DAG (bakes/ports/wires/plans) + topo + exports
+- **mcfg** : parsing/AST/HIR, lowering, typecheck, resolve, validator
+- **mff** : schéma binaire `.mff`, reader/writer, index, trace
 
 ---
 
-## Contrats communs
+## Contrats clés
 
-### Identités et chemins
+### Buildfile (`*.muf` / `*.muff`)
 
-Muffin manipule plusieurs formes de “chemin” :
+- Format déclaratif qui décrit **configuration + règles**.
+- Produit, après résolution, un **binaire de compilation** `.mff`.
 
-- **Path (host)** : chemin OS réel (`C:\...` / `/Users/...`)
-- **ProjectPath (logical)** : chemin relatif au project root (`Src/in/...`)
-- **VPath (virtual)** : chemin normalisé pour hashing/cache (`src/in/...` canonique)
+### Binaire `.mff`
 
-Recommandations :
+`Muffinconfig.mff` est l’artefact canonique :
 
-- Canonicaliser tôt (séparateurs, `..`, symlinks selon policy).
-- Conserver les chemins *originaux* pour diagnostics (UX).
-- Utiliser les chemins *canon* pour hashing/cache.
-
-### Erreurs
-
-Toutes les APIs retournent soit un `Result<T, MuffinError>` (ou équivalent), soit un couple `(T, Diagnostics)` si on accepte de continuer avec warnings.
-
-Catégories usuelles :
-
-- `ConfigNotFound`
-- `ParseError(format, span, message)`
-- `ValidationFailed(rule, details)`
-- `ResolveFailed(reason)`
-- `CompilationFailed(tool, exit_code, stdout, stderr)`
-- `IoError(path, source)`
-- `Unsupported(feature, target)`
-- `InvariantViolation(context, hint)` *(dev-only, hard fail)*
-
-### Diagnostics (format)
-
-Un diagnostic structuré contient typiquement :
-
-- `code` : identifiant stable (`MUFFIN0001`)
-- `severity` : error|warning|note|help
-- `message` : texte principal
-- `primary_span` : (file, range)
-- `secondary_spans` : n spans de contexte
-- `hint` / `fixit` : suggestion (optionnelle)
-- `cause_chain` : causes imbriquées (optionnel)
-- `tags` : `["resolver", "schema", "muf"]`
+- Graphe normalisé (DAG) : nœuds, ports, wires, exports, plans
+- Inputs développés (globs résolus), chemins normalisés
+- Outils déclarés et paramètres effectifs (toolchain)
+- Empreintes d’invalidation (cache) et trace de construction
 
 ---
 
-## Cycle de vie “API” (pipeline)
+## Exécution
 
-### 1) Load
+L’exécution est découplée en deux phases :
 
-- découvrir le **project root**
-- lire `.muff/` / `.muffin/` (selon conventions)
-- charger les configs per-dir (`*.mcfg` ou équivalent)
-- charger les manifests (`mod.muf`, `build.muf`, targets)
-
-### 2) Parse + Validate
-
-- parse (serializer)
-- validate (schema)
-- produire diagnostics (sans side-effects)
-
-### 3) Resolve
-
-- sélectionner target + profile
-- résoudre variables/implicites
-- construire graph (units, deps, outputs)
-- préparer jobs (VMS / execution plan)
-
-### 4) Generate
-
-- émettre RSP et lignes de commande
-- calculer clés de cache / fingerprints
-- produire artefacts (obj, libs, exe, vo/va)
-
-### 5) Execute (CLI layer)
-
-- exécuter jobs
-- collecter sorties
-- finaliser (dSYM, strip, codesign, etc.)
-- écrire états (cache/store)
+1. **configure** : parse/validate/resolve → écrit `.mff`
+2. **build** : lit `.mff` → exécute le DAG via tools déclarés
 
 ---
 
-## Compatibilité & stabilité
+## Introspection
 
-### “Stable API” vs “Internal”
-
-- **Stable** : schémas de formats, CLI JSON output, structures de diagnostics, conventions de layout.
-- **Internal** : types intermédiaires de résolution et graph (susceptibles d’évoluer rapidement).
-
-Politique suggérée :
-
-- versionner les schémas (`schema_version`)
-- tagger les breaking changes via `RFC` + `CHANGELOG`
-- fournir des “migrations” (ou normalisations) au niveau serializer
+- `decompile` : reconstitue l’architecture et la config depuis `.mff` / `.muff`
+- `why` : explique une invalidation/rebuild (chaîne de dépendances)
+- `graph` : export du DAG (texte/JSON/DOT)
 
 ---
 
-## Conventions de versionnement
+## Stabilité
 
-- **SemVer** pour la lib (si publiée)
-- Version **indépendante** pour schémas `muf/mcfg` si nécessaire
-- Dans les fichiers :
-  - `schema: muffin.mcfg/v1`
-  - `schema: muffin.muf/v2`
-
----
-
-## Sécurité & sandboxing
-
-Certaines APIs déclenchent des actions à risque :
-
-- exécution de toolchain
-- accès FS (store/capsule)
-- réseau (fetch deps)
-
-Contrat :
-
-- aucune exécution implicite dans `parse/validate/resolve`
-- exécution uniquement via couche “runner”/CLI, avec policy explicite (capsule)
+- Les structures sérialisées `.mff` doivent rester compatibles :
+  - versioning explicite
+  - champs extensibles
+  - formats déterministes
 
 ---
 
-## Exemples d’intégration (haut niveau)
+## Index des pages API
 
-### Intégration IDE / LSP
-
-- exposer :
-  - parse + validate en continu
-  - diagnostics structurés
-  - navigation vers spans
-- éviter :
-  - resolve complet si lourd (mode “lazy”)
-
-### CI
-
-- `muffin doctor` (préflight)
-- `muffin build -all` (build)
-- `muffin graph --json` (audit deps)
-- export SBOM (optionnel)
+- `diag` — diagnostics
+- `span` — sources et positions
+- `path` — chemins et globs
+- `capsule` — sandbox et policies
+- `store` — cache CAS
+- `tool` — exécution d’outils
+- `graph` — DAG et scheduling
+- `mcfg` — buildfiles et résolution
+- `mff` — binaire de compilation
 
 ---
 
-## Glossaire API
+## Exemples rapides
 
-- **Unit** : entité compilable (crate/module/package/directory build unit)
-- **Job** : action exécutable (compile, archive, link, gen)
-- **Artifact** : sortie matérielle (obj/lib/exe/vo/va)
-- **Fingerprint** : hash stable des inputs + config
-- **Store** : cache de contenu (CAS) + index
-- **Capsule** : policy d’exécution (fs/env/net/time)
+### Lire un `.mff`
 
----
+```rust
+use muffin::mff::Reader;
 
-## Voir aussi
+fn main() -> anyhow::Result<()> {
+    let mff = Reader::open("Muffinconfig.mff")?.read_all()?;
+    println!("plans: {}", mff.plans.len());
+    Ok(())
+}
+```
 
-- Manuel : [/manual](../manual/00-introduction.md)
-- Référence CLI : [/reference/cli](../reference/cli/index.md)
-- Spec formats : [/spec](../spec/index.md)
-- RFC : [/rfc](../rfc/index.md)
+### Décompiler (API)
+
+```rust
+use muffin::mcfg::decompile::Decompile;
+
+fn main() {
+    let out = Decompile::new().run_path("Muffinconfig.mff");
+    println!("{out}");
+}
+```
+
+### Export DOT
+
+```rust
+use muffin::graph::dot::DotExport;
+
+fn main() {
+    let dot = DotExport::from_mff_path("Muffinconfig.mff");
+    println!("{dot}");
+}
+```

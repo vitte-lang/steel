@@ -1,1 +1,486 @@
-<!-- cards.html component placeholder -->
+
+<!--
+  Muffin docs component: cards
+
+  Purpose:
+    Responsive card grid for docs navigation sections.
+
+  Usage (inline):
+
+    <div class="mf-cards mf-cards--cols-3">
+      <a class="mf-card mf-card--indigo mf-card--subtle" href="/docs/reference/">
+        <div class="mf-card__head">
+          <span class="mf-card__icon" aria-hidden="true"></span>
+          <div class="mf-card__title">Reference</div>
+        </div>
+        <div class="mf-card__body">Contracts, CLI, formats, config.</div>
+        <div class="mf-card__meta">
+          <span class="mf-card__pill">Docs</span>
+          <span class="mf-card__pill mf-card__pill--muted">Stable</span>
+        </div>
+      </a>
+    </div>
+
+  Usage (data-driven list):
+
+    <div data-mf-cards
+         data-columns="3"
+         data-variant="subtle"
+         data-tone="neutral"
+         data-items='[
+           {"title":"CLI","body":"Commands and flags.","href":"/docs/reference/cli/","tone":"indigo","icon":"bolt","pill":"CLI"},
+           {"title":"Formats","body":".muf/.mff + exports.","href":"/docs/reference/formats/","tone":"green","icon":"file","pill":"Formats"}
+         ]'></div>
+
+  Usage (single card):
+
+    <span data-mf-card
+          data-title="MUF"
+          data-body="Buildfile syntax."
+          data-href="/docs/reference/muf/"
+          data-tone="indigo"
+          data-variant="solid"
+          data-icon="tag"
+          data-pill="Buildfile"></span>
+
+  Variants:
+    - solid | outline | subtle | ghost
+
+  Tones:
+    - neutral | indigo | green | amber | red
+
+  Icons:
+    - bolt | tag | lock | box | graph | cpu | shield | file
+-->
+
+<style id="mf-cards-style">
+  :root {
+    --mf-card-radius: 18px;
+    --mf-card-border: rgba(255,255,255,0.12);
+    --mf-card-bg: rgba(255,255,255,0.06);
+    --mf-card-bg-2: rgba(255,255,255,0.10);
+    --mf-card-fg: rgba(255,255,255,0.92);
+    --mf-card-fg-muted: rgba(255,255,255,0.72);
+    --mf-card-shadow: 0 18px 55px rgba(0,0,0,0.30);
+
+    --mf-tone-neutral: 200 8% 72%;
+    --mf-tone-indigo: 250 90% 70%;
+    --mf-tone-green: 150 70% 60%;
+    --mf-tone-amber: 40 95% 65%;
+    --mf-tone-red: 0 85% 65%;
+  }
+
+  .mf-cards {
+    display: grid;
+    gap: 14px;
+    margin: 18px 0;
+  }
+
+  .mf-cards--cols-1 { grid-template-columns: repeat(1, minmax(0, 1fr)); }
+  .mf-cards--cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .mf-cards--cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .mf-cards--cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+
+  @media (max-width: 980px) {
+    .mf-cards--cols-3, .mf-cards--cols-4 {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 640px) {
+    .mf-cards--cols-2, .mf-cards--cols-3, .mf-cards--cols-4 {
+      grid-template-columns: repeat(1, minmax(0, 1fr));
+    }
+  }
+
+  .mf-card {
+    --mf-tone: var(--mf-tone-neutral);
+    --mf-accent: hsl(var(--mf-tone));
+    --mf-accent-soft: hsl(var(--mf-tone) / 0.14);
+    --mf-accent-soft-2: hsl(var(--mf-tone) / 0.22);
+    --mf-accent-border: hsl(var(--mf-tone) / 0.28);
+
+    position: relative;
+    display: block;
+    text-decoration: none;
+
+    border-radius: var(--mf-card-radius);
+    border: 1px solid var(--mf-card-border);
+    background: var(--mf-card-bg);
+    color: var(--mf-card-fg);
+
+    padding: 14px 14px 12px 14px;
+    overflow: hidden;
+
+    transition:
+      transform 160ms ease,
+      background 160ms ease,
+      border-color 160ms ease,
+      box-shadow 220ms ease,
+      opacity 140ms ease;
+
+    font: 550 14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    letter-spacing: 0.1px;
+  }
+
+  .mf-card:focus-visible {
+    outline: 2px solid hsl(var(--mf-tone) / 0.55);
+    outline-offset: 2px;
+  }
+
+  .mf-card:hover {
+    transform: translateY(-2px);
+    background: var(--mf-card-bg-2);
+    border-color: rgba(255,255,255,0.18);
+    box-shadow: var(--mf-card-shadow);
+  }
+
+  .mf-card:active {
+    transform: translateY(0);
+    box-shadow: none;
+    opacity: 0.96;
+  }
+
+  /* Subtle left accent */
+  .mf-card::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: hsl(var(--mf-tone) / 0.55);
+  }
+
+  .mf-card__head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .mf-card__icon {
+    width: 18px;
+    height: 18px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: hsl(var(--mf-tone) / 0.95);
+    flex: 0 0 auto;
+  }
+
+  .mf-card__icon svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    opacity: 0.92;
+  }
+
+  .mf-card__title {
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: 0.25px;
+    color: rgba(255,255,255,0.94);
+  }
+
+  .mf-card__body {
+    color: rgba(255,255,255,0.82);
+    font-weight: 550;
+  }
+
+  .mf-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 12px;
+  }
+
+  .mf-card__pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,0.12);
+    background: rgba(0,0,0,0.18);
+    color: rgba(255,255,255,0.88);
+    font: 700 12px/1.0 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    letter-spacing: 0.18px;
+  }
+
+  .mf-card__pill--muted {
+    color: rgba(255,255,255,0.72);
+    border-color: rgba(255,255,255,0.10);
+  }
+
+  /* Variants */
+  .mf-card--solid {
+    background: var(--mf-accent-soft);
+    border-color: var(--mf-accent-border);
+  }
+  .mf-card--solid:hover {
+    background: var(--mf-accent-soft-2);
+    border-color: hsl(var(--mf-tone) / 0.36);
+  }
+
+  .mf-card--outline {
+    background: transparent;
+    border-color: var(--mf-accent-border);
+  }
+  .mf-card--outline:hover {
+    background: hsl(var(--mf-tone) / 0.10);
+    border-color: hsl(var(--mf-tone) / 0.34);
+  }
+
+  .mf-card--subtle {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.10);
+  }
+
+  .mf-card--ghost {
+    background: transparent;
+    border-color: rgba(255,255,255,0.10);
+  }
+  .mf-card--ghost:hover {
+    background: rgba(255,255,255,0.06);
+    border-color: rgba(255,255,255,0.14);
+  }
+
+  /* Tones */
+  .mf-card--neutral { --mf-tone: var(--mf-tone-neutral); }
+  .mf-card--indigo  { --mf-tone: var(--mf-tone-indigo); }
+  .mf-card--green   { --mf-tone: var(--mf-tone-green); }
+  .mf-card--amber   { --mf-tone: var(--mf-tone-amber); }
+  .mf-card--red     { --mf-tone: var(--mf-tone-red); }
+
+  /* Compact */
+  .mf-card--compact {
+    padding: 12px 12px 10px 12px;
+  }
+
+  .mf-card--compact .mf-card__meta {
+    margin-top: 10px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mf-card {
+      transition: none;
+    }
+    .mf-card:hover {
+      transform: none;
+      box-shadow: none;
+    }
+  }
+</style>
+
+<template id="mf-card-template">
+  <a class="mf-card mf-card--subtle mf-card--neutral" href="#" role="link">
+    <div class="mf-card__head">
+      <span class="mf-card__icon" aria-hidden="true"></span>
+      <div class="mf-card__title"></div>
+    </div>
+    <div class="mf-card__body"></div>
+    <div class="mf-card__meta"></div>
+  </a>
+</template>
+
+<script id="mf-cards-script">
+  (function () {
+    if (window.__mfCardsInit) return;
+    window.__mfCardsInit = true;
+
+    function truthy(v) {
+      if (v == null) return false;
+      v = String(v).trim().toLowerCase();
+      return v === '1' || v === 'true' || v === 'yes' || v === 'on';
+    }
+
+    function normalizeVariant(v) {
+      v = (v || '').trim().toLowerCase();
+      if (v === 'solid' || v === 'outline' || v === 'subtle' || v === 'ghost') return v;
+      return 'subtle';
+    }
+
+    function normalizeTone(t) {
+      t = (t || '').trim().toLowerCase();
+      if (t === 'neutral' || t === 'indigo' || t === 'green' || t === 'amber' || t === 'red') return t;
+      return 'neutral';
+    }
+
+    function iconSvg(name) {
+      switch (name) {
+        case 'bolt':
+          return '<svg viewBox="0 0 24 24"><path d="M13 2L3 14h7l-1 8 12-14h-7l-1-6z"/></svg>';
+        case 'tag':
+          return '<svg viewBox="0 0 24 24"><path d="M20.59 13.41 12 22l-9-9V4h9l8.59 9.41z"/><path d="M7 7h.01"/></svg>';
+        case 'lock':
+          return '<svg viewBox="0 0 24 24"><path d="M7 11V7a5 5 0 0 1 10 0v4"/><path d="M5 11h14v10H5z"/></svg>';
+        case 'box':
+          return '<svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 0 0-1-1.73L13 2.27a2 2 0 0 0-2 0L4 6.27A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7 12 12l8.7-5"/><path d="M12 22V12"/></svg>';
+        case 'graph':
+          return '<svg viewBox="0 0 24 24"><path d="M6 20V10"/><path d="M12 20V4"/><path d="M18 20v-6"/></svg>';
+        case 'cpu':
+          return '<svg viewBox="0 0 24 24"><path d="M9 9h6v6H9z"/><path d="M4 9h2"/><path d="M4 15h2"/><path d="M18 9h2"/><path d="M18 15h2"/><path d="M9 4v2"/><path d="M15 4v2"/><path d="M9 18v2"/><path d="M15 18v2"/><path d="M7 7h10v10H7z"/></svg>';
+        case 'shield':
+          return '<svg viewBox="0 0 24 24"><path d="M12 2l8 4v6c0 5-3.5 9.5-8 10-4.5-.5-8-5-8-10V6l8-4z"/></svg>';
+        case 'file':
+          return '<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>';
+        default:
+          return '';
+      }
+    }
+
+    function parseJsonAttr(node, attr) {
+      var raw = node.getAttribute(attr);
+      if (!raw) return null;
+      try { return JSON.parse(raw); } catch (_) { return null; }
+    }
+
+    function pill(text, muted) {
+      var s = document.createElement('span');
+      s.className = 'mf-card__pill' + (muted ? ' mf-card__pill--muted' : '');
+      s.textContent = text || '';
+      return s;
+    }
+
+    function buildCard(opts) {
+      var tpl = document.getElementById('mf-card-template');
+      var node = tpl.content.firstElementChild.cloneNode(true);
+
+      var variant = normalizeVariant(opts.variant);
+      var tone = normalizeTone(opts.tone);
+
+      node.classList.remove('mf-card--subtle','mf-card--solid','mf-card--outline','mf-card--ghost');
+      node.classList.add('mf-card--' + variant);
+
+      node.classList.remove('mf-card--neutral','mf-card--indigo','mf-card--green','mf-card--amber','mf-card--red');
+      node.classList.add('mf-card--' + tone);
+
+      if (opts.compact) node.classList.add('mf-card--compact');
+
+      var title = node.querySelector('.mf-card__title');
+      var body = node.querySelector('.mf-card__body');
+      var icon = node.querySelector('.mf-card__icon');
+      var meta = node.querySelector('.mf-card__meta');
+
+      title.textContent = opts.title || '';
+      body.textContent = opts.body || '';
+
+      var svg = iconSvg(opts.icon || '');
+      if (svg) icon.innerHTML = svg; else icon.style.display = 'none';
+
+      if (opts.href) {
+        node.setAttribute('href', opts.href);
+      } else {
+        node.removeAttribute('href');
+        node.setAttribute('role', 'note');
+        node.style.cursor = 'default';
+      }
+
+      // Meta pills
+      meta.innerHTML = '';
+      if (opts.pill) meta.appendChild(pill(opts.pill, false));
+      if (opts.pill2) meta.appendChild(pill(opts.pill2, true));
+
+      // Optional target
+      if (opts.target === '_blank') {
+        node.setAttribute('target', '_blank');
+        node.setAttribute('rel', 'noopener noreferrer');
+      }
+
+      if (opts.titleAttr) node.setAttribute('title', opts.titleAttr);
+      if (opts.ariaLabel) node.setAttribute('aria-label', opts.ariaLabel);
+
+      return node;
+    }
+
+    function upgradeSingle(root) {
+      var nodes = (root || document).querySelectorAll('[data-mf-card]');
+      for (var i = 0; i < nodes.length; i++) {
+        var host = nodes[i];
+        if (host.__mfCardUpgraded) continue;
+        host.__mfCardUpgraded = true;
+
+        var opts = {
+          title: host.getAttribute('data-title') || '',
+          body: host.getAttribute('data-body') || '',
+          href: host.getAttribute('data-href') || '',
+          variant: host.getAttribute('data-variant') || 'subtle',
+          tone: host.getAttribute('data-tone') || 'neutral',
+          icon: host.getAttribute('data-icon') || '',
+          pill: host.getAttribute('data-pill') || '',
+          pill2: host.getAttribute('data-pill2') || '',
+          target: host.getAttribute('data-target') || '',
+          compact: truthy(host.getAttribute('data-compact')),
+          titleAttr: host.getAttribute('data-title-attr') || '',
+          ariaLabel: host.getAttribute('data-aria-label') || ''
+        };
+
+        var card = buildCard(opts);
+        host.replaceWith(card);
+      }
+    }
+
+    function upgradeLists(root) {
+      var nodes = (root || document).querySelectorAll('[data-mf-cards]');
+      for (var i = 0; i < nodes.length; i++) {
+        var host = nodes[i];
+        if (host.__mfCardsUpgraded) continue;
+        host.__mfCardsUpgraded = true;
+
+        var cols = parseInt(host.getAttribute('data-columns') || '3', 10);
+        if (!(cols >= 1 && cols <= 4)) cols = 3;
+
+        var baseVariant = host.getAttribute('data-variant') || 'subtle';
+        var baseTone = host.getAttribute('data-tone') || 'neutral';
+        var compact = truthy(host.getAttribute('data-compact'));
+
+        var items = parseJsonAttr(host, 'data-items') || [];
+
+        var grid = document.createElement('div');
+        grid.className = 'mf-cards mf-cards--cols-' + cols;
+
+        for (var j = 0; j < items.length; j++) {
+          var it = items[j] || {};
+          var card = buildCard({
+            title: it.title || '',
+            body: it.body || it.desc || '',
+            href: it.href || '',
+            variant: it.variant || baseVariant,
+            tone: it.tone || baseTone,
+            icon: it.icon || '',
+            pill: it.pill || it.label || '',
+            pill2: it.pill2 || it.meta || '',
+            target: it.target || '',
+            compact: compact || !!it.compact,
+            titleAttr: it.titleAttr || '',
+            ariaLabel: it.ariaLabel || ''
+          });
+          grid.appendChild(card);
+        }
+
+        host.replaceWith(grid);
+      }
+    }
+
+    function upgrade(root) {
+      upgradeLists(root);
+      upgradeSingle(root);
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', function () { upgrade(document); });
+    } else {
+      upgrade(document);
+    }
+
+    window.MuffinCards = {
+      upgrade: upgrade,
+      create: buildCard
+    };
+  })();
+</script>
