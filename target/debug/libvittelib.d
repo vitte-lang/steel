@@ -1,0 +1,1 @@
+/Users/vincent/Documents/Github/muffin/target/debug/libvittelib.rlib: /Users/vincent/Documents/Github/muffin/vitteLib/lib/fnmatch.rs /Users/vincent/Documents/Github/muffin/vitteLib/lib/glob.rs /Users/vincent/Documents/Github/muffin/vitteLib/lib/lib.rs

@@ -1,0 +1,26 @@
+.PHONY: build clean help
+
+# Configuration
+MUFFIN_CONFIG := build/.mcfg
+MFG_FILES := $(shell find . -name "*.mfg" -type f)
+BUILD_DIR := build
+OUT_DIR := $(BUILD_DIR)/output
+
+# Cibles principales
+build: $(MUFFIN_CONFIG)
+	@echo "🔨 Steel Compilation"
+	@mkdir -p $(OUT_DIR)
+	@echo "Configuration: $(MUFFIN_CONFIG)"
+	@echo "Processing MFG files..."
+	@./scripts/compile.sh $(MUFFIN_CONFIG)
+	@echo "✓ Build completed"
+
+$(MUFFIN_CONFIG):
+	./muffin
+
+clean:
+	@rm -rf $(BUILD_DIR)
+	@echo "✓ Clean completed"
+
+help:
+	@echo "Steel Build - build Steel [target]"

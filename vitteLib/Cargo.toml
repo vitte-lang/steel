@@ -1,0 +1,16 @@
+[package]
+name = "vittelib"
+version = "0.1.0"
+edition = "2021"
+authors = ["Vitte Team"]
+description = "Vitte Library: utility functions for pattern matching and globbing"
+repository = "https://github.com/vitte-lang/muffin"
+license = "See COPYING"
+
+[dependencies]
+regex = "1.10"
+anyhow = "1.0"
+
+[lib]
+name = "vittelib"
+path = "lib/lib.rs"

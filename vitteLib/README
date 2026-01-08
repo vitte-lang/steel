@@ -1,0 +1,108 @@
+# VitteLib
+
+Utility library for Vitte build system.
+
+## Features
+
+### fnmatch — Unix-like pattern matching
+
+Pattern matching for filenames without recursive globbing. Follows POSIX conventions.
+
+**Patterns:**
+- `*` — Matches any sequence of characters (except `/`)
+- `?` — Matches any single character
+- `[abc]` — Character class
+- `[!abc]` — Negated character class
+- `[a-z]` — Range
+
+**Examples:**
+```rust
+use vittelib::fnmatch;
+
+fnmatch("test.rs", "*.rs");         // true
+fnmatch("hello.txt", "hello.*");    // true
+fnmatch("file1.rs", "file[0-9].rs"); // true
+```
+
+### glob — Recursive glob patterns
+
+Recursive globbing with `**` support for matching across directories.
+
+**Patterns:**
+- `*` — Matches anything except `/`
+- `**` — Matches any sequence of directories
+- `?`, `[...]` — Same as fnmatch
+
+**Examples:**
+```rust
+use vittelib::glob::GlobPattern;
+use std::path::PathBuf;
+
+let pattern = GlobPattern::new("src/**/*.rs").unwrap();
+pattern.matches(&PathBuf::from("src/main.rs"));           // true
+pattern.matches(&PathBuf::from("src/utils/helpers.rs"));  // true
+```
+
+## Usage
+
+Add to `Cargo.toml`:
+```toml
+[dependencies]
+vittelib = { path = "../vitteLib" }
+```
+
+Use in code:
+```rust
+use vittelib::fnmatch;
+use vittelib::glob::GlobPattern;
+
+// Simple fnmatch
+if fnmatch("test.rs", "*.rs") {
+    println!("Rust file!");
+}
+
+// Recursive glob
+let pattern = GlobPattern::new("src/**/*.rs")?;
+for entry in std::fs::read_dir(".")? {
+    let path = entry?.path();
+    if pattern.matches(&path) {
+        println!("Match: {}", path.display());
+    }
+}
+```
+
+## Options
+
+### FnmatchOptions
+
+```rust
+pub struct FnmatchOptions {
+    pub pathname: bool,     // '/' not matched by wildcards
+    pub period: bool,       // leading '.' not matched by wildcards
+    pub nocase: bool,       // case-insensitive matching
+}
+```
+
+### GlobOptions
+
+```rust
+pub struct GlobOptions {
+    pub nocase: bool,       // case-insensitive matching
+    pub no_hidden: bool,    // skip hidden files (starting with .)
+}
+```
+
+## Performance
+
+Both modules use regex internally for pattern matching, providing:
+- Consistent POSIX-like behavior
+- Good performance for large filesets
+- Support for complex character classes
+
+## Testing
+
+```bash
+cargo test --lib
+```
+
+All public functions have comprehensive test coverage.
