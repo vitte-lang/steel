@@ -146,7 +146,17 @@ pub use crate::build_muf::*;   // Build muffin command
 pub mod config;
 pub mod compiler;
 pub mod validator;
+pub mod parser;
+pub mod builder;
+pub mod generator;
+pub mod error;
+pub mod mcfg;
 
 pub use config::Config;
 pub use compiler::Compiler;
 pub use validator::Validator;
+pub use parser::Parser;
+pub use builder::Builder;
+pub use generator::Generator;
+pub use error::MuffinError;
+pub use mcfg::{McfgParser, McfgConfig, McfgSerializer, McfgValidator};

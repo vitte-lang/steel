@@ -486,3 +486,26 @@ extern fn eprint(s: str) -> bool
 extern fn len[T](xs: list[T]) -> i32
 extern fn i32_to_str(x: i32) -> str
 extern fn slice_str(xs: list[str], a: i32, b: i32) -> list[str]
+
+use muffin::{Config, Validator, Compiler};
+use std::process;
+
+fn main() {
+    println!("🍰 Muffin Configuration Builder");
+    println!("================================");
+
+    match run() {
+        Ok(_) => println!("✓ Muffin build completed"),
+        Err(e) => {
+            eprintln!("Error: {}", e);
+            process::exit(1);
+        }
+    }
+}
+
+fn run() -> Result<(), Box<dyn std::error::Error>> {
+    let config = Config::load()?;
+    Validator::validate(&config)?;
+    Compiler::compile(&config)?;
+    Ok(())
+}

@@ -1,424 +1,540 @@
-# expand.vit — Muffin (Vitte)
-#
-# Expansion / interpolation engine:
-# - variables: ${VAR}, $VAR (env + local)
-# - builtin variables: ${workspace.root}, ${paths.build}, ${profile.name}, etc.
-# - list expansion for argv templates
-# - template strings for cmd lines
-# - deterministic, explicit policies (allowed env)
-#
-# This module is used by:
-# - resolver (turns file definitions into resolved steps)
-# - executor (render argv/cmd before spawn)
-# - Steel integration (same expansion rules)
-#
-# Security posture:
-# - only allow env keys in EnvPolicy.allow
-# - do not execute shells; expansion is pure string/list transform
-#
-# Blocks: .end only
-# -----------------------------------------------------------------------------
-
-mod muffin/expand
-
-use std/string
-use std/result
-use muffin/config
-use muffin/debug
-
-export all
-
-# -----------------------------------------------------------------------------
-# Errors
-# -----------------------------------------------------------------------------
-
-enum ExpErrKind
-  Parse
-  UnknownVar
-  ForbiddenEnv
-  Depth
-.end
-
-struct ExpError
-  kind: ExpErrKind
-  message: str
-  at: i32
-.end
-
-type ExpRes[T] = result::Result[T, ExpError]
-
-fn exp_err(kind: ExpErrKind, msg: str, at: i32) -> ExpError
-  ret ExpError(kind: kind, message: msg, at: at)
-.end
-
-# -----------------------------------------------------------------------------
-# Context
-# -----------------------------------------------------------------------------
-
-struct ExpandCtx
-  r: Resolved
-  profile: Profile
-  target: Target
-  step: Step
-
-  locals: map[str, str]
-  depth_limit: i32
-.end
-
-fn ctx_new(r: Resolved, prof: Profile, tgt: Target, st: Step) -> ExpandCtx
-  ret ExpandCtx(
-    r: r,
-    profile: prof,
-    target: tgt,
-    step: st,
-    locals: map_new_str(),
-    depth_limit: 32
-  )
-.end
-
-fn with_local(mut c: ExpandCtx, k: str, v: str) -> ExpandCtx
-  c.locals = map_put_str(c.locals, k, v)
-  ret c
-.end
-
-# -----------------------------------------------------------------------------
-# Public API
-# -----------------------------------------------------------------------------
-
-fn expand_str(ctx: ExpandCtx, s: str) -> ExpRes[str]
-  ret expand_str_depth(ctx, s, 0)
-.end
-
-fn expand_argv(ctx: ExpandCtx, argv: list[str]) -> ExpRes[list[str]]
-  let mut out: list[str] = []
-  let mut i: i32 = 0
-  while i < len(argv)
-    let rr: ExpRes[str] = expand_str(ctx, argv[i])
-    if result::is_err(rr) ret rr as list[str] .end
-    let v: str = result::unwrap(rr)
-    # split policy: keep as single arg (no shell splitting)
-    out = out + [v]
-    i = i + 1
-  .end
-  ret result::Ok(out)
-.end
-
-# "argv template" expansion:
-# - supports sentinel tokens:
-#   - "@{list:group:NAME}" -> expands to each file in group NAME
-#   - "@{list:files}" -> expands to target.inputs_files
-#   - "@{list:dirs}" -> expands to target.inputs_dirs
-# - everything else expands normally and is kept as one arg.
-fn expand_argv_template(ctx: ExpandCtx, argv: list[str]) -> ExpRes[list[str]]
-  let mut out: list[str] = []
-  let mut i: i32 = 0
-  while i < len(argv)
-    let a0: str = argv[i]
-    i = i + 1
-
-    if string::starts_with(a0, "@{") && string::ends_with(a0, "}")
-      let rr2: ExpRes[list[str]] = expand_special_list(ctx, a0)
-      if result::is_err(rr2) ret rr2 .end
-      out = out + result::unwrap(rr2)
-      continue
-    .end
-
-    let rr: ExpRes[str] = expand_str(ctx, a0)
-    if result::is_err(rr) ret rr as list[str] .end
-    out = out + [result::unwrap(rr)]
-  .end
-  ret result::Ok(out)
-.end
-
-# -----------------------------------------------------------------------------
-# Core expansion (string)
-# -----------------------------------------------------------------------------
-
-fn expand_str_depth(ctx: ExpandCtx, s: str, depth: i32) -> ExpRes[str]
-  if depth > ctx.depth_limit
-    ret result::Err(exp_err(ExpErrKind::Depth, "expansion depth limit", 0))
-  .end
-
-  let mut out: str = ""
-  let mut i: i32 = 0
-  while i < string::len(s)
-    let c: i32 = string::codepoint_at(s, i)
-
-    if c == 36 # '$'
-      if i + 1 >= string::len(s)
-        out = out + "$"
-        i = i + 1
-        continue
-      .end
-
-      let n: i32 = string::codepoint_at(s, i + 1)
-
-      if n == 123 # '{'
-        # ${ ... }
-        let rr: ExpRes[tuple[str, i32]] = parse_braced_var(s, i + 2)
-        if result::is_err(rr) ret rr as str .end
-        let pair: tuple[str, i32] = result::unwrap(rr)
-        let key: str = pair.0
-        let next_i: i32 = pair.1
-
-        let vv: ExpRes[str] = resolve_var(ctx, key, i)
-        if result::is_err(vv) ret vv .end
-
-        let val: str = result::unwrap(vv)
-        # recursive expand inside value
-        let rr2: ExpRes[str] = expand_str_depth(ctx, val, depth + 1)
-        if result::is_err(rr2) ret rr2 .end
-
-        out = out + result::unwrap(rr2)
-        i = next_i
-        continue
-      .end
-
-      # $VAR
-      if is_ident_start(n)
-        let rr: tuple[str, i32] = parse_bare_var(s, i + 1)
-        let key: str = rr.0
-        let next_i: i32 = rr.1
-
-        let vv: ExpRes[str] = resolve_var(ctx, key, i)
-        if result::is_err(vv) ret vv .end
-
-        let val: str = result::unwrap(vv)
-        let rr2: ExpRes[str] = expand_str_depth(ctx, val, depth + 1)
-        if result::is_err(rr2) ret rr2 .end
-
-        out = out + result::unwrap(rr2)
-        i = next_i
-        continue
-      .end
-
-      # "$" not followed by var
-      out = out + "$"
-      i = i + 1
-      continue
-    .end
-
-    out = out + string::from_codepoint(c)
-    i = i + 1
-  .end
-
-  ret result::Ok(out)
-.end
-
-fn parse_braced_var(s: str, start: i32) -> ExpRes[tuple[str, i32]]
-  let mut i: i32 = start
-  let mut key: str = ""
-  while i < string::len(s)
-    let c: i32 = string::codepoint_at(s, i)
-    if c == 125 # '}'
-      return result::Ok((string::trim(key), i + 1))
-    .end
-    key = key + string::from_codepoint(c)
-    i = i + 1
-  .end
-  ret result::Err(exp_err(ExpErrKind::Parse, "unterminated ${...}", start))
-.end
-
-fn parse_bare_var(s: str, start: i32) -> tuple[str, i32]
-  let mut i: i32 = start
-  let mut key: str = ""
-  while i < string::len(s)
-    let c: i32 = string::codepoint_at(s, i)
-    if !is_ident_continue(c)
-      break
-    .end
-    key = key + string::from_codepoint(c)
-    i = i + 1
-  .end
-  ret (key, i)
-.end
-
-# -----------------------------------------------------------------------------
-# Variable resolution
-# -----------------------------------------------------------------------------
-
-fn resolve_var(ctx: ExpandCtx, key: str, at: i32) -> ExpRes[str]
-  # locals first
-  if map_has_str(ctx.locals, key)
-    ret result::Ok(map_get_str(ctx.locals, key))
-  .end
-
-  # builtins (structured namespace)
-  let rr: ExpRes[str] = resolve_builtin(ctx, key, at)
-  if result::is_ok(rr) ret rr .end
-
-  # env: only if allowed
-  if env_allowed(ctx.r.env, key)
-    let v: str = env_get(key)
-    ret result::Ok(v)
-  .end
-
-  # explicit rejection for env-like tokens
-  if looks_like_env(key)
-    ret result::Err(exp_err(ExpErrKind::ForbiddenEnv, "env var not allowed: " + key, at))
-  .end
-
-  ret result::Err(exp_err(ExpErrKind::UnknownVar, "unknown variable: " + key, at))
-.end
-
-fn resolve_builtin(ctx: ExpandCtx, key: str, at: i32) -> ExpRes[str]
-  # workspace.*
-  if key == "workspace.name" ret result::Ok(ctx.r.workspace.name) .end
-  if key == "workspace.root" ret result::Ok(ctx.r.workspace.root) .end
-  if key == "workspace.file" ret result::Ok(ctx.r.workspace.file) .end
-  if key == "workspace.emit" ret result::Ok(ctx.r.workspace.emit) .end
-
-  # paths.*
-  if key == "paths.root" ret result::Ok(ctx.r.paths.root) .end
-  if key == "paths.build" ret result::Ok(ctx.r.paths.build) .end
-  if key == "paths.dist" ret result::Ok(ctx.r.paths.dist) .end
-  if key == "paths.tmp" ret result::Ok(ctx.r.paths.tmp) .end
-  if key == "paths.cache" ret result::Ok(ctx.r.paths.cache) .end
-  if key == "paths.steel" ret result::Ok(ctx.r.paths.steel) .end
-  if key == "paths.src" ret result::Ok(ctx.r.paths.src) .end
-  if key == "paths.doc" ret result::Ok(ctx.r.paths.doc) .end
-
-  # host.*
-  if key == "host.os" ret result::Ok(ctx.r.host.os) .end
-  if key == "host.arch" ret result::Ok(ctx.r.host.arch) .end
-  if key == "host.triple" ret result::Ok(ctx.r.host.triple) .end
-  if key == "host.endian" ret result::Ok(ctx.r.host.endian) .end
-
-  # selection.*
-  if key == "selection.profile" ret result::Ok(ctx.r.selection.profile) .end
-  if key == "selection.target" ret result::Ok(ctx.r.selection.target) .end
-
-  # profile.*
-  if key == "profile.name" ret result::Ok(ctx.profile.name) .end
-  if key == "profile.opt" ret result::Ok(ctx.profile.opt) .end
-  if key == "profile.debug" ret result::Ok(ctx.profile.debug ? "true" : "false") .end
-  if key == "profile.lto" ret result::Ok(ctx.profile.lto ? "true" : "false") .end
-
-  # target.*
-  if key == "target.name" ret result::Ok(ctx.target.name) .end
-  if key == "target.kind" ret result::Ok(ctx.target.kind) .end
-  if key == "target.package" ret result::Ok(ctx.target.package) .end
-  if key == "target.profile" ret result::Ok(ctx.target.profile) .end
-
-  # step.*
-  if key == "step.name" ret result::Ok(ctx.step.name) .end
-  if key == "step.tool" ret result::Ok(ctx.step.tool) .end
-  if key == "step.cwd" ret result::Ok(ctx.step.cwd) .end
-
-  # fingerprint
-  if key == "fingerprint.algo" ret result::Ok(ctx.r.fingerprint.algo) .end
-  if key == "fingerprint.value" ret result::Ok(ctx.r.fingerprint.value) .end
-
-  ret result::Err(exp_err(ExpErrKind::UnknownVar, "unknown builtin: " + key, at))
-.end
-
-fn looks_like_env(key: str) -> bool
-  # heuristique: uppercase + underscores
-  let mut up: bool = true
-  let mut i: i32 = 0
-  while i < string::len(key)
-    let c: i32 = string::codepoint_at(key, i)
-    i = i + 1
-    if c == 95 continue .end
-    if c >= 48 && c <= 57 continue .end
-    if c >= 65 && c <= 90 continue .end
-    up = false
-  .end
-  ret up
-.end
-
-fn env_allowed(envp: EnvPolicy, key: str) -> bool
-  let mut i: i32 = 0
-  while i < len(envp.allow)
-    if envp.allow[i] == key ret true .end
-    i = i + 1
-  .end
-  ret false
-.end
-
-# -----------------------------------------------------------------------------
-# Special list expansion
-# -----------------------------------------------------------------------------
-
-fn expand_special_list(ctx: ExpandCtx, token: str) -> ExpRes[list[str]]
-  # token format: "@{list:...}"
-  # inside is "list:TYPE(:NAME)?"
-  let inner: str = string::slice(token, 2, string::len(token) - 1)
-  let parts: list[str] = split_colon(inner)
-
-  if len(parts) < 2 || parts[0] != "list"
-    ret result::Err(exp_err(ExpErrKind::Parse, "invalid list token: " + token, 0))
-  .end
-
-  let kind: str = parts[1]
-
-  if kind == "files"
-    return result::Ok(ctx.target.inputs_files)
-  .end
-
-  if kind == "dirs"
-    return result::Ok(ctx.target.inputs_dirs)
-  .end
-
-  if kind == "groups" || kind == "group"
-    if len(parts) < 3
-      ret result::Err(exp_err(ExpErrKind::Parse, "missing group name in: " + token, 0))
-    .end
-    let gname: str = parts[2]
-    let gi: i32 = find_group(ctx.r.file_groups, gname)
-    if gi < 0
-      ret result::Err(exp_err(ExpErrKind::UnknownVar, "unknown file group: " + gname, 0))
-    .end
-    return result::Ok(ctx.r.file_groups[gi].files)
-  .end
-
-  ret result::Err(exp_err(ExpErrKind::Parse, "unknown list kind: " + kind, 0))
-.end
-
-fn split_colon(s: str) -> list[str]
-  let mut out: list[str] = []
-  let mut cur: str = ""
-  let mut i: i32 = 0
-  while i < string::len(s)
-    let c: i32 = string::codepoint_at(s, i)
-    i = i + 1
-    if c == 58
-      out = out + [cur]
-      cur = ""
-    else
-      cur = cur + string::from_codepoint(c)
-    .end
-  .end
-  out = out + [cur]
-  ret out
-.end
-
-# -----------------------------------------------------------------------------
-# Identifier helpers
-# -----------------------------------------------------------------------------
-
-fn is_ident_start(c: i32) -> bool
-  if c == 95 ret true .end
-  if c >= 65 && c <= 90 ret true .end
-  if c >= 97 && c <= 122 ret true .end
-  ret false
-.end
-
-fn is_ident_continue(c: i32) -> bool
-  if is_ident_start(c) ret true .end
-  if c >= 48 && c <= 57 ret true .end
-  ret false
-.end
-
-# -----------------------------------------------------------------------------
-# Externs
-# -----------------------------------------------------------------------------
-
-extern fn env_get(name: str) -> str
-
-extern fn map_new_str() -> map[str, str]
-extern fn map_put_str(m: map[str, str], k: str, v: str) -> map[str, str]
-extern fn map_get_str(m: map[str, str], k: str) -> str
-extern fn map_has_str(m: map[str, str], k: str) -> bool
-
-extern fn len[T](xs: list[T]) -> i32
+// /Users/vincent/Documents/Github/muffin/src/expand.rs
+//! expand — macro + variable expansion (std-only)
+//!
+//! This module implements a small, deterministic expansion engine used by Muffin:
+//! - `${var}` and `$var` variable references
+//! - `$(env:NAME)` environment reads (optional)
+//! - `$(path:join a b c)` path joins (lexical, platform-aware)
+//! - `$(lower ...)`, `$(upper ...)` string transforms
+//! - `$(if cond then else)` with simple truthiness
+//!
+//! The engine is intentionally conservative and does not execute shell.
+//! Expansion is pure and side-effect free except optional env reads.
+//!
+//! Determinism:
+//! - no random, no time, no filesystem calls
+//! - variables are resolved from an explicit `Vars` map
+//!
+//! Error handling:
+//! - `expand()` returns either expanded string or `ExpandError`
+//! - you can choose strict vs best-effort behavior
+//!
+//! Syntax summary:
+//! - literal text is copied as-is
+//! - escape `$` with `$$`
+//! - `${name}` expands variable `name`
+//! - `$name` expands variable `name` where name matches `[A-Za-z_][A-Za-z0-9._-]*`
+//! - `$(...)` calls a function:
+//!     - `env:NAME`
+//!     - `path:join <a> <b> ...`
+//!     - `lower <text>`
+//!     - `upper <text>`
+//!     - `if <cond> <then> <else>`
+//!
+//! Nested expansions are supported inside `${...}` and function arguments.
+
+use std::collections::BTreeMap;
+use std::env;
+use std::fmt;
+use std::path::{Path, PathBuf};
+
+pub type Vars = BTreeMap<String, String>;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Mode {
+    /// Fail on first error.
+    Strict,
+    /// On errors, keep the original token as literal.
+    BestEffort,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ExpandError {
+    pub kind: ExpandErrorKind,
+    pub span: (usize, usize),
+    pub message: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ExpandErrorKind {
+    Unterminated,
+    UnknownVar,
+    UnknownFunc,
+    BadSyntax,
+    RecursionLimit,
+}
+
+impl fmt::Display for ExpandError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{:?} at {}..{}: {}",
+            self.kind, self.span.0, self.span.1, self.message
+        )
+    }
+}
+
+impl std::error::Error for ExpandError {}
+
+#[derive(Debug, Clone)]
+pub struct ExpandOptions {
+    pub mode: Mode,
+    pub allow_env: bool,
+    pub recursion_limit: usize,
+    pub base_dir: Option<PathBuf>,
+}
+
+impl Default for ExpandOptions {
+    fn default() -> Self {
+        Self {
+            mode: Mode::Strict,
+            allow_env: true,
+            recursion_limit: 32,
+            base_dir: None,
+        }
+    }
+}
+
+/// Expand `input` using variables in `vars`.
+pub fn expand(input: &str, vars: &Vars, opts: &ExpandOptions) -> Result<String, ExpandError> {
+    expand_inner(input, vars, opts, 0)
+}
+
+fn expand_inner(input: &str, vars: &Vars, opts: &ExpandOptions, depth: usize) -> Result<String, ExpandError> {
+    if depth > opts.recursion_limit {
+        return Err(ExpandError {
+            kind: ExpandErrorKind::RecursionLimit,
+            span: (0, input.len()),
+            message: format!("recursion limit exceeded ({})", opts.recursion_limit),
+        });
+    }
+
+    let bytes = input.as_bytes();
+    let mut i = 0usize;
+    let mut out = String::with_capacity(input.len() + 8);
+
+    while i < bytes.len() {
+        let b = bytes[i];
+        if b != b'$' {
+            out.push(bytes[i] as char);
+            i += 1;
+            continue;
+        }
+
+        // '$' handling
+        if i + 1 >= bytes.len() {
+            // trailing '$' literal
+            out.push('$');
+            i += 1;
+            continue;
+        }
+
+        let next = bytes[i + 1];
+        match next {
+            b'$' => {
+                // escape $$ -> $
+                out.push('$');
+                i += 2;
+            }
+            b'{' => {
+                // ${...}
+                let (body, end) = read_balanced(input, i + 2, b'{', b'}')
+                    .ok_or_else(|| ExpandError {
+                        kind: ExpandErrorKind::Unterminated,
+                        span: (i, input.len()),
+                        message: "unterminated ${...}".to_string(),
+                    })?;
+
+                let expanded_key = expand_inner(body, vars, opts, depth + 1)?;
+                let val = match vars.get(expanded_key.trim()) {
+                    Some(v) => v.clone(),
+                    None => {
+                        if opts.mode == Mode::BestEffort {
+                            // keep literal
+                            out.push_str(&input[i..end]);
+                            i = end;
+                            continue;
+                        }
+                        return Err(ExpandError {
+                            kind: ExpandErrorKind::UnknownVar,
+                            span: (i, end),
+                            message: format!("unknown var: {}", expanded_key.trim()),
+                        });
+                    }
+                };
+
+                out.push_str(&val);
+                i = end;
+            }
+            b'(' => {
+                // $(...)
+                let (body, end) = read_balanced(input, i + 2, b'(', b')')
+                    .ok_or_else(|| ExpandError {
+                        kind: ExpandErrorKind::Unterminated,
+                        span: (i, input.len()),
+                        message: "unterminated $(...)".to_string(),
+                    })?;
+
+                let rep = match eval_func(body, vars, opts, depth + 1) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        if opts.mode == Mode::BestEffort {
+                            out.push_str(&input[i..end]);
+                            i = end;
+                            continue;
+                        }
+                        return Err(e);
+                    }
+                };
+
+                out.push_str(&rep);
+                i = end;
+            }
+            _ => {
+                // $name
+                if is_ident_start(next as char) {
+                    let start = i + 1;
+                    let mut j = start;
+                    while j < bytes.len() && is_ident_continue(bytes[j] as char) {
+                        j += 1;
+                    }
+                    let key = &input[start..j];
+                    if let Some(v) = vars.get(key) {
+                        out.push_str(v);
+                    } else if opts.mode == Mode::BestEffort {
+                        out.push_str(&input[i..j]);
+                    } else {
+                        return Err(ExpandError {
+                            kind: ExpandErrorKind::UnknownVar,
+                            span: (i, j),
+                            message: format!("unknown var: {key}"),
+                        });
+                    }
+                    i = j;
+                } else {
+                    // '$' followed by non-special -> literal '$'
+                    out.push('$');
+                    i += 1;
+                }
+            }
+        }
+    }
+
+    Ok(out)
+}
+
+fn eval_func(body: &str, vars: &Vars, opts: &ExpandOptions, depth: usize) -> Result<String, ExpandError> {
+    // Trim, then parse as tokens split by whitespace, BUT preserve quoted strings.
+    let tokens = split_tokens(body);
+
+    if tokens.is_empty() {
+        return Err(ExpandError {
+            kind: ExpandErrorKind::BadSyntax,
+            span: (0, body.len()),
+            message: "empty function call".to_string(),
+        });
+    }
+
+    // Support `env:NAME` in a single token
+    if let Some((head, rest)) = tokens[0].split_once(':') {
+        match head {
+            "env" => {
+                if rest.trim().is_empty() {
+                    return Err(ExpandError {
+                        kind: ExpandErrorKind::BadSyntax,
+                        span: (0, body.len()),
+                        message: "env:NAME requires NAME".to_string(),
+                    });
+                }
+                if !opts.allow_env {
+                    return Err(ExpandError {
+                        kind: ExpandErrorKind::BadSyntax,
+                        span: (0, body.len()),
+                        message: "env expansion disabled".to_string(),
+                    });
+                }
+                return Ok(env::var(rest).unwrap_or_default());
+            }
+            "path" => {
+                // path:<op> ...
+                let op = rest;
+                return eval_path_func(op, &tokens[1..], vars, opts, depth, body);
+            }
+            _ => {}
+        }
+    }
+
+    match tokens[0].as_str() {
+        "env" => {
+            if tokens.len() != 2 {
+                return Err(ExpandError {
+                    kind: ExpandErrorKind::BadSyntax,
+                    span: (0, body.len()),
+                    message: "env NAME".to_string(),
+                });
+            }
+            if !opts.allow_env {
+                return Err(ExpandError {
+                    kind: ExpandErrorKind::BadSyntax,
+                    span: (0, body.len()),
+                    message: "env expansion disabled".to_string(),
+                });
+            }
+            Ok(env::var(&tokens[1]).unwrap_or_default())
+        }
+        "lower" => {
+            let s = join_rest(&tokens[1..]);
+            let s = expand_inner(&s, vars, opts, depth)?;
+            Ok(s.to_ascii_lowercase())
+        }
+        "upper" => {
+            let s = join_rest(&tokens[1..]);
+            let s = expand_inner(&s, vars, opts, depth)?;
+            Ok(s.to_ascii_uppercase())
+        }
+        "if" => {
+            // if <cond> <then> <else>
+            if tokens.len() < 4 {
+                return Err(ExpandError {
+                    kind: ExpandErrorKind::BadSyntax,
+                    span: (0, body.len()),
+                    message: "if <cond> <then> <else>".to_string(),
+                });
+            }
+            let cond = expand_inner(&tokens[1], vars, opts, depth)?;
+            let then_s = expand_inner(&tokens[2], vars, opts, depth)?;
+            let else_s = expand_inner(&tokens[3], vars, opts, depth)?;
+            Ok(if truthy(&cond) { then_s } else { else_s })
+        }
+        "path" => {
+            // path join a b c
+            if tokens.len() < 2 {
+                return Err(ExpandError {
+                    kind: ExpandErrorKind::BadSyntax,
+                    span: (0, body.len()),
+                    message: "path <op> ...".to_string(),
+                });
+            }
+            eval_path_func(&tokens[1], &tokens[2..], vars, opts, depth, body)
+        }
+        other => Err(ExpandError {
+            kind: ExpandErrorKind::UnknownFunc,
+            span: (0, tokens[0].len()),
+            message: format!("unknown func: {other}"),
+        }),
+    }
+}
+
+fn eval_path_func(
+    op: &str,
+    args: &[String],
+    vars: &Vars,
+    opts: &ExpandOptions,
+    depth: usize,
+    body: &str,
+) -> Result<String, ExpandError> {
+    match op {
+        "join" => {
+            if args.is_empty() {
+                return Err(ExpandError {
+                    kind: ExpandErrorKind::BadSyntax,
+                    span: (0, body.len()),
+                    message: "path:join requires at least one arg".to_string(),
+                });
+            }
+            let mut parts = Vec::new();
+            for a in args {
+                let ex = expand_inner(a, vars, opts, depth)?;
+                if !ex.trim().is_empty() {
+                    parts.push(ex);
+                }
+            }
+            let mut pb = PathBuf::new();
+            for p in parts {
+                pb.push(Path::new(&p));
+            }
+            if let Some(base) = &opts.base_dir {
+                if !pb.is_absolute() {
+                    pb = base.join(pb);
+                }
+            }
+            Ok(pb.to_string_lossy().to_string())
+        }
+        "file" => {
+            // path:file <path> => file name
+            if args.len() != 1 {
+                return Err(ExpandError {
+                    kind: ExpandErrorKind::BadSyntax,
+                    span: (0, body.len()),
+                    message: "path:file <path>".to_string(),
+                });
+            }
+            let p = expand_inner(&args[0], vars, opts, depth)?;
+            let pb = PathBuf::from(p);
+            Ok(pb.file_name().map(|s| s.to_string_lossy().to_string()).unwrap_or_default())
+        }
+        "dir" => {
+            // path:dir <path> => parent dir
+            if args.len() != 1 {
+                return Err(ExpandError {
+                    kind: ExpandErrorKind::BadSyntax,
+                    span: (0, body.len()),
+                    message: "path:dir <path>".to_string(),
+                });
+            }
+            let p = expand_inner(&args[0], vars, opts, depth)?;
+            let pb = PathBuf::from(p);
+            Ok(pb.parent().map(|s| s.to_string_lossy().to_string()).unwrap_or_default())
+        }
+        _ => Err(ExpandError {
+            kind: ExpandErrorKind::UnknownFunc,
+            span: (0, body.len()),
+            message: format!("unknown path op: {op}"),
+        }),
+    }
+}
+
+fn truthy(s: &str) -> bool {
+    let t = s.trim().to_ascii_lowercase();
+    if t.is_empty() {
+        return false;
+    }
+    !matches!(t.as_str(), "0" | "false" | "no" | "off" | "null" | "none")
+}
+
+fn split_tokens(s: &str) -> Vec<String> {
+    // whitespace split with basic quoting: "..." or '...'
+    let mut out = Vec::new();
+    let mut cur = String::new();
+    let mut chars = s.chars().peekable();
+    let mut in_quote: Option<char> = None;
+
+    while let Some(ch) = chars.next() {
+        if let Some(q) = in_quote {
+            if ch == '\\' {
+                if let Some(n) = chars.next() {
+                    cur.push(match n {
+                        'n' => '\n',
+                        'r' => '\r',
+                        't' => '\t',
+                        '\\' => '\\',
+                        '"' => '"',
+                        '\'' => '\'',
+                        other => other,
+                    });
+                }
+                continue;
+            }
+            if ch == q {
+                in_quote = None;
+                continue;
+            }
+            cur.push(ch);
+            continue;
+        }
+
+        match ch {
+            '"' | '\'' => {
+                in_quote = Some(ch);
+            }
+            c if c.is_whitespace() => {
+                if !cur.is_empty() {
+                    out.push(cur.clone());
+                    cur.clear();
+                }
+            }
+            _ => cur.push(ch),
+        }
+    }
+
+    if !cur.is_empty() {
+        out.push(cur);
+    }
+
+    out
+}
+
+fn join_rest(args: &[String]) -> String {
+    let mut s = String::new();
+    for (i, a) in args.iter().enumerate() {
+        if i > 0 {
+            s.push(' ');
+        }
+        s.push_str(a);
+    }
+    s
+}
+
+fn is_ident_start(c: char) -> bool {
+    c.is_ascii_alphabetic() || c == '_'
+}
+
+fn is_ident_continue(c: char) -> bool {
+    c.is_ascii_alphanumeric() || matches!(c, '_' | '.' | '-')
+}
+
+/// Read a balanced bracket expression starting at `start` (right after opening bracket).
+/// Returns (slice_inside, end_index_after_closing).
+fn read_balanced(input: &str, start: usize, open: u8, close: u8) -> Option<(&str, usize)> {
+    let bytes = input.as_bytes();
+    let mut depth = 1usize;
+    let mut i = start;
+
+    while i < bytes.len() {
+        let b = bytes[i];
+        if b == b'\\' {
+            // skip escaped char
+            i += 2;
+            continue;
+        }
+        if b == open {
+            depth += 1;
+        } else if b == close {
+            depth -= 1;
+            if depth == 0 {
+                // body is start..i
+                return Some((&input[start..i], i + 1));
+            }
+        }
+        i += 1;
+    }
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn expands_vars() {
+        let mut v = Vars::new();
+        v.insert("name".into(), "world".into());
+        let opts = ExpandOptions::default();
+        assert_eq!(expand("hello $name", &v, &opts).unwrap(), "hello world");
+        assert_eq!(expand("hello ${name}", &v, &opts).unwrap(), "hello world");
+        assert_eq!(expand("$$", &v, &opts).unwrap(), "$");
+    }
+
+    #[test]
+    fn expands_functions() {
+        let mut v = Vars::new();
+        v.insert("A".into(), "TeSt".into());
+        let mut opts = ExpandOptions::default();
+        opts.allow_env = false;
+
+        assert_eq!(expand("$(lower $A)", &v, &opts).unwrap(), "test");
+        assert_eq!(expand("$(upper ${A})", &v, &opts).unwrap(), "TEST");
+        assert_eq!(expand("$(if 1 yes no)", &v, &opts).unwrap(), "yes");
+        assert_eq!(expand("$(if false yes no)", &v, &opts).unwrap(), "no");
+    }
+
+    #[test]
+    fn best_effort_keeps_literal() {
+        let v = Vars::new();
+        let mut opts = ExpandOptions::default();
+        opts.mode = Mode::BestEffort;
+
+        assert_eq!(expand("x=$missing", &v, &opts).unwrap(), "x=$missing");
+        assert_eq!(expand("y=$(nope 1 2)", &v, &opts).unwrap(), "y=$(nope 1 2)");
+    }
+}

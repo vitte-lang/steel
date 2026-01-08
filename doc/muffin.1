@@ -1,12 +1,12 @@
-.TH MUFFIN 1 "2026-01-07" "Muffin" "Commandes utilisateur"
+.TH MUFFIN 1 "2026-01-08" "Muffin" "Commandes utilisateur"
 .
 ." -------------------------------------------------------------------------
 ." Muffin manpage
 ." -------------------------------------------------------------------------
 .
 .SH NOM
-muffin \- configuration de build déclarative pour l'écosystème Vitte (génère Muffinconfig.mcf)
-
+muffin \- configuration de build déclarative pour l'écosystème Vitte (génère Muffinconfig.mff)
+.
 .SH SYNOPSIS
 .B muffin
 .RI [ options ]
@@ -14,25 +14,45 @@ muffin \- configuration de build déclarative pour l'écosystème Vitte (génèr
 .RI [ args... ]
 
 .PP
-Commande de haut niveau (driver recommandé) :
+Entrée de haut niveau recommandée (driver) :
 .PP
 .B build muffin
+.RI [ plan ]
 .RI [ options ]
 
+.PP
+Exemples rapides :
+.PP
+.nf
+build muffin
+build muffin release
+build muffin -all
+build muffin -debug -j 16
+build muffin -why app.exe
+.fi
+.
 .SH DESCRIPTION
 .B Muffin
 est la couche de \fBconfiguration déclarative\fP du build Vitte.
-Elle décrit le \fIworkspace\fP, les \fIpackages\fP, les \fIprofils\fP, les \fItoolchains\fP et les \fItargets\fP.
+Elle décrit un \fIworkspace\fP (packages, profils, toolchains, targets) et produit une configuration résolue, stable et outillable.
 
-Le rôle de Muffin est de \fBvalider\fP et \fBrésoudre\fP la configuration, puis de produire un fichier résolu
-\fBMuffinconfig.mcf\fP.
-Ce fichier est consommé par \fBSteel\fP (orchestrateur DAG) qui exécute les règles de build (équivalent contemporain d'un Makefile).
+Le rôle de Muffin est de :
+.IP \[bu] 2
+\fBparser\fP et \fBvalider\fP la configuration,
+.IP \[bu] 2
+\fBrésoudre\fP valeurs et sélections (defaults, héritages, overrides),
+.IP \[bu] 2
+\fBfiger\fP un artefact canonique \fBMuffinconfig.mff\fP,
+.IP \[bu] 2
+permettre l'introspection (sorties lisibles / JSON / DOT),
+.IP \[bu] 2
+assurer une séparation stricte \fBconfig\fP vs \fBexécution\fP.
 
 Pipeline recommandé :
 .IP "1." 3
-\fBbuild muffin\fP : parse/valide la config \fImuffin\fP et génère \fBMuffinconfig.mcf\fP.
+\fBbuild muffin\fP : parse/valide/résout la config et génère \fBMuffinconfig.mff\fP.
 .IP "2." 3
-\fBbuild steel\fP : lit \fBMuffinconfig.mcf\fP et exécute les règles dans \fISteel/\fP.
+\fBbuild vitte\fP : lit \fBMuffinconfig.mff\fP et orchestre la construction (DAG d'étapes, incrémental, cache).
 
 Muffin vise :
 .IP \[bu] 2
@@ -40,50 +60,139 @@ reproductibilité (config stable),
 .IP \[bu] 2
 portabilité (multi-OS/arch),
 .IP \[bu] 2
-introspection (sorties lisibles/outillables),
+incrémental (rebuild minimal déterministe),
 .IP \[bu] 2
-séparation stricte \fBconfig\fP vs \fBexécution\fP.
-
+introspection (graph/why/print),
+.IP \[bu] 2
+sécurité d'exécution via politiques (capsule/store, selon impl).
+.
 .SH COMMANDES
+Les sous-commandes ci-dessous sont données à titre de convention. Selon l'implémentation, certaines peuvent être absentes.
+
 .TP
 .B help
 Affiche l'aide générale ou l'aide d'une sous-commande.
 
 .TP
+.B version
+Affiche la version de Muffin.
+
+.TP
 .B fmt
-Formate un fichier \fImuffin\fP (si supporté par l'implémentation).
+Formate un fichier Muffin (si supporté).
+
+.TP
+.B lint
+Analyse statique de style et bonnes pratiques (si supporté).
 
 .TP
 .B check
-Valide la configuration sans produire d'artifacts de build.
-Par défaut, peut produire le \fBMuffinconfig.mcf\fP si \fB--emit\fP est utilisé.
+Valide la configuration sans construire.
 
 .TP
 .B resolve
-Résout la configuration et produit \fBMuffinconfig.mcf\fP.
-C'est l'équivalent sémantique de \fBbuild muffin\fP.
+Résout la configuration et produit \fBMuffinconfig.mff\fP.
+(Équivalent sémantique de \fBbuild muffin\fP côté configuration.)
 
 .TP
 .B print
 Affiche une vue résolue (ou partielle) de la configuration.
-Exemples : \fBprint workspace\fP, \fBprint targets\fP.
+Exemples : \fBprint workspace\fP, \fBprint targets\fP, \fBprint plans\fP.
+
+.TP
+.B list
+Liste des éléments disponibles.
+Exemples : \fBlist plans\fP, \fBlist exports\fP, \fBlist tools\fP.
 
 .TP
 .B graph
-Exporte le graphe de configuration (targets/deps) si disponible.
-Sorties possibles : texte, DOT.
+Exporte un graphe (texte/DOT/JSON selon implémentation).
 
 .TP
-.B version
-Affiche la version de Muffin.
+.B why
+Explique la chaîne de dépendances et la cause d'invalidation d'un artefact/référence.
+
+.TP
+.B clean
+Purge cache + artefacts (alias possible de \fBbuild muffin -clean\fP).
+
+.TP
+.B cache
+Gestion du cache/store (stats/gc/prune, selon implémentation).
+
+.TP
+.B doctor
+Diagnostic environnement (outils, permissions, chemins, politiques d'exécution).
 
 .PP
-Note : dans une intégration standard Vitte, Muffin est appelé via le driver :
+Note : dans une intégration standard, Muffin est appelé via le driver :
 \fBbuild muffin\fP.
+.
+.SH BUILD (driver)
+Le driver \fBbuild muffin\fP exécute un plan et orchestre la phase configuration + sélection.
 
+.SS Plans
+.TP
+.B build muffin
+Exécute le plan par défaut (ex : \fBdefault\fP).
+
+.TP
+.B build muffin \fI<plan>\fP
+Exécute un plan nommé (ex : \fBrelease\fP, \fBci\fP, \fBpackage\fP).
+
+.SS Flags de build
+.TP
+.B -all
+Construit tous les outputs exportables (ou tout le workspace selon policy).
+
+.TP
+.B -debug
+Force le profil \fBdebug\fP.
+
+.TP
+.B -release
+Force le profil \fBrelease\fP.
+
+.TP
+.B -clean
+Purge cache + artefacts (garde-fou conseillé : \fB--yes\fP).
+
+.TP
+.BI -j " n"
+Parallélisme (scheduler), ex : \fB-j 16\fP.
+
+.TP
+.B -watch
+Mode dev : rebuild incrémental sur événements filesystem.
+
+.TP
+.BI -why " <artifact|ref>"
+Explique la chaîne de dépendances et l'invalidation.
+
+.TP
+.BI -graph "[=text|dot|json]"
+Dump du DAG (format selon implémentation).
+
+.TP
+.BI -D " KEY=VALUE"
+Overrides de variables (répétable).
+
+.PP
+Exemples :
+.PP
+.nf
+build muffin
+build muffin release
+build muffin -all
+build muffin -debug -j 16
+build muffin -D profile=release -D target=x86_64-apple-darwin
+build muffin -why app.exe
+build muffin -graph=dot
+build muffin -watch
+.fi
+.
 .SH OPTIONS
-Les options suivantes sont données à titre de \fIconvention\fP.
-Selon l'implémentation, certaines options peuvent ne pas être disponibles.
+Les options suivantes sont données à titre de convention.
 
 .TP
 .BR -C " " \fIrépertoire\fP
@@ -91,7 +200,7 @@ Change le répertoire de travail avant de lire la configuration.
 
 .TP
 .BR -f " " \fIfichier\fP
-Spécifie explicitement le fichier de configuration (par défaut : \fImuffin\fP ou \fIMuffinfile\fP).
+Spécifie explicitement le buildfile (par défaut : \fImuffin\fP, \fIMuffinfile\fP ou \fIbuild.muf\fP).
 
 .TP
 .BR -p " " \fIprofil\fP
@@ -103,12 +212,12 @@ Sélectionne une target déclarée.
 
 .TP
 .BR --emit " " \fIchemin\fP
-Chemin de sortie pour \fBMuffinconfig.mcf\fP.
-Par défaut : \fBMuffinconfig.mcf\fP à la racine du workspace.
+Chemin de sortie pour \fBMuffinconfig.mff\fP.
+Par défaut : \fBMuffinconfig.mff\fP à la racine du workspace.
 
 .TP
-.BR --format " " \fItype\fP
-Choisit un format de sortie pour \fBprint\fP/\fBgraph\fP (ex : \fBtext\fP, \fBjson\fP, \fBtoml\fP, \fBdot\fP).
+.BR --format " " \fItext|json|dot\fP
+Choisit un format de sortie pour \fBprint\fP/\fBgraph\fP.
 
 .TP
 .BR --strict
@@ -117,6 +226,10 @@ Active un mode strict (warnings deviennent erreurs, exigences renforcées).
 .TP
 .BR --offline
 Interdit toute résolution réseau (si Muffin gère des registries/dep remote).
+
+.TP
+.BR --json
+Sortie JSON (quand applicable).
 
 .TP
 .BR -v
@@ -133,34 +246,38 @@ Contrôle la coloration.
 .TP
 .BR --diagnostics " " \fItext|json\fP
 Format des diagnostics.
-
+.
 .SH FICHIERS
 .TP
 .I muffin
-Fichier de configuration principal (Muffin v2). Alternative : \fIMuffinfile\fP.
+Buildfile principal. Alternatives : \fIMuffinfile\fP, \fIbuild.muf\fP.
 
 .TP
-.I Muffinconfig.mcf
-Fichier généré (résolu). Consommé par Steel.
+.I *.muf
+Buildfiles (si le projet segmente la configuration par dossier/workspace).
 
 .TP
-.I Steel/Steelfile
-Entrypoint des règles Steel (analogue moderne à un Makefile).
+.I *.vitte
+Sources du projet.
 
 .TP
-.I Steel/mfg/*.mfg
-Fragments Steel (toolchains/rules mutualisées).
+.I Muffinconfig.mff
+Artefact généré (configuration résolue). Consommé par Vitte.
 
 .TP
 .I dist/
 Répertoire de sortie recommandé (par profil), ex : \fIdist/debug\fP, \fIdist/release\fP.
 
+.TP
+.I .muffin/
+Répertoire interne recommandé (cache/store/état), selon implémentation.
+.
 .SH ENVIRONNEMENT
 Variables d'environnement usuelles (conventions) :
 
 .TP
 .B MUFFIN_FILE
-Chemin du fichier Muffin à utiliser.
+Chemin du buildfile Muffin à utiliser.
 
 .TP
 .B MUFFIN_PROFILE
@@ -168,7 +285,7 @@ Profil par défaut si \fB-p\fP n'est pas fourni.
 
 .TP
 .B MUFFIN_EMIT
-Chemin par défaut de \fBMuffinconfig.mcf\fP.
+Chemin par défaut de \fBMuffinconfig.mff\fP.
 
 .TP
 .B MUFFIN_OFFLINE
@@ -179,59 +296,74 @@ Si défini, active le mode offline.
 Chemin explicite vers le driver \fBbuild\fP (si intégré).
 
 .TP
-.B VITTE_STEEL
-Chemin explicite vers \fBsteel\fP.
-
+.B PATH
+S'assurer que \fBmuffin\fP et \fBvitte\fP sont accessibles (ou utiliser \fB./muffin\fP depuis la racine).
+.
 .SH FORMAT DU FICHIER MUFFIN (APERÇU)
-Muffin est \fIorienté blocs\fP et se termine par \fB.end\fP.
+Muffin est orienté blocs et se termine par \fB.end\fP.
 Commentaires : \fB# ...\fP.
 
-Exemple minimal :
+Exemple minimal (Bakefile v2) :
 
 .nf
-muf 2
+muffin bake 2
 
-workspace
-  name "vitte"
-  root "."
-.end
-
-package hello
-  kind "bin"
-  version "0.1.0"
-  src_dir "src"
+store main
+  path "./.muffin/store"
+  mode content
 .end
 
 profile debug
-  opt "0"
-  debug true
+  set opt 0
+  set debug true
 .end
 
-default
-  target "hello"
+tool vittec
+  exec "vittec"
+  sandbox true
+.end
+
+bake app
+  out exe: bin.exe
+  make src glob "src/**/*.vitte"
+  run tool vittec
+    takes src as "--src"
+    emits exe as "--out"
+    set "--emit" "exe"
+  .end
+.end
+
+export app.exe
+
+plan default
+  run exports
 .end
 .fi
 
 Champs typiques :
 .IP \[bu] 2
-\fBworkspace\fP : nom, root, registries, chemins.
+\fBstore\fP : politique de cache (content/mtime/off),
 .IP \[bu] 2
-\fBpackage\fP : kind (lib/bin/test), version, src_dir, deps.
+\fBprofile\fP : paramètres (optimisation, debug, features),
 .IP \[bu] 2
-\fBprofile\fP : opt level, debug, features.
+\fBtool\fP : exécutable déclaratif (version, sandbox, capsule),
 .IP \[bu] 2
-\fBtoolchain\fP : compiler, linker, build_driver, tools.
+\fBbake\fP : nœud du DAG (ports in/out, actions, cache, outputs),
 .IP \[bu] 2
-\fBtarget\fP : inputs/outputs, steps de check/run (déclaratif, pas d'orchestration complète).
+\fBwire\fP : connexions explicites entre ports,
+.IP \[bu] 2
+\fBexport\fP : outputs buildables via \fB-all\fP,
+.IP \[bu] 2
+\fBplan\fP : scénarios d'exécution.
+.
+.SH FORMAT MUFFINCONFIG.MFF (APERÇU)
+\fBMuffinconfig.mff\fP est généré et doit être \fBstable\fP et \fBfacile à consommer\fP.
+Il contient la configuration résolue (host, profile, target, paths, toolchains, valeurs finales, empreintes d'invalidation).
 
-.SH FORMAT MUFFINCONFIG.MCF (APERÇU)
-\fBMuffinconfig.mcf\fP est généré et doit être \fBstable\fP et \fBfacile à consommer\fP.
-Il contient la configuration résolue (host, profile, target, paths, toolchains, env whitelist).
-
-Exemple :
+Exemple (indicatif) :
 
 .nf
-mcf 1
+mff 1
 
 host
   os "linux"
@@ -241,8 +373,7 @@ host
 profile "debug"
 
 target
-  name "syntax_smoke"
-  kind "test"
+  name "app"
 .end
 
 paths
@@ -250,32 +381,21 @@ paths
   dist "dist"
 .end
 .fi
-
-.SH GLOB ET RÉSOLUTION DE FICHIERS
-Dans Make, l'expansion \fIglob\fP (souvent appelée informellement "gl") dépend du shell.
-Muffin recommande une résolution \fBdéterministe\fP via builtins (convention) :
-
-.TP
-.B glob(pattern)
-Expansion non récursive (triée, normalisée).
-
-.TP
-.B rglob(root, pattern)
-Expansion récursive (équivalent fonctionnel de \fB**\fP), triée, normalisée.
-
-L'implémentation doit :
+.
+.SH RÉSOLUTION DE FICHIERS (glob)
+Les expansions filesystem doivent être \fBdéterministes\fP :
 .IP \[bu] 2
-trier lexicographiquement,
+tri lexicographique,
 .IP \[bu] 2
-normaliser les séparateurs,
+normalisation des séparateurs,
 .IP \[bu] 2
-dédupliquer,
+déduplication,
 .IP \[bu] 2
-figer la liste de fichiers dans \fBMuffinconfig.mcf\fP.
-
+liste figée dans \fBMuffinconfig.mff\fP.
+.
 .SH EXEMPLES
 .TP
-Valider et générer le \fBMuffinconfig.mcf\fP :
+Valider/résoudre et générer \fBMuffinconfig.mff\fP :
 .nf
 build muffin
 .fi
@@ -283,22 +403,24 @@ build muffin
 .TP
 Générer dans un chemin spécifique :
 .nf
-build muffin --emit ./out/Muffinconfig.mcf
+build muffin --emit ./out/Muffinconfig.mff
 .fi
 
 .TP
-Afficher la config résolue (si supporté) :
+Afficher la config résolue :
 .nf
 muffin print workspace
 muffin print targets
+muffin list plans
+muffin graph --format dot
 .fi
 
 .TP
-Exécuter ensuite le build DAG :
+Construire ensuite via Vitte :
 .nf
-build steel
+build vitte
 .fi
-
+.
 .SH CODES DE SORTIE
 .TP
 .B 0
@@ -315,22 +437,21 @@ Erreur d'exécution/outillage (I/O, permissions, outils manquants).
 .TP
 .B 3
 Erreur interne (bug).
-
+.
 .SH NOTES D'IMPLÉMENTATION
-Pour une implémentation Muffin écrite en Vitte (ou Vit) :
+Une implémentation conforme doit :
 .IP \[bu] 2
-le parser doit supporter les blocs \fB.end\fP,
+supporter les blocs \fB.end\fP,
 .IP \[bu] 2
-les diagnostics doivent référencer (fichier, ligne, colonne),
+fournir des diagnostics (fichier, ligne, colonne),
 .IP \[bu] 2
-la résolution doit être pure (sans effets) et sérialisable en \fBMuffinconfig.mcf\fP,
+garantir une résolution sérialisable en \fBMuffinconfig.mff\fP,
 .IP \[bu] 2
-les expansions filesystem (glob) doivent être portables.
-
+garantir que l'expansion des fichiers (glob) est portable et déterministe.
+.
 .SH VOIR AUSSI
-.BR steel (1),
-.BR make (1),
-.BR ninja (1)
+.BR vitte (1),
+.BR build (1)
 
 .SH AUTEUR
 Projet Vitte.

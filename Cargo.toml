@@ -21,6 +21,7 @@ clap = { version = "4.4", features = ["derive"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "0.8"
+serde_yaml = "0.9"
 
 # File handling
 walkdir = "2.4"
@@ -31,6 +32,9 @@ anyhow = "1.0"
 thiserror = "1.0"
 log = "0.4"
 env_logger = "0.11"
+
+# Date and time handling
+chrono = "0.4"
 
 # VitteLib (utility library)
 vittelib = { path = "vitteLib" }
