@@ -1,307 +1,510 @@
-# load.vit — Muffin (Vitte) — MAX
-#
-# Loader / workspace discovery / manifest ingestion.
-# -----------------------------------------------------------------------------
-# Responsibilities:
-# - find workspace root from a start directory
-# - locate the manifest (Muffinfile / build.muf / mod.muf)
-# - read source text
-# - parse (delegated to parser module)
-# - apply defaults + implicit rules
-# - produce Resolved config
-# - optionally emit .mcf (Muffinconfig) for "build muffin" dry-run verification
-#
-# This is the entry used by CLI commands:
-# - build muffin   : validate + emit .mcf (+print)
-# - build steel    : validate + plan + exec (Steel wraps)
-#
-# Blocks: .end only
-# -----------------------------------------------------------------------------
+// src/load.rs
+//
+// Muffin — load (workspace discovery + Muffinfile/build.muf ingestion)
+//
+// Purpose:
+// - Locate a workspace root and Muffinfile/build.muf
+// - Load + merge configuration layers into a single in-memory Workspace
+// - Provide deterministic precedence + clear diagnostics
+//
+// This module focuses on:
+// - discovery: walk up from cwd to find Muffinfile/build.muf (or use explicit path)
+// - reading: uses a small read helper (inline) to read UTF-8 (BOM safe)
+// - parsing: stub interface; plug your real parser/lowering pipeline
+// - merging: overlays (profile/target/env) applied deterministically
+//
+// Notes:
+// - No external deps.
+// - Replace "stub parser" with your actual Muffin AST/IR builder.
+// - Designed to be used by CLI commands like `build muffin`, `check`, etc.
+//
+// Typical usage:
+//   let ctx = LoadCtx::from_cwd(".")?.with_profile("debug");
+//   let ws = WorkspaceLoader::new().load(&ctx)?;
+//
+// Integration points:
+// - crate::read (if you have it) can replace the inline read helpers.
+// - crate::loadapi could wrap this module; here we implement an all-in-one loader.
 
-mod muffin/load
+#![allow(dead_code)]
 
-use std/string
-use std/result
-use muffin/externs
+use std::collections::{BTreeMap, BTreeSet};
+use std::fmt;
+use std::path::{Path, PathBuf};
+use std::time::SystemTime;
 
-use muffin/interface
-use muffin/config
-use muffin/default
-use muffin/implicit
-use muffin/debug
-use muffin/directory
+/* ============================== errors/diagnostics ============================== */
 
-# parser is assumed:
-# - parse_muf(text, path) -> ParseRes[AstFile]
-# - lower(ast) -> LowerRes[Config]
-use muffin/parser
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LoadError {
+    Io {
+        path: PathBuf,
+        op: &'static str,
+        message: String,
+    },
+    NotFound {
+        what: String,
+    },
+    Parse {
+        path: PathBuf,
+        message: String,
+    },
+    Invalid {
+        message: String,
+    },
+    Conflict {
+        key: String,
+        message: String,
+    },
+}
 
-export all
+impl fmt::Display for LoadError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            LoadError::Io { path, op, message } => write!(f, "{} {}: {}", op, path.display(), message),
+            LoadError::NotFound { what } => write!(f, "not found: {what}"),
+            LoadError::Parse { path, message } => write!(f, "parse {}: {}", path.display(), message),
+            LoadError::Invalid { message } => write!(f, "invalid: {message}"),
+            LoadError::Conflict { key, message } => write!(f, "conflict {key}: {message}"),
+        }
+    }
+}
 
-# -----------------------------------------------------------------------------
-# Errors
-# -----------------------------------------------------------------------------
+impl std::error::Error for LoadError {}
 
-enum LoadErrKind
-  WorkspaceNotFound
-  ManifestNotFound
-  Io
-  Parse
-  Lower
-  Resolve
-  Emit
-.end
+fn io_err(path: &Path, op: &'static str, e: std::io::Error) -> LoadError {
+    LoadError::Io {
+        path: path.to_path_buf(),
+        op,
+        message: e.to_string(),
+    }
+}
 
-struct LoadError
-  kind: LoadErrKind
-  message: str
-  path: str
-.end
+/* ============================== context ============================== */
 
-type LoadRes[T] = result::Result[T, LoadError]
+#[derive(Debug, Clone)]
+pub struct LoadCtx {
+    pub cwd: PathBuf,
 
-fn load_err(kind: LoadErrKind, msg: str, path: str) -> LoadError
-  ret LoadError(kind: kind, message: msg, path: path)
-.end
+    /// Optional explicit workspace root.
+    pub root_hint: Option<PathBuf>,
 
-# -----------------------------------------------------------------------------
-# Options / Results
-# -----------------------------------------------------------------------------
+    /// Optional explicit muffinfile path.
+    pub muffinfile_hint: Option<PathBuf>,
 
-struct LoadOptions
-  start_dir: str
-  explicit_manifest: str       # if set, bypass discovery
-  emit_mcf: bool               # emit Muffinconfig .mcf
-  mcf_path: str                # if empty => <root>/.muffin/<profile>.mcf
-  validate_only: bool          # stop after resolve/implicit
-  verbose: bool
-.end
+    /// Active profile & target (optional).
+    pub profile: Option<String>,
+    pub target: Option<String>,
 
-fn load_options_default() -> LoadOptions
-  ret LoadOptions(
-    start_dir: ".",
-    explicit_manifest: "",
-    emit_mcf: false,
-    mcf_path: "",
-    validate_only: false,
-    verbose: false
-  )
-.end
+    /// env var prefix for overrides (ex: MUFFIN_)
+    pub env_prefix: String,
 
-struct Loaded
-  root: str
-  manifest_path: str
-  manifest_text: str
-  resolved: Resolved
-  mcf_emitted: str             # path or ""
-.end
+    /// if true, missing Muffinfile doesn't error (returns empty workspace)
+    pub allow_missing: bool,
+}
 
-# -----------------------------------------------------------------------------
-# Public API
-# -----------------------------------------------------------------------------
+impl LoadCtx {
+    pub fn from_cwd(cwd: impl Into<PathBuf>) -> Result<Self, LoadError> {
+        Ok(Self {
+            cwd: cwd.into(),
+            root_hint: None,
+            muffinfile_hint: None,
+            profile: None,
+            target: None,
+            env_prefix: "MUFFIN_".to_string(),
+            allow_missing: false,
+        })
+    }
 
-fn load_workspace(rt: interface::Runtime, opt: LoadOptions) -> LoadRes[Loaded]
-  # 1) find root
-  let rr_root: interface::IoRes[str] =
-    (opt.explicit_manifest != "")
-      ? result::Ok(directory::parent_dir(directory::norm_path(opt.explicit_manifest)))
-      : rt.ws.find_root(rt.ws.ctx, opt.start_dir)
+    pub fn with_root(mut self, root: impl Into<PathBuf>) -> Self {
+        self.root_hint = Some(root.into());
+        self
+    }
 
-  if result::is_err(rr_root)
-    ret result::Err(load_err(LoadErrKind::WorkspaceNotFound, "workspace root not found", opt.start_dir))
-  .end
-  let root: str = directory::norm_path(result::unwrap(rr_root))
+    pub fn with_muffinfile(mut self, path: impl Into<PathBuf>) -> Self {
+        self.muffinfile_hint = Some(path.into());
+        self
+    }
 
-  # 2) manifest path
-  let mp: str =
-    (opt.explicit_manifest != "")
-      ? directory::norm_path(opt.explicit_manifest)
-      : discover_manifest(rt, root)
+    pub fn with_profile(mut self, name: impl Into<String>) -> Self {
+        self.profile = Some(name.into());
+        self
+    }
 
-  if mp == ""
-    ret result::Err(load_err(LoadErrKind::ManifestNotFound, "no manifest found in workspace", root))
-  .end
+    pub fn with_target(mut self, name: impl Into<String>) -> Self {
+        self.target = Some(name.into());
+        self
+    }
 
-  # 3) read manifest text
-  let rr_txt: interface::IoRes[str] = rt.ws.read_muf(rt.ws.ctx, mp)
-  if result::is_err(rr_txt)
-    ret result::Err(load_err(LoadErrKind::Io, "failed to read manifest", mp))
-  .end
-  let txt: str = result::unwrap(rr_txt)
+    pub fn with_env_prefix(mut self, p: impl Into<String>) -> Self {
+        self.env_prefix = p.into();
+        self
+    }
 
-  # 4) parse
-  let rr_ast: parser::ParseRes[parser::AstFile] = parser::parse_muf(txt, mp)
-  if result::is_err(rr_ast)
-    ret result::Err(load_err(LoadErrKind::Parse, parser::format_parse_error(result::unwrap_err(rr_ast)), mp))
-  .end
-  let ast: parser::AstFile = result::unwrap(rr_ast)
+    pub fn allow_missing(mut self, yes: bool) -> Self {
+        self.allow_missing = yes;
+        self
+    }
+}
 
-  # 5) lower to Config (semantic config)
-  let rr_cfg: parser::LowerRes[Config] = parser::lower(ast)
-  if result::is_err(rr_cfg)
-    ret result::Err(load_err(LoadErrKind::Lower, parser::format_lower_error(result::unwrap_err(rr_cfg)), mp))
-  .end
-  let cfg: Config = result::unwrap(rr_cfg)
+/* ============================== workspace model ============================== */
 
-  # 6) resolve references to Resolved
-  let rr_res: result::Result[Resolved, str] = resolve_config(root, mp, cfg)
-  if result::is_err(rr_res)
-    ret result::Err(load_err(LoadErrKind::Resolve, result::unwrap_err(rr_res), mp))
-  .end
-  let mut r: Resolved = result::unwrap(rr_res)
+#[derive(Debug, Clone)]
+pub struct Workspace {
+    pub root: PathBuf,
+    pub muffinfile: Option<PathBuf>,
 
-  # 7) apply defaults
-  r = default::apply_defaults(r)
+    pub vars: BTreeMap<String, String>,
+    pub profiles: BTreeMap<String, Profile>,
+    pub targets: BTreeMap<String, Target>,
+    pub tools: BTreeMap<String, Tool>,
+    pub rules: BTreeMap<String, Rule>,
 
-  # 8) apply implicit (may fail)
-  let rr_imp: implicit::ImpRes[Resolved] = implicit::apply_implicit(r)
-  if result::is_err(rr_imp)
-    ret result::Err(load_err(LoadErrKind::Resolve, (result::unwrap_err(rr_imp)).message, mp))
-  .end
-  r = result::unwrap(rr_imp)
+    pub created_at: SystemTime,
+}
 
-  # 9) optionally emit .mcf
-  let mut emitted: str = ""
-  if opt.emit_mcf
-    let p: str = resolve_mcf_path(root, r.selection.profile, opt.mcf_path)
-    let rr_emit: LoadRes[str] = emit_mcf(rt, r, p)
-    if result::is_err(rr_emit) ret rr_emit .end
-    emitted = result::unwrap(rr_emit)
-  .end
+impl Workspace {
+    pub fn new(root: PathBuf) -> Self {
+        Self {
+            root,
+            muffinfile: None,
+            vars: BTreeMap::new(),
+            profiles: BTreeMap::new(),
+            targets: BTreeMap::new(),
+            tools: BTreeMap::new(),
+            rules: BTreeMap::new(),
+            created_at: SystemTime::now(),
+        }
+    }
+}
 
-  ret result::Ok(Loaded(root: root, manifest_path: mp, manifest_text: txt, resolved: r, mcf_emitted: emitted))
-.end
+#[derive(Debug, Clone)]
+pub struct Profile {
+    pub name: String,
+    pub vars: BTreeMap<String, String>,
+    pub flags: BTreeSet<String>,
+}
 
-# -----------------------------------------------------------------------------
-# Manifest discovery
-# -----------------------------------------------------------------------------
+#[derive(Debug, Clone)]
+pub struct Target {
+    pub name: String,
+    pub triple: Option<String>,
+    pub vars: BTreeMap<String, String>,
+}
 
-fn discover_manifest(rt: interface::Runtime, root: str) -> str
-  # order of preference:
-  # - Muffinfile
-  # - build.muf
-  # - mod.muf
-  # - muffin.muf
-  let cands: list[str] = [
-    directory::join_path(root, "Muffinfile"),
-    directory::join_path(root, "build.muf"),
-    directory::join_path(root, "mod.muf"),
-    directory::join_path(root, "muffin.muf")
-  ]
+#[derive(Debug, Clone)]
+pub struct Tool {
+    pub name: String,
+    pub program: String,
+    pub args: Vec<String>,
+    pub env: BTreeMap<String, String>,
+}
 
-  let mut i: i32 = 0
-  while i < len(cands)
-    let p: str = cands[i]
-    if rt.fs.exists(rt.fs.ctx, p) return directory::norm_path(p) .end
-    i = i + 1
-  .end
+#[derive(Debug, Clone)]
+pub struct Rule {
+    pub name: String,
+    pub phony: bool,
+    pub inputs: Vec<PathBuf>,
+    pub outputs: Vec<PathBuf>,
+    pub deps: Vec<String>,
+    pub tool: Option<String>,
+    pub argv: Vec<String>,
+    pub env: BTreeMap<String, String>,
+    pub tags: BTreeSet<String>,
+    pub meta: BTreeMap<String, String>,
+}
 
-  return ""
-.end
+/* ============================== loader ============================== */
 
-# -----------------------------------------------------------------------------
-# Resolve config -> resolved
-# -----------------------------------------------------------------------------
-# This is a "glue" layer; real project may have a dedicated resolver module.
-# Here we only:
-# - fill workspace + paths
-# - merge config sections into resolved shape
-# - keep it deterministic
+#[derive(Debug, Clone)]
+pub struct WorkspaceLoader {
+    pub search_filenames: Vec<&'static str>,
+    pub allow_overrides: bool,
+    pub last_wins: bool,
+}
 
-fn resolve_config(root: str, manifest_path: str, cfg: Config) -> result::Result[Resolved, str]
-  let mut r: Resolved = resolved_empty()
+impl Default for WorkspaceLoader {
+    fn default() -> Self {
+        Self {
+            search_filenames: vec!["Muffinfile", "build.muf"],
+            allow_overrides: true,
+            last_wins: true,
+        }
+    }
+}
 
-  r.workspace.name = cfg.workspace.name
-  r.workspace.root = root
-  r.workspace.file = manifest_path
-  r.workspace.emit = directory::join_path(root, ".muffin")
+impl WorkspaceLoader {
+    pub fn new() -> Self {
+        Self::default()
+    }
 
-  r.paths.root = root
-  r.paths.build = (cfg.paths.build != "") ? cfg.paths.build : "build"
-  r.paths.dist = (cfg.paths.dist != "") ? cfg.paths.dist : "dist"
-  r.paths.tmp = (cfg.paths.tmp != "") ? cfg.paths.tmp : ".muffin/tmp"
-  r.paths.cache = (cfg.paths.cache != "") ? cfg.paths.cache : ".muffin/cache"
-  r.paths.doc = (cfg.paths.doc != "") ? cfg.paths.doc : "doc"
-  r.paths.src = (cfg.paths.src != "") ? cfg.paths.src : "src"
-  r.paths.steel = (cfg.paths.steel != "") ? cfg.paths.steel : "Steel"
+    pub fn load(&self, ctx: &LoadCtx) -> Result<Workspace, LoadError> {
+        let root = self.resolve_root(ctx)?;
+        let mut ws = Workspace::new(root.clone());
 
-  r.selection.profile = cfg.selection.profile
-  r.selection.target = cfg.selection.target
-  r.selection.toolchain = cfg.selection.toolchain
+        let muffinfile = self.resolve_muffinfile(ctx, &root)?;
+        ws.muffinfile = muffinfile.clone();
 
-  r.profiles = cfg.profiles
-  r.toolchains = cfg.toolchains
-  r.tools = cfg.tools
+        // Base layer: from Muffinfile/build.muf (if any)
+        if let Some(path) = &muffinfile {
+            let text = read_text_utf8(path)?;
+            let frag = parse_muffinfile_stub(path, &text)?; // replace with real parser
+            self.merge_fragment(&mut ws, frag, "file")?;
+        } else if !ctx.allow_missing {
+            return Err(LoadError::NotFound {
+                what: format!(
+                    "workspace muffinfile (searched: {})",
+                    self.search_filenames.join(", ")
+                ),
+            });
+        }
 
-  r.targets = cfg.targets
-  r.packages = cfg.packages
-  r.file_groups = cfg.file_groups
+        // Env overlay: MUFFIN_VAR_X=... , MUFFIN_PROFILE=... etc.
+        let env_frag = load_env_overlay(&ctx.env_prefix);
+        self.merge_fragment(&mut ws, env_frag, "env")?;
 
-  r.env = cfg.env
-  r.fingerprint.algo = cfg.fingerprint.algo
-  r.fingerprint.value = cfg.fingerprint.value
+        // Apply profile/target overlays
+        apply_overlays(&mut ws, ctx)?;
 
-  ret result::Ok(r)
-.end
+        Ok(ws)
+    }
 
-# -----------------------------------------------------------------------------
-# Emit .mcf (Muffinconfig)
-# -----------------------------------------------------------------------------
+    fn resolve_root(&self, ctx: &LoadCtx) -> Result<PathBuf, LoadError> {
+        if let Some(r) = &ctx.root_hint {
+            return Ok(r.clone());
+        }
 
-fn resolve_mcf_path(root: str, profile: str, override: str) -> str
-  if override != "" return directory::norm_path(override) .end
-  let dir: str = directory::join_path(root, ".muffin")
-  let file: str = (profile != "") ? ("Muffinconfig." + profile + ".mcf") : "Muffinconfig.mcf"
-  return directory::join_path(dir, file)
-.end
+        // If muffinfile hint provided, root is its parent (best-effort).
+        if let Some(p) = &ctx.muffinfile_hint {
+            return Ok(p.parent().unwrap_or_else(|| Path::new(".")).to_path_buf());
+        }
 
-fn emit_mcf(rt: interface::Runtime, r: Resolved, path: str) -> LoadRes[str]
-  # ensure dir
-  let dir: str = directory::parent_dir(path)
-  let rr_mk: interface::IoRes[bool] = rt.fs.mkdirs(rt.fs.ctx, dir)
-  if result::is_err(rr_mk)
-    ret result::Err(load_err(LoadErrKind::Emit, "failed to create .muffin dir", dir))
-  .end
+        // Otherwise: walk up from cwd to find Muffinfile/build.muf
+        let mut cur = ctx.cwd.clone();
+        loop {
+            for name in &self.search_filenames {
+                let candidate = cur.join(name);
+                if candidate.exists() {
+                    return Ok(cur);
+                }
+            }
 
-  let txt: str = render_mcf(r)
-  let rr_w: interface::IoRes[bool] = rt.ws.write_mcf(rt.ws.ctx, path, txt)
-  if result::is_err(rr_w)
-    ret result::Err(load_err(LoadErrKind::Emit, "failed to write .mcf", path))
-  .end
-  ret result::Ok(path)
-.end
+            if !cur.pop() {
+                break;
+            }
+        }
 
-fn render_mcf(r: Resolved) -> str
-  # simple canonical text format (line-based, stable)
-  # This file is meant to be consumed by Steel or debug tooling.
-  let mut out: str = ""
-  out = out + "mcf 1\n"
-  out = out + "workspace.root=" + r.workspace.root + "\n"
-  out = out + "workspace.file=" + r.workspace.file + "\n"
-  out = out + "selection.profile=" + r.selection.profile + "\n"
-  out = out + "selection.target=" + r.selection.target + "\n"
-  out = out + "selection.toolchain=" + r.selection.toolchain + "\n"
-  out = out + "paths.build=" + r.paths.build + "\n"
-  out = out + "paths.dist=" + r.paths.dist + "\n"
-  out = out + "paths.tmp=" + r.paths.tmp + "\n"
-  out = out + "paths.cache=" + r.paths.cache + "\n"
-  out = out + "paths.steel=" + r.paths.steel + "\n"
-  out = out + "paths.src=" + r.paths.src + "\n"
-  out = out + "fingerprint.algo=" + r.fingerprint.algo + "\n"
-  out = out + "fingerprint.value=" + r.fingerprint.value + "\n"
+        // fallback: cwd as root
+        Ok(ctx.cwd.clone())
+    }
 
-  # counts
-  out = out + "profiles.count=" + externs::i32_to_str(len(r.profiles)) + "\n"
-  out = out + "targets.count=" + externs::i32_to_str(len(r.targets)) + "\n"
-  out = out + "tools.count=" + externs::i32_to_str(len(r.tools)) + "\n"
-  out = out + "groups.count=" + externs::i32_to_str(len(r.file_groups)) + "\n"
+    fn resolve_muffinfile(&self, ctx: &LoadCtx, root: &Path) -> Result<Option<PathBuf>, LoadError> {
+        if let Some(p) = &ctx.muffinfile_hint {
+            return Ok(Some(p.clone()));
+        }
 
-  ret out
-.end
+        for name in &self.search_filenames {
+            let candidate = root.join(name);
+            if candidate.exists() {
+                return Ok(Some(candidate));
+            }
+        }
 
-# -----------------------------------------------------------------------------
-# Externs (resolved construction + stringify)
-# -----------------------------------------------------------------------------
+        Ok(None)
+    }
 
-extern fn resolved_empty() -> Resolved
-extern fn len[T](xs: list[T]) -> i32
+    fn merge_fragment(&self, ws: &mut Workspace, frag: WorkspaceFragment, source: &str) -> Result<(), LoadError> {
+        if ws.muffinfile.is_none() {
+            ws.muffinfile = frag.muffinfile.clone();
+        }
+
+        merge_kv(&mut ws.vars, frag.vars, self, &format!("{source}.vars"))?;
+        merge_map(&mut ws.profiles, frag.profiles, self, &format!("{source}.profiles"))?;
+        merge_map(&mut ws.targets, frag.targets, self, &format!("{source}.targets"))?;
+        merge_map(&mut ws.tools, frag.tools, self, &format!("{source}.tools"))?;
+        merge_map(&mut ws.rules, frag.rules, self, &format!("{source}.rules"))?;
+        Ok(())
+    }
+}
+
+/* ============================== fragments + merge ============================== */
+
+#[derive(Debug, Clone, Default)]
+pub struct WorkspaceFragment {
+    pub muffinfile: Option<PathBuf>,
+    pub vars: BTreeMap<String, String>,
+    pub profiles: BTreeMap<String, Profile>,
+    pub targets: BTreeMap<String, Target>,
+    pub tools: BTreeMap<String, Tool>,
+    pub rules: BTreeMap<String, Rule>,
+}
+
+fn merge_kv(
+    into: &mut BTreeMap<String, String>,
+    other: BTreeMap<String, String>,
+    pol: &WorkspaceLoader,
+    scope: &str,
+) -> Result<(), LoadError> {
+    for (k, v) in other {
+        if into.contains_key(&k) {
+            if !pol.allow_overrides {
+                return Err(LoadError::Conflict {
+                    key: format!("{scope}.{k}"),
+                    message: "duplicate key".to_string(),
+                });
+            }
+            if pol.last_wins {
+                into.insert(k, v);
+            }
+        } else {
+            into.insert(k, v);
+        }
+    }
+    Ok(())
+}
+
+fn merge_map<T: Clone>(
+    into: &mut BTreeMap<String, T>,
+    other: BTreeMap<String, T>,
+    pol: &WorkspaceLoader,
+    scope: &str,
+) -> Result<(), LoadError> {
+    for (k, v) in other {
+        if into.contains_key(&k) {
+            if !pol.allow_overrides {
+                return Err(LoadError::Conflict {
+                    key: format!("{scope}.{k}"),
+                    message: "duplicate key".to_string(),
+                });
+            }
+            if pol.last_wins {
+                into.insert(k, v);
+            }
+        } else {
+            into.insert(k, v);
+        }
+    }
+    Ok(())
+}
+
+/* ============================== overlays ============================== */
+
+fn apply_overlays(ws: &mut Workspace, ctx: &LoadCtx) -> Result<(), LoadError> {
+    if let Some(p) = &ctx.profile {
+        let prof = ws.profiles.get(p).ok_or_else(|| LoadError::NotFound {
+            what: format!("profile '{p}'"),
+        })?;
+        for (k, v) in &prof.vars {
+            ws.vars.insert(k.clone(), v.clone());
+        }
+    }
+
+    if let Some(t) = &ctx.target {
+        let tgt = ws.targets.get(t).ok_or_else(|| LoadError::NotFound {
+            what: format!("target '{t}'"),
+        })?;
+        for (k, v) in &tgt.vars {
+            ws.vars.insert(k.clone(), v.clone());
+        }
+        if let Some(triple) = &tgt.triple {
+            ws.vars.insert("target.triple".to_string(), triple.clone());
+        }
+    }
+
+    Ok(())
+}
+
+/* ============================== env overlay ============================== */
+
+fn load_env_overlay(prefix: &str) -> WorkspaceFragment {
+    let mut frag = WorkspaceFragment::default();
+
+    // Convention:
+    //   {PREFIX}VAR_FOO=bar -> vars["FOO"]="bar"
+    //   {PREFIX}PROFILE=debug -> vars["profile"]="debug" (optional)
+    //   {PREFIX}TARGET=x86_64 -> vars["target"]="x86_64" (optional)
+    let var_prefix = format!("{prefix}VAR_");
+
+    for (k, v) in std::env::vars() {
+        if let Some(key) = k.strip_prefix(&var_prefix) {
+            frag.vars.insert(key.to_string(), v);
+        } else if k == format!("{prefix}PROFILE") {
+            frag.vars.insert("profile".to_string(), v);
+        } else if k == format!("{prefix}TARGET") {
+            frag.vars.insert("target".to_string(), v);
+        }
+    }
+
+    frag
+}
+
+/* ============================== read helpers (utf8) ============================== */
+
+fn read_text_utf8(path: &Path) -> Result<String, LoadError> {
+    let bytes = std::fs::read(path).map_err(|e| io_err(path, "read", e))?;
+    let bytes = strip_utf8_bom(&bytes);
+    let s = std::str::from_utf8(bytes).map_err(|e| LoadError::Parse {
+        path: path.to_path_buf(),
+        message: format!("invalid utf-8: {e}"),
+    })?;
+    Ok(s.to_string())
+}
+
+fn strip_utf8_bom(bytes: &[u8]) -> &[u8] {
+    const BOM: &[u8] = &[0xEF, 0xBB, 0xBF];
+    if bytes.starts_with(BOM) {
+        &bytes[BOM.len()..]
+    } else {
+        bytes
+    }
+}
+
+/* ============================== parser stub ============================== */
+
+/// Stub parser: returns empty fragment.
+/// Replace with your real Muffinfile/build.muf parser + lowering.
+///
+/// Expected responsibilities:
+/// - parse declarations: var/profile/target/tool/rule blocks
+/// - expand includes/imports
+/// - build a WorkspaceFragment with deterministic maps
+fn parse_muffinfile_stub(path: &Path, _text: &str) -> Result<WorkspaceFragment, LoadError> {
+    // You can keep this as an "empty workspace" for bring-up.
+    // Or return Err(Parse{...}) to force wiring the parser.
+    Ok(WorkspaceFragment {
+        muffinfile: Some(path.to_path_buf()),
+        ..Default::default()
+    })
+}
+
+/* ============================== tests ============================== */
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn env_overlay_loads_vars() {
+        std::env::set_var("MUFFIN_VAR_FOO", "bar");
+        let frag = load_env_overlay("MUFFIN_");
+        assert_eq!(frag.vars.get("FOO").map(|s| s.as_str()), Some("bar"));
+    }
+
+    #[test]
+    fn merge_conflict_errors_if_disallowed() {
+        let loader = WorkspaceLoader {
+            allow_overrides: false,
+            last_wins: true,
+            ..Default::default()
+        };
+
+        let mut ws = Workspace::new(PathBuf::from("."));
+        ws.vars.insert("A".to_string(), "1".to_string());
+
+        let mut frag = WorkspaceFragment::default();
+        frag.vars.insert("A".to_string(), "2".to_string());
+
+        let err = loader.merge_fragment(&mut ws, frag, "x").unwrap_err();
+        assert!(matches!(err, LoadError::Conflict { .. }));
+    }
+}

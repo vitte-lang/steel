@@ -1,607 +1,342 @@
-# misc.vit — Muffin (Vitte) — MAX MAX
-#
-# Ultra-complete misc toolbox used everywhere in Muffin/Steel.
-# -----------------------------------------------------------------------------
-# Adds:
-# - robust parsing helpers (int/bool)
-# - stable hashing-friendly encoders
-# - argv/env formatting
-# - set-like operations on lists
-# - lightweight glob matcher (single * and ?)
-# - table formatting helpers
-# - path ignore predicates (build/dist/tmp/cache/Steel)
-#
-# Blocks: .end only
-# -----------------------------------------------------------------------------
+// src/misc.rs
+//
+// Muffin — misc (shared small utilities)
+//
+// Purpose:
+// - Centralize tiny, dependency-free helpers used across the codebase.
+// - Keep "utility sprawl" contained.
+// - Provide:
+//   - string helpers (trim, split, join, normalize)
+//   - path helpers (normalize, ensure parent dir, relative display)
+//   - time helpers (now, monotonic ms)
+//   - hashing helpers (fnv1a, stable ids)
+//   - small collections helpers (dedup stable, set ops)
+//   - error helpers (wrap io errors with context)
+//   - env helpers (read + parse with defaults)
+//
+// Notes:
+// - This file is intentionally broad but still conservative.
+// - Prefer moving domain logic to dedicated modules; keep this as "glue".
 
-mod muffin/misc
+#![allow(dead_code)]
 
-use std/string
-use std/result
-use muffin/directory
+use std::borrow::Cow;
+use std::collections::{BTreeMap, BTreeSet};
+use std::fmt;
+use std::hash::{Hasher};
+use std::io;
+use std::path::{Path, PathBuf};
+use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-export all
+/* ============================== errors ============================== */
 
-# -----------------------------------------------------------------------------
-# String basics
-# -----------------------------------------------------------------------------
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MiscError {
+    pub ctx: String,
+    pub message: String,
+}
 
-fn is_empty(s: str) -> bool ret string::len(s) == 0 .end
-fn not_empty(s: str) -> bool ret string::len(s) != 0 .end
-fn trim(s: str) -> str ret string::trim(s) .end
-fn lower(s: str) -> str ret string::lower(s) .end
-fn upper(s: str) -> str ret string::upper(s) .end
-fn starts_with(s: str, p: str) -> bool ret string::starts_with(s, p) .end
-fn ends_with(s: str, suf: str) -> bool ret string::ends_with(s, suf) .end
-fn contains(s: str, sub: str) -> bool ret string::index_of(s, sub) >= 0 .end
+impl MiscError {
+    pub fn new(ctx: impl Into<String>, message: impl Into<String>) -> Self {
+        Self {
+            ctx: ctx.into(),
+            message: message.into(),
+        }
+    }
+}
 
-fn last_index_of(s: str, sub: str) -> i32
-  ret string::last_index_of(s, sub)
-.end
+impl fmt::Display for MiscError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}: {}", self.ctx, self.message)
+    }
+}
 
-fn replace_all(s: str, a: str, b: str) -> str
-  # naive replace loop
-  if a == "" ret s .end
-  let mut out: str = ""
-  let mut i: i32 = 0
-  while i < string::len(s)
-    let j: i32 = string::index_of_from(s, a, i)
-    if j < 0
-      out = out + string::slice(s, i, string::len(s))
-      break
-    .end
-    out = out + string::slice(s, i, j) + b
-    i = j + string::len(a)
-  .end
-  ret out
-.end
+impl std::error::Error for MiscError {}
 
-fn split_ws(s: str) -> list[str]
-  let mut out: list[str] = []
-  let mut cur: str = ""
-  let mut i: i32 = 0
-  while i < string::len(s)
-    let c: i32 = string::codepoint_at(s, i)
-    i = i + 1
-    if c == 32 || c == 9 || c == 10 || c == 13
-      if string::len(cur) > 0
-        out = out + [cur]
-        cur = ""
-      .end
-    else
-      cur = cur + string::from_codepoint(c)
-    .end
-  .end
-  if string::len(cur) > 0 out = out + [cur] .end
-  ret out
-.end
+pub fn io_err(ctx: impl Into<String>, e: io::Error) -> MiscError {
+    MiscError::new(ctx, e.to_string())
+}
 
-fn split(s: str, sep: str) -> list[str]
-  if sep == "" ret [s] .end
-  let mut out: list[str] = []
-  let mut i: i32 = 0
-  while true
-    let j: i32 = string::index_of_from(s, sep, i)
-    if j < 0
-      out = out + [string::slice(s, i, string::len(s))]
-      break
-    .end
-    out = out + [string::slice(s, i, j)]
-    i = j + string::len(sep)
-  .end
-  ret out
-.end
+/* ============================== string helpers ============================== */
 
-fn join(xs: list[str], sep: str) -> str
-  let mut out: str = ""
-  let mut i: i32 = 0
-  while i < len(xs)
-    if i > 0 out = out + sep .end
-    out = out + xs[i]
-    i = i + 1
-  .end
-  ret out
-.end
+pub fn is_blank(s: &str) -> bool {
+    s.trim().is_empty()
+}
 
-fn quote(s: str) -> str ret "\"" + s + "\"" .end
+pub fn trim_one_newline(s: &str) -> &str {
+    if let Some(x) = s.strip_suffix("\r\n") {
+        x
+    } else if let Some(x) = s.strip_suffix('\n') {
+        x
+    } else {
+        s
+    }
+}
 
-# minimal JSON escaping
-fn escape_json(s: str) -> str
-  let mut out: str = ""
-  let mut i: i32 = 0
-  while i < string::len(s)
-    let c: i32 = string::codepoint_at(s, i)
-    if c == 92 out = out + "\\\\"
-    elif c == 34 out = out + "\\\""
-    elif c == 10 out = out + "\\n"
-    elif c == 13 out = out + "\\r"
-    elif c == 9 out = out + "\\t"
-    else out = out + string::from_codepoint(c)
-    .end
-    i = i + 1
-  .end
-  ret out
-.end
+/// Split once on a separator, returning (left, right) trimmed.
+pub fn split_once_trim<'a>(s: &'a str, sep: &str) -> Option<(&'a str, &'a str)> {
+    let (a, b) = s.split_once(sep)?;
+    Some((a.trim(), b.trim()))
+}
 
-fn escape_shell(s: str) -> str
-  # single-quote strategy: ' -> '"'"'
-  if string::len(s) == 0 ret "''" .end
-  let mut out: str = "'"
-  let mut i: i32 = 0
-  while i < string::len(s)
-    let c: i32 = string::codepoint_at(s, i)
-    if c == 39
-      out = out + "'\"'\"'"
-    else
-      out = out + string::from_codepoint(c)
-    .end
-    i = i + 1
-  .end
-  out = out + "'"
-  ret out
-.end
+/// Join non-empty parts with a delimiter.
+pub fn join_non_empty<'a, I>(parts: I, delim: &str) -> String
+where
+    I: IntoIterator<Item = &'a str>,
+{
+    let mut out = String::new();
+    for p in parts {
+        let p = p.trim();
+        if p.is_empty() {
+            continue;
+        }
+        if !out.is_empty() {
+            out.push_str(delim);
+        }
+        out.push_str(p);
+    }
+    out
+}
 
-# -----------------------------------------------------------------------------
-# Parsing helpers
-# -----------------------------------------------------------------------------
+/// Normalize a "key" (config / var):
+/// - trims
+/// - collapses interior whitespace to single spaces
+/// - lowercases if requested
+pub fn normalize_key(s: &str, lower: bool) -> String {
+    let mut out = String::new();
+    let mut prev_space = false;
+    for ch in s.trim().chars() {
+        if ch.is_whitespace() {
+            if !prev_space {
+                out.push(' ');
+                prev_space = true;
+            }
+        } else {
+            prev_space = false;
+            out.push(if lower { ch.to_ascii_lowercase() } else { ch });
+        }
+    }
+    out
+}
 
-fn parse_bool(s0: str) -> result::Result[bool, str]
-  let s: str = lower(trim(s0))
-  if s == "1" || s == "true" || s == "yes" || s == "on" ret result::Ok(true) .end
-  if s == "0" || s == "false" || s == "no" || s == "off" ret result::Ok(false) .end
-  ret result::Err("invalid bool: " + s0)
-.end
+/* ============================== path helpers ============================== */
 
-fn parse_i32(s0: str) -> result::Result[i32, str]
-  let s: str = trim(s0)
-  if s == "" ret result::Err("empty int") .end
-  let mut neg: bool = false
-  let mut i: i32 = 0
-  if string::starts_with(s, "-")
-    neg = true
-    i = 1
-  .end
-  let mut n: i32 = 0
-  while i < string::len(s)
-    let c: i32 = string::codepoint_at(s, i)
-    if c < 48 || c > 57 ret result::Err("invalid int: " + s0) .end
-    n = n * 10 + (c - 48)
-    i = i + 1
-  .end
-  if neg n = -n .end
-  ret result::Ok(n)
-.end
+/// Best-effort normalize:
+/// - removes "." segments
+/// - collapses "a/../" where possible (lexical)
+/// - does NOT touch filesystem, does NOT resolve symlinks
+pub fn normalize_path_lexical(path: &Path) -> PathBuf {
+    let mut parts: Vec<Cow<'_, str>> = Vec::new();
 
-fn parse_i64(s0: str) -> result::Result[i64, str]
-  let s: str = trim(s0)
-  if s == "" ret result::Err("empty int") .end
-  let mut neg: bool = false
-  let mut i: i32 = 0
-  if string::starts_with(s, "-")
-    neg = true
-    i = 1
-  .end
-  let mut n: i64 = 0
-  while i < string::len(s)
-    let c: i32 = string::codepoint_at(s, i)
-    if c < 48 || c > 57 ret result::Err("invalid int: " + s0) .end
-    n = n * 10 + (c - 48) as i64
-    i = i + 1
-  .end
-  if neg n = -n .end
-  ret result::Ok(n)
-.end
+    for comp in path.components() {
+        use std::path::Component;
+        match comp {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                // pop if safe (don't pop prefix/root)
+                if let Some(last) = parts.last() {
+                    if last != ".." && last != "/" {
+                        parts.pop();
+                    } else {
+                        parts.push("..".into());
+                    }
+                } else {
+                    parts.push("..".into());
+                }
+            }
+            Component::RootDir => parts.push("/".into()),
+            Component::Prefix(p) => parts.push(p.as_os_str().to_string_lossy()),
+            Component::Normal(s) => parts.push(s.to_string_lossy()),
+        }
+    }
 
-# -----------------------------------------------------------------------------
-# Path helpers
-# -----------------------------------------------------------------------------
+    // rebuild
+    let mut out = PathBuf::new();
+    for (i, p) in parts.iter().enumerate() {
+        if i == 0 && p.as_ref() == "/" {
+            out.push(Path::new("/"));
+            continue;
+        }
+        out.push(p.as_ref());
+    }
+    out
+}
 
-fn norm_path(p: str) -> str ret directory::norm_path(p) .end
-fn join_path(a: str, b: str) -> str ret directory::join_path(a, b) .end
-fn parent_dir(p: str) -> str ret directory::parent_dir(p) .end
-fn basename(p: str) -> str ret directory::basename(p) .end
+/// Ensure parent directory exists for a file path.
+pub fn ensure_parent_dir(path: &Path) -> Result<(), io::Error> {
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent)?;
+        }
+    }
+    Ok(())
+}
 
-fn ext(p: str) -> str
-  let b: str = basename(p)
-  let i: i32 = string::last_index_of(b, ".")
-  if i < 0 ret "" .end
-  ret string::slice(b, i, string::len(b))
-.end
+/// Make a displayable path relative to `base` if possible (lexical).
+pub fn display_rel(path: &Path, base: &Path) -> String {
+    if let Ok(p) = path.strip_prefix(base) {
+        p.display().to_string()
+    } else {
+        path.display().to_string()
+    }
+}
 
-fn strip_ext(p: str) -> str
-  let b: str = basename(p)
-  let i: i32 = string::last_index_of(b, ".")
-  if i < 0 ret p .end
-  let dir: str = parent_dir(p)
-  let stem: str = string::slice(b, 0, i)
-  if dir == "" || dir == "." ret stem .end
-  ret join_path(dir, stem)
-.end
+/* ============================== time helpers ============================== */
 
-fn path_is_under(p: str, dir: str) -> bool
-  let np: str = norm_path(p)
-  let nd: str = norm_path(dir)
-  if nd == "" ret false .end
-  if string::starts_with(np, nd)
-    # require boundary (/ or end)
-    if string::len(np) == string::len(nd) ret true .end
-    let c: i32 = string::codepoint_at(np, string::len(nd))
-    if c == 47 || c == 92 ret true .end
-  .end
-  ret false
-.end
+pub fn now_system() -> SystemTime {
+    SystemTime::now()
+}
 
-fn path_ignore_default(root: str, p: str, build: str, dist: str, tmp: str, cache: str, steel: str) -> bool
-  let pb: str = norm_path(join_path(root, build))
-  let pd: str = norm_path(join_path(root, dist))
-  let pt: str = norm_path(join_path(root, tmp))
-  let pc: str = norm_path(join_path(root, cache))
-  let ps: str = norm_path(join_path(root, steel))
-  if path_is_under(p, pb) ret true .end
-  if path_is_under(p, pd) ret true .end
-  if path_is_under(p, pt) ret true .end
-  if path_is_under(p, pc) ret true .end
-  if path_is_under(p, ps) ret true .end
-  ret false
-.end
+pub fn now_epoch_secs() -> u64 {
+    SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap_or_else(|_| Duration::from_secs(0))
+        .as_secs()
+}
 
-# -----------------------------------------------------------------------------
-# List/set helpers
-# -----------------------------------------------------------------------------
+#[derive(Debug, Clone)]
+pub struct Stopwatch {
+    start: Instant,
+}
 
-fn contains_str(xs: list[str], x: str) -> bool
-  let mut i: i32 = 0
-  while i < len(xs)
-    if xs[i] == x ret true .end
-    i = i + 1
-  .end
-  ret false
-.end
+impl Stopwatch {
+    pub fn start() -> Self {
+        Self { start: Instant::now() }
+    }
 
-fn filter_nonempty(xs: list[str]) -> list[str]
-  let mut out: list[str] = []
-  let mut i: i32 = 0
-  while i < len(xs)
-    let s: str = trim(xs[i])
-    if s != "" out = out + [s] .end
-    i = i + 1
-  .end
-  ret out
-.end
+    pub fn elapsed(&self) -> Duration {
+        self.start.elapsed()
+    }
 
-fn sort_str(xs: list[str]) -> list[str]
-  let mut a: list[str] = xs
-  let mut i: i32 = 0
-  while i < len(a)
-    let mut j: i32 = i + 1
-    while j < len(a)
-      if a[j] < a[i]
-        let t: str = a[i]
-        a[i] = a[j]
-        a[j] = t
-      .end
-      j = j + 1
-    .end
-    i = i + 1
-  .end
-  ret a
-.end
+    pub fn elapsed_ms(&self) -> u128 {
+        self.elapsed().as_millis()
+    }
+}
 
-fn dedup_sorted(xs: list[str]) -> list[str]
-  if len(xs) == 0 ret [] .end
-  let mut out: list[str] = [xs[0]]
-  let mut i: i32 = 1
-  while i < len(xs)
-    if xs[i] != xs[i - 1] out = out + [xs[i]] .end
-    i = i + 1
-  .end
-  ret out
-.end
+/* ============================== collections helpers ============================== */
 
-fn sort_dedup(xs: list[str]) -> list[str]
-  let a: list[str] = sort_str(filter_nonempty(xs))
-  ret dedup_sorted(a)
-.end
+/// Dedup preserving order, using a BTreeSet (deterministic, but O(n log n)).
+pub fn dedup_stable(items: &mut Vec<String>) {
+    let mut seen = BTreeSet::<String>::new();
+    items.retain(|x| seen.insert(x.clone()));
+}
 
-fn union_str(a: list[str], b: list[str]) -> list[str]
-  ret sort_dedup(a + b)
-.end
-
-fn intersect_str(a: list[str], b: list[str]) -> list[str]
-  let bb: list[str] = sort_dedup(b)
-  let aa: list[str] = sort_dedup(a)
-  let mut out: list[str] = []
-  let mut i: i32 = 0
-  while i < len(aa)
-    if contains_str(bb, aa[i]) out = out + [aa[i]] .end
-    i = i + 1
-  .end
-  ret out
-.end
-
-fn diff_str(a: list[str], b: list[str]) -> list[str]
-  let bb: list[str] = sort_dedup(b)
-  let aa: list[str] = sort_dedup(a)
-  let mut out: list[str] = []
-  let mut i: i32 = 0
-  while i < len(aa)
-    if !contains_str(bb, aa[i]) out = out + [aa[i]] .end
-    i = i + 1
-  .end
-  ret out
-.end
-
-fn slice_str(xs: list[str], a: i32, b: i32) -> list[str]
-  let mut out: list[str] = []
-  let mut i: i32 = a
-  while i < b
-    out = out + [xs[i]]
-    i = i + 1
-  .end
-  ret out
-.end
-
-# argv order-sensitive dedup
-fn dedup_keep_order(xs: list[str]) -> list[str]
-  let mut out: list[str] = []
-  let mut seen: list[str] = []
-  let mut i: i32 = 0
-  while i < len(xs)
-    let s: str = trim(xs[i])
-    i = i + 1
-    if s == "" continue .end
-    if contains_str(seen, s) continue .end
-    seen = seen + [s]
-    out = out + [s]
-  .end
-  ret out
-.end
-
-# -----------------------------------------------------------------------------
-# Map helpers (string map)
-# -----------------------------------------------------------------------------
-
-fn map_get_or(m: map[str, str], k: str, fallback: str) -> str
-  if map_has_str(m, k) ret map_get_str(m, k) .end
-  ret fallback
-.end
-
-fn map_sorted_keys(m: map[str, str]) -> list[str]
-  ret sort_str(map_keys_str(m))
-.end
-
-fn map_merge(mut a: map[str, str], b: map[str, str]) -> map[str, str]
-  let ks: list[str] = map_sorted_keys(b)
-  let mut i: i32 = 0
-  while i < len(ks)
-    let k: str = ks[i]
-    a = map_put_str(a, k, map_get_str(b, k))
-    i = i + 1
-  .end
-  ret a
-.end
-
-fn map_to_env_lines(m: map[str, str]) -> list[str]
-  let ks: list[str] = map_sorted_keys(m)
-  let mut out: list[str] = []
-  let mut i: i32 = 0
-  while i < len(ks)
-    let k: str = ks[i]
-    out = out + [k + "=" + map_get_str(m, k)]
-    i = i + 1
-  .end
-  ret out
-.end
-
-# -----------------------------------------------------------------------------
-# Glob matcher (simple)
-# -----------------------------------------------------------------------------
-# Supports:
-# - '*' matches any sequence
-# - '?' matches one char
-# No character classes. Deterministic DP.
-
-fn glob_match(pattern: str, text: str) -> bool
-  let p: str = pattern
-  let t: str = text
-  let pn: i32 = string::len(p)
-  let tn: i32 = string::len(t)
-
-  # dp[i][j] is not available; compress to two rows using maps
-  let mut prev: list[bool] = bools(tn + 1, false)
-  let mut cur: list[bool] = bools(tn + 1, false)
-
-  prev[0] = true
-
-  let mut i: i32 = 0
-  while i < pn
-    cur = bools(tn + 1, false)
-    let pc: i32 = string::codepoint_at(p, i)
-
-    # dp[i+1][0]
-    if pc == 42 # '*'
-      cur[0] = prev[0]
-    else
-      cur[0] = false
-    .end
-
-    let mut j: i32 = 0
-    while j < tn
-      let tc: i32 = string::codepoint_at(t, j)
-      let v: bool =
-        (pc == 42) ? (cur[j] || prev[j + 1]) :
-        (pc == 63) ? prev[j] :
-        (pc == tc) ? prev[j] :
+pub fn map_insert_if_absent(map: &mut BTreeMap<String, String>, k: &str, v: &str) -> bool {
+    if map.contains_key(k) {
         false
-      cur[j + 1] = v
-      j = j + 1
-    .end
+    } else {
+        map.insert(k.to_string(), v.to_string());
+        true
+    }
+}
 
-    prev = cur
-    i = i + 1
-  .end
+/* ============================== env helpers ============================== */
 
-  ret prev[tn]
-.end
+pub fn env_get(key: &str) -> Option<String> {
+    std::env::var(key).ok()
+}
 
-fn bools(n: i32, v: bool) -> list[bool]
-  let mut out: list[bool] = []
-  let mut i: i32 = 0
-  while i < n
-    out = out + [v]
-    i = i + 1
-  .end
-  ret out
-.end
+pub fn env_get_or(key: &str, default: &str) -> String {
+    env_get(key).unwrap_or_else(|| default.to_string())
+}
 
-# -----------------------------------------------------------------------------
-# Human formatting
-# -----------------------------------------------------------------------------
+pub fn env_get_bool(key: &str, default: bool) -> bool {
+    match env_get(key).as_deref().map(|s| s.trim().to_ascii_lowercase()) {
+        Some(ref s) if s == "1" || s == "true" || s == "yes" || s == "on" => true,
+        Some(ref s) if s == "0" || s == "false" || s == "no" || s == "off" => false,
+        Some(_) => default,
+        None => default,
+    }
+}
 
-fn human_bytes(n: i64) -> str
-  if n < 1024 ret i64_to_str(n) + " B" .end
-  let kb: i64 = n / 1024
-  if kb < 1024 ret i64_to_str(kb) + " KiB" .end
-  let mb: i64 = kb / 1024
-  if mb < 1024 ret i64_to_str(mb) + " MiB" .end
-  let gb: i64 = mb / 1024
-  ret i64_to_str(gb) + " GiB"
-.end
+pub fn env_get_u64(key: &str, default: u64) -> u64 {
+    env_get(key)
+        .and_then(|s| s.trim().parse::<u64>().ok())
+        .unwrap_or(default)
+}
 
-fn human_ms(ms: i64) -> str
-  if ms < 1000 ret i64_to_str(ms) + " ms" .end
-  let s: i64 = ms / 1000
-  if s < 60 ret i64_to_str(s) + " s" .end
-  let m: i64 = s / 60
-  let rem: i64 = s - m * 60
-  ret i64_to_str(m) + " min " + i64_to_str(rem) + " s"
-.end
+/* ============================== hashing helpers ============================== */
 
-# -----------------------------------------------------------------------------
-# Stable encoders (hash/debug)
-# -----------------------------------------------------------------------------
+#[derive(Default)]
+pub struct Fnv1aHasher {
+    state: u64,
+}
 
-fn enc_str(s: str) -> str
-  ret i32_to_str(string::len(s)) + ":" + s
-.end
+impl Hasher for Fnv1aHasher {
+    fn write(&mut self, bytes: &[u8]) {
+        let mut hash = if self.state == 0 { 0xcbf29ce484222325 } else { self.state };
+        for &b in bytes {
+            hash ^= b as u64;
+            hash = hash.wrapping_mul(0x100000001b3);
+        }
+        self.state = hash;
+    }
 
-fn enc_list(xs: list[str]) -> str
-  let mut out: str = "L" + i32_to_str(len(xs)) + ":"
-  let mut i: i32 = 0
-  while i < len(xs)
-    out = out + enc_str(xs[i])
-    i = i + 1
-  .end
-  ret out
-.end
+    fn finish(&self) -> u64 {
+        if self.state == 0 {
+            0xcbf29ce484222325
+        } else {
+            self.state
+        }
+    }
+}
 
-fn enc_map(m: map[str, str]) -> str
-  let ks: list[str] = map_sorted_keys(m)
-  let mut out: str = "M" + i32_to_str(len(ks)) + ":"
-  let mut i: i32 = 0
-  while i < len(ks)
-    let k: str = ks[i]
-    out = out + enc_str(k) + enc_str(map_get_str(m, k))
-    i = i + 1
-  .end
-  ret out
-.end
+/// Stable 64-bit hash of a string (fnv1a).
+pub fn hash_str64(s: &str) -> u64 {
+    let mut h = Fnv1aHasher::default();
+    h.write(s.as_bytes());
+    h.finish()
+}
 
-# -----------------------------------------------------------------------------
-# Table formatting (for CLI)
-# -----------------------------------------------------------------------------
+/// Stable ID from path-like input (normalized separator).
+pub fn hash_path64(p: &Path) -> u64 {
+    let s = p.to_string_lossy().replace('\\', "/");
+    hash_str64(&s)
+}
 
-fn pad_right(s: str, n: i32) -> str
-  let m: i32 = string::len(s)
-  if m >= n ret s .end
-  let mut out: str = s
-  let mut i: i32 = 0
-  while i < (n - m)
-    out = out + " "
-    i = i + 1
-  .end
-  ret out
-.end
+/* ============================== formatting helpers ============================== */
 
-fn render_table(headers: list[str], rows: list[list[str]]) -> str
-  # compute widths
-  let mut w: list[i32] = []
-  let mut i: i32 = 0
-  while i < len(headers)
-    w = w + [string::len(headers[i])]
-    i = i + 1
-  .end
+pub fn fmt_kv(map: &BTreeMap<String, String>) -> String {
+    let mut out = String::new();
+    for (k, v) in map {
+        if !out.is_empty() {
+            out.push(' ');
+        }
+        out.push_str(k);
+        out.push('=');
+        out.push_str(v);
+    }
+    out
+}
 
-  let mut r: i32 = 0
-  while r < len(rows)
-    let row: list[str] = rows[r]
-    let mut c: i32 = 0
-    while c < len(row)
-      if c < len(w)
-        let n: i32 = string::len(row[c])
-        if n > w[c] w[c] = n .end
-      .end
-      c = c + 1
-    .end
-    r = r + 1
-  .end
+/* ============================== tests ============================== */
 
-  let mut out: str = ""
-  # header
-  i = 0
-  while i < len(headers)
-    out = out + pad_right(headers[i], w[i])
-    if i + 1 < len(headers) out = out + "  " .end
-    i = i + 1
-  .end
-  out = out + "\n"
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-  # underline
-  i = 0
-  while i < len(headers)
-    out = out + pad_right(repeat("-", w[i]), w[i])
-    if i + 1 < len(headers) out = out + "  " .end
-    i = i + 1
-  .end
-  out = out + "\n"
+    #[test]
+    fn normalize_key_works() {
+        assert_eq!(normalize_key("  A   B\tC ", true), "a b c");
+        assert_eq!(normalize_key("X  Y", false), "X Y");
+    }
 
-  # rows
-  r = 0
-  while r < len(rows)
-    let row: list[str] = rows[r]
-    let mut c: i32 = 0
-    while c < len(headers)
-      let cell: str = (c < len(row)) ? row[c] : ""
-      out = out + pad_right(cell, w[c])
-      if c + 1 < len(headers) out = out + "  " .end
-      c = c + 1
-    .end
-    out = out + "\n"
-    r = r + 1
-  .end
+    #[test]
+    fn join_non_empty_works() {
+        let s = join_non_empty(["a", "", "b", "  ", "c"], ",");
+        assert_eq!(s, "a,b,c");
+    }
 
-  ret out
-.end
+    #[test]
+    fn fnv_hash_stable() {
+        assert_eq!(hash_str64("x"), hash_str64("x"));
+        assert_ne!(hash_str64("x"), hash_str64("y"));
+    }
 
-fn repeat(s: str, n: i32) -> str
-  let mut out: str = ""
-  let mut i: i32 = 0
-  while i < n
-    out = out + s
-    i = i + 1
-  .end
-  ret out
-.end
-
-# -----------------------------------------------------------------------------
-# Externs
-# -----------------------------------------------------------------------------
-
-extern fn len[T](xs: list[T]) -> i32
-extern fn i32_to_str(x: i32) -> str
-extern fn i64_to_str(x: i64) -> str
-
-extern fn map_has_str(m: map[str, str], k: str) -> bool
-extern fn map_get_str(m: map[str, str], k: str) -> str
-extern fn map_put_str(m: map[str, str], k: str, v: str) -> map[str, str]
-extern fn map_keys_str(m: map[str, str]) -> list[str]
+    #[test]
+    fn dedup_stable_works() {
+        let mut v = vec!["a".to_string(), "b".to_string(), "a".to_string()];
+        dedup_stable(&mut v);
+        assert_eq!(v, vec!["a".to_string(), "b".to_string()]);
+    }
+}

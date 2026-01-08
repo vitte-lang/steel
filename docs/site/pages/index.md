@@ -1,0 +1,3 @@
+# Muffin Docs
+
+Welcome.

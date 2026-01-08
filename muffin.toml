@@ -1,6 +1,0 @@
-[package]
-name = "muffin"
-version = "0.1.0"
-
-[config]
-output = "build/.mcfg"

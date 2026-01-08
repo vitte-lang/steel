@@ -1,0 +1,568 @@
+/* ============================================================================
+ * Muffin Docs — code.css (MAX)
+ * Path: /docs/assets/css/code.css
+ *
+ * Goals:
+ * - Excellent readability for code blocks and inline code
+ * - Works with light/dark themes (colors via CSS variables)
+ * - Copy button / line highlighting / callouts / diffs / terminal blocks
+ * - Accessible focus styles, reduced motion friendly
+ *
+ * NOTE:
+ * - This file defines structure/spacing/typography + variable fallbacks.
+ * - Actual colors should be overridden by theme-light.css / theme-dark.css.
+ * ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+ * 0) Design tokens (fallbacks)
+ * ------------------------------------------------------------------------- */
+
+:root {
+  /* Typography */
+  --code-font: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "DejaVu Sans Mono", "Courier New", monospace;
+  --code-font-size: 0.95rem;
+  --code-line-height: 1.55;
+  --code-inline-font-size: 0.92em;
+  --code-tab-size: 2;
+
+  /* Layout */
+  --code-radius: 12px;
+  --code-border-width: 1px;
+  --code-block-padding-y: 0.9rem;
+  --code-block-padding-x: 1.0rem;
+  --code-block-margin: 1.2rem 0;
+  --code-inline-padding-y: 0.10em;
+  --code-inline-padding-x: 0.35em;
+
+  /* Shadows */
+  --code-shadow: 0 10px 30px rgba(0,0,0,0.06);
+
+  /* Colors (fallbacks: themes should override) */
+  --code-bg: rgba(0,0,0,0.04);
+  --code-fg: rgba(0,0,0,0.86);
+  --code-border: rgba(0,0,0,0.10);
+
+  --code-inline-bg: rgba(0,0,0,0.06);
+  --code-inline-border: rgba(0,0,0,0.10);
+
+  --code-selection-bg: rgba(120, 140, 255, 0.25);
+
+  --code-muted: rgba(0,0,0,0.55);
+  --code-dim: rgba(0,0,0,0.42);
+
+  --code-accent: rgb(110, 86, 207); /* Muffin-like purple fallback */
+  --code-accent-2: rgb(0, 122, 255);
+
+  /* Focus */
+  --code-focus-ring: 0 0 0 3px rgba(110,86,207,0.25);
+
+  /* UI controls (copy button etc.) */
+  --code-ui-bg: rgba(255,255,255,0.70);
+  --code-ui-bg-hover: rgba(255,255,255,0.92);
+  --code-ui-border: rgba(0,0,0,0.12);
+  --code-ui-fg: rgba(0,0,0,0.82);
+
+  /* Diff / annotation colors (fallbacks) */
+  --code-diff-add-bg: rgba(46, 204, 113, 0.14);
+  --code-diff-add-border: rgba(46, 204, 113, 0.35);
+  --code-diff-del-bg: rgba(231, 76, 60, 0.14);
+  --code-diff-del-border: rgba(231, 76, 60, 0.35);
+  --code-diff-warn-bg: rgba(241, 196, 15, 0.16);
+  --code-diff-warn-border: rgba(241, 196, 15, 0.40);
+
+  /* Line highlight */
+  --code-line-hl-bg: rgba(110, 86, 207, 0.10);
+  --code-line-hl-border: rgba(110, 86, 207, 0.35);
+
+  /* Terminal */
+  --term-bg: #0b0d10;
+  --term-fg: rgba(255,255,255,0.92);
+  --term-muted: rgba(255,255,255,0.65);
+  --term-border: rgba(255,255,255,0.12);
+
+  /* Scrollbars */
+  --code-scrollbar-thumb: rgba(0,0,0,0.22);
+  --code-scrollbar-track: rgba(0,0,0,0.06);
+
+  /* Motion */
+  --code-ui-transition: 160ms ease;
+}
+
+/* If your themes provide data-theme on html/body */
+:root[data-theme="dark"], body[data-theme="dark"] {
+  --code-bg: rgba(255,255,255,0.06);
+  --code-fg: rgba(255,255,255,0.92);
+  --code-border: rgba(255,255,255,0.14);
+
+  --code-inline-bg: rgba(255,255,255,0.10);
+  --code-inline-border: rgba(255,255,255,0.14);
+
+  --code-muted: rgba(255,255,255,0.64);
+  --code-dim: rgba(255,255,255,0.48);
+
+  --code-ui-bg: rgba(20,22,26,0.72);
+  --code-ui-bg-hover: rgba(20,22,26,0.95);
+  --code-ui-border: rgba(255,255,255,0.14);
+  --code-ui-fg: rgba(255,255,255,0.88);
+
+  --code-shadow: 0 18px 50px rgba(0,0,0,0.45);
+
+  --code-scrollbar-thumb: rgba(255,255,255,0.22);
+  --code-scrollbar-track: rgba(255,255,255,0.06);
+}
+
+/* Respect reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --code-ui-transition: 0ms linear;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * 1) Inline code (within prose)
+ * ------------------------------------------------------------------------- */
+
+:where(p, li, td, th, blockquote, figcaption, summary) > code,
+:where(p, li, td, th, blockquote, figcaption, summary) code {
+  font-family: var(--code-font);
+  font-size: var(--code-inline-font-size);
+  line-height: 1.2;
+  padding: var(--code-inline-padding-y) var(--code-inline-padding-x);
+  border-radius: 8px;
+  background: var(--code-inline-bg);
+  border: 1px solid var(--code-inline-border);
+  color: var(--code-fg);
+  white-space: break-spaces;
+  word-break: break-word;
+  tab-size: var(--code-tab-size);
+}
+
+/* Avoid double-styling code inside pre */
+pre code {
+  padding: 0;
+  border: none;
+  background: transparent;
+  border-radius: 0;
+  font-size: inherit;
+  line-height: inherit;
+}
+
+/* ---------------------------------------------------------------------------
+ * 2) Code blocks (pre)
+ * ------------------------------------------------------------------------- */
+
+pre {
+  position: relative;
+  margin: var(--code-block-margin);
+  padding: var(--code-block-padding-y) var(--code-block-padding-x);
+  border-radius: var(--code-radius);
+  background: var(--code-bg);
+  color: var(--code-fg);
+  border: var(--code-border-width) solid var(--code-border);
+  box-shadow: var(--code-shadow);
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+  tab-size: var(--code-tab-size);
+}
+
+pre code {
+  display: block;
+  font-family: var(--code-font);
+  font-size: var(--code-font-size);
+  line-height: var(--code-line-height);
+  white-space: pre;
+}
+
+/* Make long lines scroll horizontally; keep padding intact */
+pre code,
+pre {
+  scrollbar-width: thin;
+  scrollbar-color: var(--code-scrollbar-thumb) var(--code-scrollbar-track);
+}
+
+pre::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+pre::-webkit-scrollbar-thumb {
+  background: var(--code-scrollbar-thumb);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+pre::-webkit-scrollbar-track {
+  background: var(--code-scrollbar-track);
+}
+
+/* Selection */
+pre ::selection,
+code ::selection {
+  background: var(--code-selection-bg);
+}
+
+/* ---------------------------------------------------------------------------
+ * 3) Language label + meta header (optional)
+ *   Enable by adding:
+ *     <pre class="codeblock" data-lang="muf"><code>...</code></pre>
+ * ------------------------------------------------------------------------- */
+
+pre.codeblock {
+  padding-top: calc(var(--code-block-padding-y) + 1.4rem);
+}
+
+pre.codeblock::before {
+  content: attr(data-lang);
+  position: absolute;
+  top: 0.55rem;
+  left: 0.75rem;
+  font-family: var(--code-font);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--code-muted);
+  background: transparent;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  user-select: none;
+}
+
+/* If you prefer a subtle chip: add class "chip" */
+pre.codeblock.chip::before {
+  background: rgba(127,127,127,0.10);
+  border-color: rgba(127,127,127,0.18);
+}
+
+/* ---------------------------------------------------------------------------
+ * 4) Copy button (optional)
+ *   HTML:
+ *     <pre class="codeblock has-copy"><button class="code-copy">Copy</button><code>...</code></pre>
+ * ------------------------------------------------------------------------- */
+
+pre.has-copy {
+  padding-top: calc(var(--code-block-padding-y) + 1.9rem);
+}
+
+pre .code-copy {
+  position: absolute;
+  top: 0.55rem;
+  right: 0.65rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-size: 0.82rem;
+  line-height: 1;
+  padding: 0.38rem 0.60rem;
+  border-radius: 10px;
+  border: 1px solid var(--code-ui-border);
+  background: var(--code-ui-bg);
+  color: var(--code-ui-fg);
+  cursor: pointer;
+  transition: transform var(--code-ui-transition), background var(--code-ui-transition), border-color var(--code-ui-transition), opacity var(--code-ui-transition);
+  user-select: none;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+pre .code-copy:hover {
+  background: var(--code-ui-bg-hover);
+  transform: translateY(-1px);
+}
+
+pre .code-copy:active {
+  transform: translateY(0);
+}
+
+pre .code-copy:focus-visible {
+  outline: none;
+  box-shadow: var(--code-focus-ring);
+}
+
+pre .code-copy[aria-busy="true"] {
+  opacity: 0.75;
+  cursor: progress;
+}
+
+/* Status label (optional) */
+pre .code-copy .code-copy__status {
+  font-family: var(--code-font);
+  font-size: 0.78rem;
+  color: var(--code-muted);
+}
+
+/* ---------------------------------------------------------------------------
+ * 5) Highlighted lines (optional)
+ *   Add spans by your highlighter:
+ *     <span class="line">...</span>
+ *     <span class="line is-highlight">...</span>
+ * ------------------------------------------------------------------------- */
+
+pre code .line {
+  display: block;
+  padding: 0 0.2rem;
+  margin: 0 -0.2rem;
+  border-left: 3px solid transparent;
+}
+
+pre code .line.is-highlight {
+  background: var(--code-line-hl-bg);
+  border-left-color: var(--code-line-hl-border);
+}
+
+/* Anchor targeted line (e.g., #L12) */
+pre code .line:target {
+  background: var(--code-line-hl-bg);
+  border-left-color: var(--code-line-hl-border);
+  scroll-margin-top: 120px;
+}
+
+/* Line numbers (optional)
+ * - wrap in <pre class="has-linenos"><code>..</code></pre>
+ * - Each line must include <span class="ln">12</span><span class="line">..</span>
+ */
+pre.has-linenos code {
+  counter-reset: lineno;
+}
+
+pre.has-linenos code .line {
+  position: relative;
+  padding-left: 3.2rem;
+}
+
+pre.has-linenos code .line::before {
+  counter-increment: lineno;
+  content: counter(lineno);
+  position: absolute;
+  left: 0;
+  width: 2.6rem;
+  text-align: right;
+  padding-right: 0.75rem;
+  color: var(--code-dim);
+  user-select: none;
+}
+
+/* ---------------------------------------------------------------------------
+ * 6) Callouts inside code blocks (optional)
+ * ------------------------------------------------------------------------- */
+
+pre code .mark {
+  background: rgba(255, 231, 87, 0.22);
+  border-bottom: 1px solid rgba(255, 231, 87, 0.55);
+  border-radius: 6px;
+  padding: 0.05em 0.15em;
+}
+
+/* ---------------------------------------------------------------------------
+ * 7) Diffs (optional)
+ *   Common formats:
+ *   - lines starting with + / -
+ *   - or spans with .diff-add / .diff-del
+ * ------------------------------------------------------------------------- */
+
+pre.diff code .line.diff-add,
+pre code .line.diff-add {
+  background: var(--code-diff-add-bg);
+  border-left-color: var(--code-diff-add-border);
+}
+
+pre.diff code .line.diff-del,
+pre code .line.diff-del {
+  background: var(--code-diff-del-bg);
+  border-left-color: var(--code-diff-del-border);
+}
+
+pre.diff code .line.diff-warn,
+pre code .line.diff-warn {
+  background: var(--code-diff-warn-bg);
+  border-left-color: var(--code-diff-warn-border);
+}
+
+/* Inline spans */
+pre code .diff-add {
+  background: var(--code-diff-add-bg);
+  border-radius: 6px;
+  padding: 0.05em 0.15em;
+}
+pre code .diff-del {
+  background: var(--code-diff-del-bg);
+  border-radius: 6px;
+  padding: 0.05em 0.15em;
+  text-decoration: line-through;
+  text-decoration-thickness: 1px;
+}
+pre code .diff-warn {
+  background: var(--code-diff-warn-bg);
+  border-radius: 6px;
+  padding: 0.05em 0.15em;
+}
+
+/* ---------------------------------------------------------------------------
+ * 8) Terminal blocks (optional)
+ *   Use: <pre class="terminal"><code>...</code></pre>
+ * ------------------------------------------------------------------------- */
+
+pre.terminal {
+  background: var(--term-bg);
+  color: var(--term-fg);
+  border-color: var(--term-border);
+  box-shadow: 0 18px 50px rgba(0,0,0,0.55);
+}
+
+pre.terminal::before {
+  content: "terminal";
+  position: absolute;
+  top: 0.55rem;
+  left: 0.75rem;
+  font-family: var(--code-font);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--term-muted);
+  user-select: none;
+}
+
+pre.terminal.has-copy .code-copy {
+  border-color: rgba(255,255,255,0.16);
+  background: rgba(20,22,26,0.70);
+  color: rgba(255,255,255,0.90);
+}
+
+pre.terminal.has-copy .code-copy:hover {
+  background: rgba(20,22,26,0.92);
+}
+
+/* Prompt styling (optional spans) */
+pre.terminal code .prompt {
+  color: rgba(255,255,255,0.65);
+}
+pre.terminal code .cmd {
+  color: rgba(255,255,255,0.92);
+}
+pre.terminal code .out {
+  color: rgba(255,255,255,0.86);
+}
+pre.terminal code .err {
+  color: rgba(255, 120, 120, 0.95);
+}
+
+/* ---------------------------------------------------------------------------
+ * 9) Collapsible code (optional)
+ *   HTML:
+ *     <details class="code-details"><summary>Show</summary><pre>...</pre></details>
+ * ------------------------------------------------------------------------- */
+
+details.code-details {
+  margin: 1rem 0;
+  border-radius: var(--code-radius);
+}
+
+details.code-details > summary {
+  cursor: pointer;
+  user-select: none;
+  font-weight: 600;
+  color: var(--code-fg);
+  padding: 0.55rem 0.65rem;
+  border-radius: 12px;
+  border: 1px solid var(--code-border);
+  background: rgba(127,127,127,0.08);
+}
+
+details.code-details > summary:focus-visible {
+  outline: none;
+  box-shadow: var(--code-focus-ring);
+}
+
+details.code-details[open] > summary {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+details.code-details pre {
+  margin: 0;
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+/* ---------------------------------------------------------------------------
+ * 10) Keyboard keys (kbd) next to code
+ * ------------------------------------------------------------------------- */
+
+kbd {
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  font-size: 0.86em;
+  padding: 0.08em 0.35em;
+  border-radius: 8px;
+  border: 1px solid rgba(127,127,127,0.24);
+  background: rgba(127,127,127,0.10);
+  color: rgba(0,0,0,0.78);
+}
+
+:root[data-theme="dark"] kbd,
+body[data-theme="dark"] kbd {
+  color: rgba(255,255,255,0.86);
+  border-color: rgba(255,255,255,0.18);
+  background: rgba(255,255,255,0.08);
+}
+
+/* ---------------------------------------------------------------------------
+ * 11) “Code cards” (optional wrappers)
+ * ------------------------------------------------------------------------- */
+
+.code-card {
+  margin: 1.2rem 0;
+  border-radius: 16px;
+  border: 1px solid var(--code-border);
+  background: rgba(127,127,127,0.06);
+  overflow: hidden;
+}
+
+.code-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.9rem;
+  border-bottom: 1px solid var(--code-border);
+}
+
+.code-card__title {
+  font-weight: 650;
+  font-size: 0.95rem;
+  color: var(--code-fg);
+}
+
+.code-card__meta {
+  font-family: var(--code-font);
+  font-size: 0.78rem;
+  color: var(--code-muted);
+}
+
+.code-card pre {
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+
+/* ---------------------------------------------------------------------------
+ * 12) Print adjustments
+ * ------------------------------------------------------------------------- */
+
+@media print {
+  pre {
+    box-shadow: none;
+    border-color: rgba(0,0,0,0.20);
+  }
+
+  pre .code-copy {
+    display: none !important;
+  }
+
+  pre.codeblock::before,
+  pre.terminal::before {
+    color: rgba(0,0,0,0.55);
+  }
+}

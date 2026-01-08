@@ -1,339 +1,317 @@
-# hash.vit — Muffin (Vitte) — MAX
-#
-# Hashing / fingerprints / content digests:
-# - stable hashing for paths + file content + argv + env
-# - used for cache keys (Steel/cache) and incremental builds
-# - algorithm negotiation: sha256 default, optionally blake3 if provided by runtime
-#
-# Design:
-# - pure functions, deterministic
-# - no hidden I/O unless explicitly requested (hash_file*)
-# - canonical encoding for structured data (KV, lists)
-#
-# Blocks: .end only
-# -----------------------------------------------------------------------------
+// src/hash.rs
+//
+// Muffin — hash (stable hashing + fingerprints)
+//
+// Purpose:
+// - Provide fast, dependency-free hashing primitives used for:
+//   - rule ids, job ids
+//   - cache keys / fingerprints
+//   - content hashing (optional)
+//   - deterministic build graph keys
+//
+// Features:
+// - FNV-1a 64-bit (fast, stable across platforms)
+// - SplitMix-like mixer (for key diffusion)
+// - Fingerprint builder with typed updates
+// - Optional file hashing helpers (read + hash) with size limit
+//
+// Notes:
+// - Not cryptographically secure.
+// - If you need crypto-grade hashing (SHA-256), wire an external crate; keep this as baseline.
 
-mod muffin/hash
+#![allow(dead_code)]
 
-use std/string
-use std/result
-use muffin/externs
+use std::fmt;
+use std::hash::Hasher;
+use std::io;
+use std::path::{Path, PathBuf};
 
-export all
+/* ============================== errors ============================== */
 
-# -----------------------------------------------------------------------------
-# Errors
-# -----------------------------------------------------------------------------
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum HashError {
+    Io { path: PathBuf, op: &'static str, message: String },
+    TooLarge { path: PathBuf, limit: usize, actual: usize },
+}
 
-enum HashErrKind
-  Io
-  Algo
-.end
+impl fmt::Display for HashError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            HashError::Io { path, op, message } => write!(f, "{} {}: {}", op, path.display(), message),
+            HashError::TooLarge { path, limit, actual } => write!(
+                f,
+                "file too large {}: {} > {} bytes",
+                path.display(),
+                actual,
+                limit
+            ),
+        }
+    }
+}
 
-struct HashError
-  kind: HashErrKind
-  message: str
-  path: str
-.end
+impl std::error::Error for HashError {}
 
-type HashRes[T] = result::Result[T, HashError]
+fn io_err(path: &Path, op: &'static str, e: io::Error) -> HashError {
+    HashError::Io {
+        path: path.to_path_buf(),
+        op,
+        message: e.to_string(),
+    }
+}
 
-fn hash_err(kind: HashErrKind, msg: str, path: str) -> HashError
-  ret HashError(kind: kind, message: msg, path: path)
-.end
+/* ============================== fnv1a 64 ============================== */
 
-# -----------------------------------------------------------------------------
-# Algorithm
-# -----------------------------------------------------------------------------
+pub const FNV_OFFSET_BASIS_64: u64 = 0xcbf29ce484222325;
+pub const FNV_PRIME_64: u64 = 0x100000001b3;
 
-enum HashAlgo
-  Sha256
-  Blake3
-.end
+#[derive(Clone)]
+pub struct Fnv1a64 {
+    state: u64,
+}
 
-fn algo_to_str(a: HashAlgo) -> str
-  if a == HashAlgo::Sha256 ret "sha256" .end
-  ret "blake3"
-.end
+impl Default for Fnv1a64 {
+    fn default() -> Self {
+        Self { state: FNV_OFFSET_BASIS_64 }
+    }
+}
 
-fn parse_algo(s0: str) -> HashAlgo
-  let s: str = string::lower(s0)
-  if s == "blake3" || s == "b3" ret HashAlgo::Blake3 .end
-  ret HashAlgo::Sha256
-.end
+impl Fnv1a64 {
+    pub fn new() -> Self {
+        Self::default()
+    }
 
-fn default_algo() -> HashAlgo
-  # env override
-  let a: str = env_get("MUFFIN_HASH")
-  if a != "" ret parse_algo(a) .end
-  ret HashAlgo::Sha256
-.end
+    pub fn reset(&mut self) {
+        self.state = FNV_OFFSET_BASIS_64;
+    }
 
-# -----------------------------------------------------------------------------
-# Digest type
-# -----------------------------------------------------------------------------
+    pub fn value(&self) -> u64 {
+        self.state
+    }
 
-struct Digest
-  algo: HashAlgo
-  hex: str
-.end
+    pub fn write_bytes(&mut self, bytes: &[u8]) {
+        let mut h = self.state;
+        for &b in bytes {
+            h ^= b as u64;
+            h = h.wrapping_mul(FNV_PRIME_64);
+        }
+        self.state = h;
+    }
 
-fn digest(algo: HashAlgo, hex: str) -> Digest
-  ret Digest(algo: algo, hex: hex)
-.end
+    pub fn write_u8(&mut self, v: u8) {
+        self.write_bytes(&[v]);
+    }
 
-fn digest_str(d: Digest) -> str
-  ret algo_to_str(d.algo) + ":" + d.hex
-.end
+    pub fn write_u32(&mut self, v: u32) {
+        self.write_bytes(&v.to_le_bytes());
+    }
 
-# -----------------------------------------------------------------------------
-# Canonical encoding helpers
-# -----------------------------------------------------------------------------
-# We encode data as UTF-8 text, with separators that are unambiguous:
-# - items are length-prefixed: <len>:<bytes>
-# - sequences start with "L" and maps start with "M"
-# - map entries sorted by key, each entry: key + value (both length-prefixed)
+    pub fn write_u64(&mut self, v: u64) {
+        self.write_bytes(&v.to_le_bytes());
+    }
 
-fn enc_str(s: str) -> str
-  ret externs::i32_to_str(string::len(s)) + ":" + s
-.end
+    pub fn write_i64(&mut self, v: i64) {
+        self.write_bytes(&v.to_le_bytes());
+    }
 
-fn enc_bool(b: bool) -> str
-  ret b ? "1" : "0"
-.end
+    pub fn write_bool(&mut self, v: bool) {
+        self.write_u8(if v { 1 } else { 0 });
+    }
 
-fn enc_i64(x: i64) -> str
-  ret i64_to_str(x)
-.end
+    pub fn write_str(&mut self, s: &str) {
+        // length-delimited to avoid ambiguity
+        self.write_u32(s.len() as u32);
+        self.write_bytes(s.as_bytes());
+    }
 
-fn enc_list_str(xs: list[str]) -> str
-  let mut out: str = "L" + externs::i32_to_str(len(xs)) + ":"
-  let mut i: i32 = 0
-  while i < len(xs)
-    out = out + enc_str(xs[i])
-    i = i + 1
-  .end
-  ret out
-.end
+    pub fn write_path_norm(&mut self, p: &Path) {
+        // normalize separators for cross-platform determinism
+        let s = p.to_string_lossy().replace('\\', "/");
+        self.write_str(&s);
+    }
+}
 
-fn enc_map_str(m: map[str, str]) -> str
-  # sort keys for stability
-  let ks: list[str] = sort_str(map_keys_str(m))
-  let mut out: str = "M" + externs::i32_to_str(len(ks)) + ":"
-  let mut i: i32 = 0
-  while i < len(ks)
-    let k: str = ks[i]
-    let v: str = map_get_str(m, k)
-    out = out + enc_str(k) + enc_str(v)
-    i = i + 1
-  .end
-  ret out
-.end
+impl Hasher for Fnv1a64 {
+    fn write(&mut self, bytes: &[u8]) {
+        self.write_bytes(bytes);
+    }
 
-# -----------------------------------------------------------------------------
-# Core hashing (string -> digest)
-# -----------------------------------------------------------------------------
+    fn finish(&self) -> u64 {
+        self.state
+    }
+}
 
-fn hash_text(algo: HashAlgo, text: str) -> HashRes[Digest]
-  if algo == HashAlgo::Sha256
-    let rr: result::Result[str, str] = sys_sha256_hex(text)
-    if result::is_err(rr)
-      ret result::Err(hash_err(HashErrKind::Algo, "sha256 not available", ""))
-    .end
-    ret result::Ok(digest(algo, result::unwrap(rr)))
-  .end
+/* ============================== mixing ============================== */
 
-  # blake3
-  let rr2: result::Result[str, str] = sys_blake3_hex(text)
-  if result::is_err(rr2)
-    ret result::Err(hash_err(HashErrKind::Algo, "blake3 not available", ""))
-  .end
-  ret result::Ok(digest(algo, result::unwrap(rr2)))
-.end
+/// Non-crypto mixing (SplitMix64 finalizer style).
+pub fn mix64(mut x: u64) -> u64 {
+    x ^= x >> 30;
+    x = x.wrapping_mul(0xBF58476D1CE4E5B9);
+    x ^= x >> 27;
+    x = x.wrapping_mul(0x94D049BB133111EB);
+    x ^= x >> 31;
+    x
+}
 
-fn hash_concat(algo: HashAlgo, parts: list[str]) -> HashRes[Digest]
-  # join with canonical encoding (length-prefix to avoid collisions)
-  let mut buf: str = "P" + externs::i32_to_str(len(parts)) + ":"
-  let mut i: i32 = 0
-  while i < len(parts)
-    buf = buf + enc_str(parts[i])
-    i = i + 1
-  .end
-  ret hash_text(algo, buf)
-.end
+/* ============================== one-shot hashing ============================== */
 
-# -----------------------------------------------------------------------------
-# High-level fingerprints
-# -----------------------------------------------------------------------------
+pub fn hash64_bytes(bytes: &[u8]) -> u64 {
+    let mut h = Fnv1a64::new();
+    h.write_bytes(bytes);
+    h.value()
+}
 
-fn hash_argv(algo: HashAlgo, argv: list[str]) -> HashRes[Digest]
-  let payload: str = "argv:" + enc_list_str(argv)
-  ret hash_text(algo, payload)
-.end
+pub fn hash64_str(s: &str) -> u64 {
+    let mut h = Fnv1a64::new();
+    h.write_str(s);
+    h.value()
+}
 
-fn hash_env_subset(algo: HashAlgo, keys: list[str]) -> HashRes[Digest]
-  # keys sorted; missing env -> empty
-  let ks: list[str] = sort_str(keys)
-  let mut m: map[str, str] = map_new_str()
-  let mut i: i32 = 0
-  while i < len(ks)
-    let k: str = ks[i]
-    m = map_put_str(m, k, env_get(k))
-    i = i + 1
-  .end
-  let payload: str = "env:" + enc_map_str(m)
-  ret hash_text(algo, payload)
-.end
+pub fn hash64_path_norm(p: &Path) -> u64 {
+    let mut h = Fnv1a64::new();
+    h.write_path_norm(p);
+    h.value()
+}
 
-fn hash_paths(algo: HashAlgo, paths: list[str]) -> HashRes[Digest]
-  # normalize slash + sort
-  let ps: list[str] = sort_str(norm_paths(paths))
-  let payload: str = "paths:" + enc_list_str(ps)
-  ret hash_text(algo, payload)
-.end
+/* ============================== fingerprint builder ============================== */
 
-fn hash_step_key(algo: HashAlgo, tool: str, argv: list[str], cwd: str, env: map[str, str], inputs: list[str], outputs: list[str]) -> HashRes[Digest]
-  let payload: str =
-    "step:" +
-    enc_str(tool) +
-    enc_str(cwd) +
-    enc_list_str(argv) +
-    enc_map_str(env) +
-    enc_list_str(sort_str(norm_paths(inputs))) +
-    enc_list_str(sort_str(norm_paths(outputs)))
-  ret hash_text(algo, payload)
-.end
+#[derive(Debug, Clone)]
+pub struct Fingerprint {
+    pub raw: u64,
+}
 
-fn hash_target_key(algo: HashAlgo, name: str, kind: str, deps: list[str], steps_keys: list[Digest]) -> HashRes[Digest]
-  let mut sk: list[str] = []
-  let mut i: i32 = 0
-  while i < len(steps_keys)
-    sk = sk + [digest_str(steps_keys[i])]
-    i = i + 1
-  .end
-  sk = sort_str(sk)
+impl fmt::Display for Fingerprint {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:016x}", self.raw)
+    }
+}
 
-  let payload: str =
-    "target:" +
-    enc_str(name) +
-    enc_str(kind) +
-    enc_list_str(sort_str(deps)) +
-    enc_list_str(sk)
+#[derive(Clone)]
+pub struct Fingerprinter {
+    h: Fnv1a64,
+}
 
-  ret hash_text(algo, payload)
-.end
+impl Default for Fingerprinter {
+    fn default() -> Self {
+        Self { h: Fnv1a64::new() }
+    }
+}
 
-# -----------------------------------------------------------------------------
-# File hashing
-# -----------------------------------------------------------------------------
+impl Fingerprinter {
+    pub fn new() -> Self {
+        Self::default()
+    }
 
-fn hash_file_hex(algo: HashAlgo, path: str) -> HashRes[Digest]
-  if !fs_exists(path)
-    ret result::Err(hash_err(HashErrKind::Io, "file not found", path))
-  .end
+    pub fn put_u64(&mut self, v: u64) -> &mut Self {
+        self.h.write_u64(v);
+        self
+    }
 
-  if algo == HashAlgo::Sha256
-    let rr: result::Result[str, str] = fs_sha256_hex(path)
-    if result::is_err(rr)
-      ret result::Err(hash_err(HashErrKind::Io, "sha256 file failed", path))
-    .end
-    ret result::Ok(digest(algo, result::unwrap(rr)))
-  .end
+    pub fn put_i64(&mut self, v: i64) -> &mut Self {
+        self.h.write_i64(v);
+        self
+    }
 
-  let rr2: result::Result[str, str] = fs_blake3_hex(path)
-  if result::is_err(rr2)
-    ret result::Err(hash_err(HashErrKind::Algo, "blake3 file not available", path))
-  .end
-  ret result::Ok(digest(algo, result::unwrap(rr2)))
-.end
+    pub fn put_bool(&mut self, v: bool) -> &mut Self {
+        self.h.write_bool(v);
+        self
+    }
 
-fn hash_files_aggregate(algo: HashAlgo, paths: list[str]) -> HashRes[Digest]
-  # stable: sort normalized paths; aggregate "path + digest"
-  let ps: list[str] = sort_str(norm_paths(paths))
-  let mut parts: list[str] = []
-  let mut i: i32 = 0
-  while i < len(ps)
-    let p: str = ps[i]
-    let d: HashRes[Digest] = hash_file_hex(algo, p)
-    if result::is_err(d) ret d .end
-    parts = parts + [enc_str(p) + enc_str(result::unwrap(d).hex)]
-    i = i + 1
-  .end
-  ret hash_concat(algo, parts)
-.end
+    pub fn put_str(&mut self, s: &str) -> &mut Self {
+        self.h.write_str(s);
+        self
+    }
 
-# -----------------------------------------------------------------------------
-# Utilities
-# -----------------------------------------------------------------------------
+    pub fn put_path(&mut self, p: &Path) -> &mut Self {
+        self.h.write_path_norm(p);
+        self
+    }
 
-fn norm_paths(xs: list[str]) -> list[str]
-  let mut out: list[str] = []
-  let mut i: i32 = 0
-  while i < len(xs)
-    out = out + [norm_path(xs[i])]
-    i = i + 1
-  .end
-  ret out
-.end
+    pub fn put_kv_sorted(&mut self, map: &std::collections::BTreeMap<String, String>) -> &mut Self {
+        self.h.write_u32(map.len() as u32);
+        for (k, v) in map {
+            self.h.write_str(k);
+            self.h.write_str(v);
+        }
+        self
+    }
 
-fn norm_path(p: str) -> str
-  # slash normalize + trim trailing (except root)
-  let mut out: str = ""
-  let mut i: i32 = 0
-  let mut prev_sep: bool = false
-  while i < string::len(p)
-    let c: i32 = string::codepoint_at(p, i)
-    i = i + 1
-    if c == 92 || c == 47
-      if !prev_sep out = out + "/" .end
-      prev_sep = true
-    else
-      out = out + string::from_codepoint(c)
-      prev_sep = false
-    .end
-  .end
-  while string::len(out) > 1 && string::ends_with(out, "/")
-    out = string::slice(out, 0, string::len(out) - 1)
-  .end
-  if out == "" ret "." .end
-  ret out
-.end
+    pub fn finish(&self) -> Fingerprint {
+        Fingerprint { raw: mix64(self.h.value()) }
+    }
+}
 
-fn sort_str(xs: list[str]) -> list[str]
-  let mut a: list[str] = xs
-  let mut i: i32 = 0
-  while i < len(a)
-    let mut j: i32 = i + 1
-    while j < len(a)
-      if a[j] < a[i]
-        let t: str = a[i]
-        a[i] = a[j]
-        a[j] = t
-      .end
-      j = j + 1
-    .end
-    i = i + 1
-  .end
-  ret a
-.end
+/* ============================== file hashing ============================== */
 
-# -----------------------------------------------------------------------------
-# Externs
-# -----------------------------------------------------------------------------
+pub const DEFAULT_MAX_FILE_BYTES: usize = 64 * 1024 * 1024; // 64 MiB
 
-extern fn env_get(name: str) -> str
+pub fn hash_file_fnv1a64(path: &Path) -> Result<u64, HashError> {
+    hash_file_fnv1a64_limited(path, DEFAULT_MAX_FILE_BYTES)
+}
 
-extern fn fs_exists(path: str) -> bool
-extern fn fs_sha256_hex(path: str) -> result::Result[str, str]
-extern fn fs_blake3_hex(path: str) -> result::Result[str, str]
+pub fn hash_file_fnv1a64_limited(path: &Path, max_bytes: usize) -> Result<u64, HashError> {
+    let mut f = std::fs::File::open(path).map_err(|e| io_err(path, "open", e))?;
 
-extern fn sys_sha256_hex(text: str) -> result::Result[str, str]
-extern fn sys_blake3_hex(text: str) -> result::Result[str, str]
+    if let Ok(md) = f.metadata() {
+        let len = md.len() as usize;
+        if max_bytes > 0 && len > max_bytes {
+            return Err(HashError::TooLarge {
+                path: path.to_path_buf(),
+                limit: max_bytes,
+                actual: len,
+            });
+        }
+    }
 
-extern fn map_new_str() -> map[str, str]
-extern fn map_put_str(m: map[str, str], k: str, v: str) -> map[str, str]
-extern fn map_get_str(m: map[str, str], k: str) -> str
-extern fn map_keys_str(m: map[str, str]) -> list[str]
+    let mut h = Fnv1a64::new();
+    let mut buf = [0u8; 8192];
+    let mut total = 0usize;
 
-extern fn i64_to_str(x: i64) -> str
-extern fn len[T](xs: list[T]) -> i32
+    loop {
+        let n = f.read(&mut buf).map_err(|e| io_err(path, "read", e))?;
+        if n == 0 {
+            break;
+        }
+        total += n;
+        if max_bytes > 0 && total > max_bytes {
+            return Err(HashError::TooLarge {
+                path: path.to_path_buf(),
+                limit: max_bytes,
+                actual: total,
+            });
+        }
+        h.write_bytes(&buf[..n]);
+    }
+
+    Ok(h.value())
+}
+
+use std::io::Read;
+
+/* ============================== tests ============================== */
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fnv_is_stable() {
+        assert_eq!(hash64_str("x"), hash64_str("x"));
+        assert_ne!(hash64_str("x"), hash64_str("y"));
+    }
+
+    #[test]
+    fn fingerprint_builder() {
+        let mut fp = Fingerprinter::new();
+        fp.put_str("rule").put_u64(42).put_bool(true);
+        let a = fp.finish().raw;
+        let b = fp.finish().raw;
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn mix_changes_distribution() {
+        let a = mix64(1);
+        let b = mix64(2);
+        assert_ne!(a, b);
+    }
+}
