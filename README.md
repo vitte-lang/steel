@@ -4,6 +4,7 @@
 
 Muffin est la couche de configuration **déclarative** du build Vitte. Il **parse**, **valide** et **résout** un workspace (packages, profils, toolchains, targets), puis **génère un artefact de configuration stable** `Muffinconfig.mff` (Muffinconfig). Cet artefact est ensuite **consommé par Vitte** pour appliquer les règles de construction et exécuter les étapes de compilation de manière déterministe.
 
+
 ## Points forts
 
 - Configuration declarative, separee de l'execution.
@@ -12,6 +13,18 @@ Muffin est la couche de configuration **déclarative** du build Vitte. Il **pars
 - Introspection via commandes `print` et export de graphes.
 - Mode dev via `build muffin -watch` et diagnostics `-why` / `-graph`.
 - Overrides non-invasifs via `-D KEY=VALUE` (sans modifier le buildfile).
+
+## Uniformisation totale (langages + machines)
+
+Muffin vise une **uniformisation totale** du build : même modèle, mêmes commandes et mêmes sorties logiques, quel que soit le langage (Vitte, C/C++, C#, Rust, …) et quel que soit l’environnement (machines anciennes ou récentes, OS/arch hétérogènes).
+
+- **Langage-agnostique** : l’intégration se fait via des **tools déclaratifs** (compile/link/archive/test/package), connectés dans un graphe typé.
+- **Machine-agnostique** : l’exécution est pilotée par des **targets** (triples OS/arch) et des politiques stables (paths normalisés, cache, sandbox).
+- **Contrat unique** : la configuration est gelée dans `Muffinconfig.mff` et consommée ensuite de manière déterministe.
+- **Reproductibilité** : cache content-addressed + empreinte toolchain + policy capsule.
+- **Observabilité** : diagnostics et introspection (`print`, `-why`, `-graph`) pour outiller CI, IDE et scripts.
+
+L’objectif est de pouvoir orchestrer des projets **mono-langage** comme des projets **mixtes**, sur des environnements modernes comme sur des configurations plus anciennes, sans divergence de modèle ni de workflow.
 
 ## Pipeline recommande
 
@@ -56,29 +69,40 @@ Pendant la construction, les sources `*.vitte` sont transformées en artefacts (
 
 ### Segmentation par répertoire (fichiers `*.muff`)
 
-Muffin peut, en option, **segmenter** le workspace en unités par répertoire et **générer un fichier de configuration `*.muff` par dossier** afin de figer localement :
+Chaque répertoire du projet peut contenir, à la racine du dossier, un fichier **`main.muff`** (et sa syntaxe associée). Ce fichier décrit à la fois :
 
-- la liste exhaustive des sources et dépendances associées au dossier,
-- les paramètres effectifs (profil/target/toolchain),
-- les sorties attendues (librairie, artefact de compilation, exécutable).
+- la **configuration locale** (paramètres effectifs, profil/target/toolchain, variables),
+- et les **règles de construction** du dossier (inputs, outputs, liaisons, exécution).
 
-Exemple d’unité (dossier) :
+Muffin fournit les binaires `muffin` / `Muffin` utilisés pour orchestrer ce flux.
 
-- Entrée (point d’ancrage du dossier) : `src/in/<folder>/_.vitte`
-- Sources associées (exemples) :
-  - `src/program/lib.vitte`
-  - `src/program/error.vitte`
-  - `src/program/read.vitte`
-  - `src/program/output.vitte`
-- Sorties (selon target) :
-  - `src/out/lib/<compilation_folder>.va` : bibliothèque statique
-  - `src/out/bin/<compilation_folder>.vo` : artefact de compilation
-  - Windows uniquement : `src/out/bin/<compilation_folder>.exe`
+#### Agrégation (fichier maître)
 
-Le répertoire `/muffin` peut contenir un fichier d’ancrage `main.muff` (nom configurable) servant de point d’entrée de configuration/build.
-Par défaut, les liaisons entre unités (`wire`) peuvent être automatisées au niveau workspace (via le buildfile), puis gelées dans `Muffinconfig.mff`.
+Par défaut, l’ensemble des fichiers `main.muff` présents dans les sous-répertoires peut être **intégré** dans un fichier maître **`master.muff`** à la racine du dépôt. `master.muff` sert de point d’ancrage du build global et permet de déclencher un build workspace tout en conservant une segmentation par dossier.
 
-Les builds et artefacts intermédiaires sont isolés dans un répertoire interne (recommandé) : `./.muffin/` (ou `./.muff/` selon la configuration).
+#### Configuration gelée et artefacts
+
+Lors de la phase de configuration, `muffin` / `Muffin` peut **générer un fichier `.mff`** (configuration gelée) destiné à une compilation globale. Cette configuration est ensuite utilisée pour produire des artefacts binaires Vitte :
+
+- **`.va`** : sortie de bibliothèque statique (si le dossier ou la target déclare une librairie),
+- **`.vo`** : sortie de compilation standard (artefact de compilation),
+- **Windows** : un exécutable **`.exe`** peut être produit en plus des artefacts `.vo`.
+
+Les fichiers de compilation produisent typiquement des binaires **`.vo`**.
+
+#### Commande de build
+
+La construction d’un dossier (ou du workspace via `master.muff`) s’effectue en exécutant le plan principal, par exemple :
+
+```text
+Muffin build main.muff
+```
+
+Le build génère les sorties dans un répertoire d’artefacts **par dossier** (par convention `./.muffin/` ou `./.muff/` selon la configuration), tant qu’aucune erreur n’est détectée pendant la compilation.
+
+#### Projets multi-outils
+
+Le buildfile reste générique : Muffin est capable d’orchestrer des projets Vitte et des projets mixtes via des **tools** déclaratifs (par exemple pour C/C++/C#/Rust), tant que les toolchains et les étapes (compile/link/archive/package) sont décrites de manière explicite.
 
 ### Flux de traitement
 
@@ -270,6 +294,33 @@ print targets
 graph --format dot
 why vittec_driver::vittec
 ```
+
+### Décompilation (audit de build)
+
+Muffin expose une commande de **décompilation** orientée audit : elle permet de relire un artefact de configuration gelée **`.mff`** (ou un buildfile **`.muff`**) et de reconstituer une vue complète du projet : architecture, graphe, inputs/outputs, outils utilisés et paramètres.
+
+- `decompile <project.mff>` : affiche l’architecture du build (DAG), la liste des fichiers, les ports, les toolchains et l’ensemble des valeurs résolues.
+- `decompile <main.muff>` : affiche la configuration et les règles telles qu’elles seront gelées (vue normalisée), sans exécuter la construction.
+
+Exemples :
+
+```text
+muffin decompile projet.mff
+muffin decompile src/module/main.muff
+muffin decompile projet.mff --format json
+muffin decompile projet.mff --graph dot
+```
+
+Un fichier **`.mff`** enregistre la configuration **normalisée** et la **trace de compilation** (inputs, globs développés, règles, outils, arguments, empreintes). Il garantit une configuration uniforme sur toutes les machines.
+
+Un buildfile **`.muff`** (ou un ensemble de `main.muff`) peut également être décompilé sur n’importe quelle machine pour retrouver :
+
+- les listes d’inputs (fichiers, globs),
+- les dépendances et l’ordre d’exécution,
+- les bibliothèques/plugins référencés,
+- les sorties attendues.
+
+Limite : la reconstruction effective des binaires dépend de la **disponibilité** et de la **compatibilité** des toolchains (langages compilés, versions, targets). Muffin fournit la description complète ; la machine doit disposer des compilateurs/outils compatibles pour reproduire les artefacts.
 
 ### Maintenance
 
@@ -463,11 +514,11 @@ paths
 
 - `muffin` ou `Muffinfile` : configuration principale.
 - `*.vitte` : sources du projet.
-- `Muffinconfig.mff` : configuration résolue (artefact canonique), consommée par Vitte.
+- `Muffinconfig.mff` : configuration gelée et normalisée (artefact canonique) + trace outillable (graph, inputs, outils, empreintes), consommée par Vitte.
 - `*.muf` : buildfiles (si le projet segmente la configuration par dossier/workspace).
 - `*.muff` : configurations segmentées par répertoire (optionnel, générées ou maintenues selon le mode).
 - `muffin/main.muff` : point d’ancrage de configuration/build (nom configurable, optionnel).
-- `*.va` / `*.vo` : artefacts de build (librairie statique / artefact de compilation), selon targets et plateformes.
+- Artefacts de build (selon targets/plateformes) : `*.vo` (Vitte compilation), `*.va` (Vitte librairie statique), `*.o` / `*.obj` (C/C++ objets), `*.a` / `*.lib` (archives statiques), `*.so` / `*.dylib` / `*.dll` (librairies partagées), `*.exe` (exécutables Windows).
 
 ## Documentation
 
