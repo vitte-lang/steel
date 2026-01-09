@@ -14,7 +14,7 @@
 //!
 //! Note: filename kept as `dependancies.rs` to match existing repo naming.
 
-use std::collections::{BTreeMap, BTreeSet, VecDeque};
+use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 
 pub type NodeId = String;
@@ -200,27 +200,24 @@ pub fn validate_graph(graph: &DiGraph, declared_nodes: Option<&BTreeSet<NodeId>>
 pub fn topo_sort(graph: &DiGraph) -> std::result::Result<Vec<NodeId>, TopoError> {
     let mut indeg = graph.indegrees();
 
-    // Use a min-queue by lexicographic ordering.
-    let mut q: VecDeque<NodeId> = VecDeque::new();
+    // Use a deterministic min-queue by lexicographic ordering.
+    let mut ready: BTreeSet<NodeId> = BTreeSet::new();
     for (n, d) in &indeg {
         if *d == 0 {
-            q.push_back(n.clone());
+            ready.insert(n.clone());
         }
     }
-
-    // Keep q sorted deterministically by re-sorting on each insertion batch.
-    let mut qv: Vec<NodeId> = q.into_iter().collect();
-    qv.sort();
     let mut out = Vec::with_capacity(indeg.len());
 
-    while let Some(n) = pop_front_sorted(&mut qv) {
+    while let Some(n) = ready.iter().next().cloned() {
+        ready.remove(&n);
         out.push(n.clone());
         if let Some(tos) = graph.edges.get(&n) {
             for to in tos {
                 if let Some(d) = indeg.get_mut(to) {
                     *d = d.saturating_sub(1);
                     if *d == 0 {
-                        insert_sorted(&mut qv, to.clone());
+                        ready.insert(to.clone());
                     }
                 }
             }
@@ -305,18 +302,6 @@ pub fn find_cycle(graph: &DiGraph) -> Option<Vec<NodeId>> {
     }
 
     None
-}
-
-fn pop_front_sorted(v: &mut Vec<NodeId>) -> Option<NodeId> {
-    if v.is_empty() { None } else { Some(v.remove(0)) }
-}
-
-fn insert_sorted(v: &mut Vec<NodeId>, item: NodeId) {
-    // binary insertion
-    match v.binary_search(&item) {
-        Ok(_) => {} // already present (shouldn't happen)
-        Err(pos) => v.insert(pos, item),
-    }
 }
 
 /// Convenience: build a graph from explicit lists.

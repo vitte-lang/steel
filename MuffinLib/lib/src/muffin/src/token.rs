@@ -11,6 +11,7 @@
 //! Dépend de : crate::span::{Span, FileId, Pos} (ou équivalent).
 //! Optionnel: crate::diag si tu veux pousser erreurs lexicales ailleurs.
 
+use std::cmp::min;
 use std::fmt;
 
 use crate::span::{FileId, Pos, Span};
@@ -386,13 +387,13 @@ impl<'a> TokCursor<'a> {
 ///
 /// Le lexer produit les tokens utilisés par parser.rs.
 /// Règles:
-//! - comments: `#` jusqu’à fin de ligne
-//! - strings: " ... " avec escapes \n \r \t \" \\
-//! - ints: -? [0-9]+ (parser décidera si allowed)
-//! - bool: true/false => BoolLit
-//! - `.end` => EndBlock (token unique)
-//! - ident: [A-Za-z_][A-Za-z0-9_.-]* (inclut '.' '-' pour types/ref path)
-//! - punct: ()[]{} , . : ; = -> / * + - | & < > ! ? _
+// - comments: `#` jusqu’à fin de ligne
+// - strings: " ... " avec escapes \n \r \t \" \\
+// - ints: -? [0-9]+ (parser décidera si allowed)
+// - bool: true/false => BoolLit
+// - `.end` => EndBlock (token unique)
+// - ident: [A-Za-z_][A-Za-z0-9_.-]* (inclut '.' '-' pour types/ref path)
+// - punct: ()[]{} , . : ; = -> / * + - | & < > ! ? _
 
 pub fn lex(file: FileId, input: &str) -> TokenStream {
     let mut lx = Lexer::new(file, input);

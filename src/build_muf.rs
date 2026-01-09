@@ -54,7 +54,7 @@ impl fmt::Display for BuildMufError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             BuildMufError::Io { op, path, err } => {
-                write!(f, "IO error during {op} on {}: {err}", path.display())
+                write!(f, "I/O error during {op} on {}: {err}", path.display())
             }
             BuildMufError::Arg { msg } => write!(f, "argument error: {msg}"),
             BuildMufError::Validate { msg } => write!(f, "validation error: {msg}"),
@@ -329,7 +329,7 @@ pub fn parse_args(args: &[String]) -> Result<BuildMufOptions> {
     Ok(o)
 }
 
-fn help_text() -> &'static str {
+pub fn help_text() -> &'static str {
     "build muffin — Configuration phase
 
 Usage:

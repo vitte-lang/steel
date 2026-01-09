@@ -20,7 +20,7 @@ pub mod index;
 
 // Optional modules (enable as files exist).
 // pub mod codec;
-// pub mod reader;
+pub mod reader;
 // pub mod writer;
 // pub mod verify;
 

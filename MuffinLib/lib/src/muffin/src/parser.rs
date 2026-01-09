@@ -126,7 +126,7 @@ pub fn parse_muf(source: &str) -> Result<MufFile, ParseError> {
 // -------------------------------------------------------------------------------------------------
 
 struct Parser<'a> {
-    src: &'a str,
+    _src: &'a str,
     lines: Vec<&'a str>,
 }
 
@@ -134,7 +134,7 @@ impl<'a> Parser<'a> {
     fn new(src: &'a str) -> Self {
         // Keep line endings out; normalize `\r\n` by trimming trailing `\r` per-line.
         let lines: Vec<&str> = src.split('\n').collect();
-        Self { src, lines }
+        Self { _src: src, lines }
     }
 
     fn parse_file(&self) -> Result<MufFile, ParseError> {

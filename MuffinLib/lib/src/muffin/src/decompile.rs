@@ -26,13 +26,13 @@
 //!
 //! This file does not implement argument parsing; it provides the callable API.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::fmt;
 use std::io;
 use std::path::{Component, Path, PathBuf};
 
-use crate::mff::index::{normalize_bundle_path, EntryKind, MffEntry};
-use crate::mff::reader::{MffReader, ReadError};
+use muffin_mff::index::{EntryKind, MffEntry};
+use muffin_mff::reader::{MffReader, ReadError};
 
 #[derive(Debug)]
 pub enum DecompileError {

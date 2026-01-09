@@ -1,0 +1,99 @@
+# =========================
+# Build dirs (make/cmake/ninja/custom)
+# =========================
+/build/
+/build-*/
+/build_*/
+/build.*      # ex: build.debug, build.release
+/out/
+/bin/
+/dist/
+/target/      # Rust/Cargo (si présent)
+
+# =========================
+# Make artifacts
+# =========================
+*.o
+*.obj
+*.lo
+*.la
+*.a
+*.lib
+*.so
+*.so.*
+*.dylib
+*.dll
+*.exe
+*.out
+*.app
+*.dSYM/
+
+# Dépendances générées par make/gcc/clang
+*.d
+*.dep
+*.mk
+*.cmd
+
+# Logs & traces
+*.log
+*.tmp
+*.swp
+*.swo
+*~
+
+# =========================
+# CMake / Ninja (si utilisés)
+# =========================
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
+*.cmake
+.ninja_deps
+.ninja_log
+build.ninja
+compile_commands.json
+
+# =========================
+# Autotools (si utilisés)
+# =========================
+aclocal.m4
+autom4te.cache/
+compile
+config.cache
+config.log
+config.status
+configure
+depcomp
+install-sh
+missing
+ltmain.sh
+m4/
+Makefile.in
+
+# =========================
+# IDE / OS
+# =========================
+.vscode/
+.idea/
+*.iml
+.DS_Store
+Thumbs.db
+
+# =========================
+# Coverage / profiling
+# =========================
+*.gcda
+*.gcno
+*.gcov
+*.profraw
+*.profdata
+
+# =========================
+# Packaging artifacts
+# =========================
+*.tar
+*.tar.gz
+*.tgz
+*.zip
+*.7z

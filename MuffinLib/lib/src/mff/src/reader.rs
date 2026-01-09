@@ -26,7 +26,8 @@ use std::io::{self, Read, Seek, SeekFrom};
 use std::path::{Path, PathBuf};
 
 use super::index::{
-    Compression, Endian, EntryId, EntryKind, IndexError, MffEntry, MffIndex, MffVersion, MFF_MAGIC,
+    Compression, Endian, EntryFlags, EntryId, EntryKind, IndexError, MffEntry, MffIndex, MffVersion,
+    MFF_MAGIC,
 };
 
 #[derive(Debug)]
@@ -242,16 +243,20 @@ impl<R: Read + Seek> MffReader<R> {
         path: impl AsRef<Path>,
         out_dir: impl AsRef<Path>,
     ) -> Result<PathBuf, ReadError> {
-        let e = self.entry_by_path(path)?;
-        let rel = e
-            .path
-            .as_ref()
-            .ok_or_else(|| ReadError::Corrupt("entry has no path"))?;
+        let (id, rel) = {
+            let e = self.entry_by_path(path)?;
+            let rel = e
+                .path
+                .as_ref()
+                .ok_or_else(|| ReadError::Corrupt("entry has no path"))?
+                .clone();
+            (e.id, rel)
+        };
         let out = out_dir.as_ref().join(rel);
         if let Some(parent) = out.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        self.extract_entry_to(e.id, &out)?;
+        self.extract_entry_to(id, &out)?;
         Ok(out)
     }
 
@@ -269,8 +274,149 @@ impl<R: Read + Seek> MffReader<R> {
 }
 
 /* ------------------------------ Binary layout ----------------------------- */
-/*
-   This is a concrete minimal layout used by this generated reader.
-   If your real format differs, edit these functions to match it.
 
-   Header (f
+fn read_header<R: Read>(r: &mut R) -> Result<MffHeader, ReadError> {
+    let mut magic = [0u8; 4];
+    r.read_exact(&mut magic)?;
+
+    let version = read_u32(r)?;
+    let endian_tag = read_u8(r)?;
+    let mut reserved = [0u8; 7];
+    r.read_exact(&mut reserved)?;
+
+    let toc_offset = read_u64(r)?;
+    let toc_size = read_u64(r)?;
+
+    let version = match version {
+        1 => MffVersion::V1,
+        v => return Err(ReadError::UnsupportedVersion(v)),
+    };
+
+    let endian = match endian_tag {
+        1 => Endian::Little,
+        2 => Endian::Big,
+        e => return Err(ReadError::UnsupportedEndian(e)),
+    };
+
+    Ok(MffHeader {
+        magic,
+        version,
+        endian,
+        toc_offset,
+        toc_size,
+    })
+}
+
+fn read_index<R: Read + Seek>(
+    r: &mut R,
+    header: &MffHeader,
+    file_len: u64,
+    opts: &ReaderOptions,
+) -> Result<MffIndex, ReadError> {
+    if header.toc_offset == 0 || header.toc_size == 0 {
+        return Err(ReadError::Corrupt("toc not present"));
+    }
+
+    r.seek(SeekFrom::Start(header.toc_offset))?;
+    let count = read_u32(r)?;
+    if count > opts.max_entries {
+        return Err(ReadError::Corrupt("toc entry count too large"));
+    }
+
+    let mut index = MffIndex::new(header.version).with_endian(header.endian);
+    index.file_len = Some(file_len);
+
+    for _ in 0..count {
+        let kind = EntryKind::from_u32(read_u32(r)?);
+        let flags = read_u32(r)?;
+        let compression = read_compression(r)?;
+        let _reserved = read_u32(r)?;
+
+        let offset = read_u64(r)?;
+        let stored_size = read_u64(r)?;
+        let original_size = read_u64(r)?;
+
+        let path = read_opt_string_u16(r)?;
+        let logical = read_opt_string_u16(r)?;
+        let content_hash = read_opt_string_u16(r)?;
+        let provenance_hash = read_opt_string_u16(r)?;
+
+        let meta_count = read_u32(r)?;
+        let mut meta = std::collections::BTreeMap::new();
+        for _ in 0..meta_count {
+            let k = read_string_u16(r)?;
+            let v = read_string_u16(r)?;
+            meta.insert(k, v);
+        }
+
+        let mut e = MffEntry::new(kind)
+            .with_offset(offset)
+            .with_sizes(stored_size, original_size)
+            .with_flags(EntryFlags(flags))
+            .with_compression(compression);
+        e.path = path;
+        e.logical = logical;
+        e.content_hash = content_hash;
+        e.provenance_hash = provenance_hash;
+        e.meta = meta;
+
+        index.push_entry(e);
+    }
+
+    Ok(index)
+}
+
+fn read_u8<R: Read>(r: &mut R) -> Result<u8, ReadError> {
+    let mut b = [0u8; 1];
+    r.read_exact(&mut b)?;
+    Ok(b[0])
+}
+
+fn read_u16<R: Read>(r: &mut R) -> Result<u16, ReadError> {
+    let mut b = [0u8; 2];
+    r.read_exact(&mut b)?;
+    Ok(u16::from_le_bytes(b))
+}
+
+fn read_u32<R: Read>(r: &mut R) -> Result<u32, ReadError> {
+    let mut b = [0u8; 4];
+    r.read_exact(&mut b)?;
+    Ok(u32::from_le_bytes(b))
+}
+
+fn read_u64<R: Read>(r: &mut R) -> Result<u64, ReadError> {
+    let mut b = [0u8; 8];
+    r.read_exact(&mut b)?;
+    Ok(u64::from_le_bytes(b))
+}
+
+fn read_string_u16<R: Read>(r: &mut R) -> Result<String, ReadError> {
+    let len = read_u16(r)? as usize;
+    if len == 0 {
+        return Ok(String::new());
+    }
+    let mut buf = vec![0u8; len];
+    r.read_exact(&mut buf)?;
+    String::from_utf8(buf).map_err(|_| ReadError::Corrupt("utf8 decode failed"))
+}
+
+fn read_opt_string_u16<R: Read>(r: &mut R) -> Result<Option<String>, ReadError> {
+    let len = read_u16(r)? as usize;
+    if len == 0 {
+        return Ok(None);
+    }
+    let mut buf = vec![0u8; len];
+    r.read_exact(&mut buf)?;
+    let s = String::from_utf8(buf).map_err(|_| ReadError::Corrupt("utf8 decode failed"))?;
+    Ok(Some(s))
+}
+
+fn read_compression<R: Read>(r: &mut R) -> Result<Compression, ReadError> {
+    match read_u32(r)? {
+        0 => Ok(Compression::None),
+        1 => Ok(Compression::Deflate),
+        2 => Ok(Compression::Zstd),
+        3 => Ok(Compression::Lz4),
+        _ => Err(ReadError::Corrupt("unknown compression tag")),
+    }
+}

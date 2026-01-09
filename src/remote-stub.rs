@@ -449,7 +449,7 @@ mod tests {
     fn stub_offline() {
         let c = StubRemote::new();
         let u = Url::parse("https://example.com/").unwrap();
-        let fut = c.get_text(u);
+        let _fut = c.get_text(u);
         // can't .await in sync test without executor; test request() directly
         let req = Request::new(Method::GET, Url::parse("https://example.com/").unwrap());
         let out = futures_like_block_on(c.request(req));

@@ -7,9 +7,9 @@ Muffin est la couche de configuration **déclarative** du build Vitte. Il **pars
 
 ## Points forts
 
-- Configuration declarative, separee de l'execution.
-- Resolution deterministe et sorties facilement outillables.
-- Portabilite multi-OS/arch et profils explicites.
+- Configuration déclarative, séparée de l'exécution.
+- Résolution déterministe et sorties facilement outillables.
+- Portabilité multi-OS/arch et profils explicites.
 - Introspection via commandes `print` et export de graphes.
 - Mode dev via `build muffin -watch` et diagnostics `-why` / `-graph`.
 - Overrides non-invasifs via `-D KEY=VALUE` (sans modifier le buildfile).
@@ -26,7 +26,7 @@ Muffin vise une **uniformisation totale** du build : même modèle, mêmes comma
 
 L’objectif est de pouvoir orchestrer des projets **mono-langage** comme des projets **mixtes**, sur des environnements modernes comme sur des configurations plus anciennes, sans divergence de modèle ni de workflow.
 
-## Pipeline recommande
+## Pipeline recommandé
 
 Le pipeline est volontairement scindé en deux phases : **Configuration** puis **Construction**.
 
@@ -452,7 +452,7 @@ Conseils cross-OS :
 
 ## Format du fichier Muffin (apercu)
 
-Muffin est oriente blocs et se termine par `.end`. Commentaires `# ...`.
+Muffin est orienté blocs et se termine par `.end`. Commentaires `# ...`.
 
 ```text
 muf 2
@@ -504,7 +504,7 @@ paths
 ## Variables d'environnement
 
 - `MUFFIN_FILE` : chemin du fichier Muffin.
-- `MUFFIN_PROFILE` : profil par defaut.
+- `MUFFIN_PROFILE` : profil par défaut.
 - `MUFFIN_EMIT` : chemin par défaut de `Muffinconfig.mff`.
 - `MUFFIN_OFFLINE` : active le mode offline.
 - `VITTE_BUILD` : chemin explicite vers le driver `build`.

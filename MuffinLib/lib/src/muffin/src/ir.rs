@@ -13,13 +13,12 @@
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fmt;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
-use crate::diag::Span;
 use crate::hir::{
     ArtifactType, CacheMode, CapsuleId, EnvPolicy, FsPolicy, Interner, MakeKind, NameId, NetPolicy,
-    Origin, PortDir, PortId, PrimType, ProfileId, Ref, ResolvedRef, StoreId, StoreMode, ToolId, TypeRef,
-    Value, VarId, WireId, BakeId, PlanId,
+    Origin, PortDir, PortId, PrimType, ProfileId, ResolvedRef, StoreId, StoreMode, ToolId, TypeRef,
+    Value, VarId, BakeId,
 };
 
 /// ------------------------------------------------------------

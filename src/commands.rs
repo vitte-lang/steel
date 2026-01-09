@@ -20,6 +20,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use crate::build_muf;
+use crate::build_muf::BuildMufError;
 
 pub const CLI_NAME: &str = "muffin";
 
@@ -121,23 +122,20 @@ pub fn parse_command(args: &[String]) -> Result<Cmd> {
         "build" => parse_build(&args[2..]),
         // `resolve ...` (alias)
         "resolve" => {
-            let mut o = build_muf::parse_args(&args[2..].to_vec())
-                .map_err(|e| CommandError::Usage(e.to_string()))?;
+            let mut o = parse_build_args(&args[2..])?;
             // `resolve` is expected to emit; ensure print=false by default
             o.print = false;
             Ok(Cmd::Resolve(o))
         }
         // `check ...` (validate; best-effort)
         "check" => {
-            let mut o = build_muf::parse_args(&args[2..].to_vec())
-                .map_err(|e| CommandError::Usage(e.to_string()))?;
+            let mut o = parse_build_args(&args[2..])?;
             o.print = false;
             Ok(Cmd::Check(o))
         }
         // `print ...` (emit + print)
         "print" => {
-            let mut o = build_muf::parse_args(&args[2..].to_vec())
-                .map_err(|e| CommandError::Usage(e.to_string()))?;
+            let mut o = parse_build_args(&args[2..])?;
             o.print = true;
             Ok(Cmd::Print(o))
         }
@@ -163,8 +161,7 @@ fn parse_build(rest: &[String]) -> Result<Cmd> {
     let tool = rest[0].as_str();
     match tool {
         "muffin" => {
-            let o = build_muf::parse_args(&rest[1..].to_vec())
-                .map_err(|e| CommandError::Usage(e.to_string()))?;
+            let o = parse_build_args(&rest[1..])?;
             Ok(Cmd::BuildMuffin(o))
         }
         other => Err(CommandError::Usage(format!(
@@ -243,6 +240,25 @@ fn parse_fmt(rest: &[String]) -> Result<Cmd> {
     }
 
     Ok(Cmd::Fmt(o))
+}
+
+fn parse_build_args(rest: &[String]) -> Result<build_muf::BuildMufOptions> {
+    build_muf::parse_args(rest).map_err(map_build_error)
+}
+
+fn map_build_error(err: BuildMufError) -> CommandError {
+    match err {
+        BuildMufError::Arg { msg } => CommandError::Usage(ensure_build_help(msg)),
+        other => CommandError::Failure(other.to_string()),
+    }
+}
+
+fn ensure_build_help(msg: String) -> String {
+    if msg.contains("build muffin —") {
+        msg
+    } else {
+        format!("{msg}\n\n{}", build_muf::help_text())
+    }
 }
 
 pub fn execute(cmd: Cmd) -> Result<()> {

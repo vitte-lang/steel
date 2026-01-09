@@ -1,0 +1,37 @@
+mff 1
+
+project
+  root "/Users/vincent/Documents/Github/muffin"
+  muffinfile "/Users/vincent/Documents/Github/muffin/fichier.muf"
+.end
+
+select
+  profile "debug"
+  target "aarch64-apple-darwin"
+.end
+
+paths
+  build "/Users/vincent/Documents/Github/muffin/build"
+  dist "/Users/vincent/Documents/Github/muffin/dist"
+  cache "/Users/vincent/Documents/Github/muffin/.muffin-cache"
+.end
+
+toolchain
+  rustc "rustc"
+
+  versions
+    rustc "rustc 1.90.0 (1159e78c4 2025-09-14) (Homebrew)"
+  .end
+.end
+
+vars
+  set "muffin.file" "/Users/vincent/Documents/Github/muffin/fichier.muf"
+  set "muffin.offline" "false"
+  set "muffin.profile" "debug"
+  set "muffin.root" "/Users/vincent/Documents/Github/muffin"
+  set "muffin.target" "aarch64-apple-darwin"
+.end
+
+fingerprint
+  value "fnv1a64:a6a51acc79598a45"
+.end

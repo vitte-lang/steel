@@ -13,6 +13,8 @@ keywords = ["muffin", "mcfg", "config", "parser"]
 categories = ["development-tools", "config"]
 publish = false
 
+[workspace]
+
 [lib]
 name = "mcfg"
 path = "src/lib.rs"
@@ -23,6 +25,7 @@ serde = ["dep:serde", "dep:serde_json"]
 
 [dependencies]
 thiserror = "1"
+muffin_mff = { path = "../mff" }
 
 serde = { version = "1", features = ["derive"], optional = true }
 serde_json = { version = "1", optional = true }

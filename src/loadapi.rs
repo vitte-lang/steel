@@ -29,6 +29,9 @@ use std::fmt;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
+use crate::parser::ast::{File as MufFile, Line, LineTokenKind, Stmt, Value};
+use crate::parser::parse_muf;
+
 /* ============================== diagnostics/errors ============================== */
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -421,17 +424,219 @@ impl LoadProvider for MuffinfileProvider {
             });
         }
 
-        let _bytes = std::fs::read(&path).map_err(|e| io_err(&path, "read", e))?;
+        let bytes = std::fs::read(&path).map_err(|e| io_err(&path, "read", e))?;
+        let text = std::str::from_utf8(&bytes).map_err(|e| LoadError::Parse {
+            path: path.clone(),
+            message: format!("invalid utf-8: {e}"),
+        })?;
 
-        // Hook your real parser here:
-        // let ast = crate::parser::parse_muffinfile(&bytes)?;
-        // let frag = crate::lowering::lower(ast)?;
-        // Ok(frag)
+        let ast = parse_muf(text).map_err(|e| LoadError::Parse {
+            path: path.clone(),
+            message: format!("{} at {}:{}", e.message, e.span.start.line, e.span.start.col),
+        })?;
 
-        Err(LoadError::Parse {
-            path,
-            message: "parser not wired (stub)".to_string(),
-        })
+        lower_muf_ast(&path, &ast)
+    }
+}
+
+fn lower_muf_ast(path: &Path, ast: &MufFile) -> Result<WorkspaceFragment, LoadError> {
+    let mut frag = WorkspaceFragment::default();
+    frag.muffinfile = Some(path.to_path_buf());
+    for stmt in &ast.stmts {
+        lower_stmt(stmt, &mut frag)?;
+    }
+    Ok(frag)
+}
+
+fn lower_stmt(stmt: &Stmt, frag: &mut WorkspaceFragment) -> Result<(), LoadError> {
+    match stmt {
+        Stmt::Set { key, value, .. } => {
+            frag.vars.insert(key.clone(), value_to_string(value));
+        }
+        Stmt::Var { name, value, .. } => {
+            frag.vars.insert(name.clone(), value_to_string(value));
+        }
+        Stmt::Profile { block } => {
+            let name = block
+                .name
+                .clone()
+                .ok_or_else(|| LoadError::Invalid {
+                    message: "profile block missing name".to_string(),
+                })?;
+            let mut vars = BTreeMap::new();
+            for item in &block.body {
+                if let Some((k, v)) = stmt_kv(item) {
+                    vars.insert(k, v);
+                }
+            }
+            frag.profiles.insert(
+                name.clone(),
+                ProfileModel {
+                    name,
+                    vars,
+                    flags: BTreeSet::new(),
+                },
+            );
+        }
+        Stmt::Target { block } => {
+            let name = block
+                .name
+                .clone()
+                .ok_or_else(|| LoadError::Invalid {
+                    message: "target block missing name".to_string(),
+                })?;
+            let mut vars = BTreeMap::new();
+            let mut triple = None;
+            for item in &block.body {
+                if let Some((k, v)) = stmt_kv(item) {
+                    if k == "triple" {
+                        triple = Some(v.clone());
+                    } else {
+                        vars.insert(k, v);
+                    }
+                }
+            }
+            frag.targets.insert(
+                name.clone(),
+                TargetModel {
+                    name,
+                    triple,
+                    vars,
+                },
+            );
+        }
+        Stmt::Tool { block } => {
+            let name = block
+                .name
+                .clone()
+                .ok_or_else(|| LoadError::Invalid {
+                    message: "tool block missing name".to_string(),
+                })?;
+            let mut program = String::new();
+            let mut args = Vec::new();
+            let mut env = BTreeMap::new();
+            for item in &block.body {
+                match item {
+                    Stmt::Set { key, value, .. } if key == "exec" => {
+                        program = value_to_string(value);
+                    }
+                    Stmt::Line { line } => {
+                        if let Some(v) = line_kv(line, "exec") {
+                            program = v;
+                        } else if let Some(v) = line_kv(line, "arg") {
+                            args.push(v);
+                        } else if let Some(vs) = line_list(line, "args") {
+                            args.extend(vs);
+                        } else if let Some((k, v)) = line_env(line) {
+                            env.insert(k, v);
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            frag.tools.insert(
+                name.clone(),
+                ToolModel {
+                    name,
+                    program,
+                    args,
+                    env,
+                },
+            );
+        }
+        Stmt::Block { block } => {
+            for item in &block.body {
+                lower_stmt(item, frag)?;
+            }
+        }
+        Stmt::Bake { .. }
+        | Stmt::Capsule { .. }
+        | Stmt::Plan { .. }
+        | Stmt::Store { .. }
+        | Stmt::Switch { .. } => {}
+        Stmt::Line { .. } => {}
+    }
+    Ok(())
+}
+
+fn stmt_kv(stmt: &Stmt) -> Option<(String, String)> {
+    match stmt {
+        Stmt::Set { key, value, .. } => Some((key.clone(), value_to_string(value))),
+        Stmt::Var { name, value, .. } => Some((name.clone(), value_to_string(value))),
+        _ => None,
+    }
+}
+
+fn line_kv(line: &Line, keyword: &str) -> Option<String> {
+    let mut iter = line.tokens.iter();
+    let first = iter.next()?;
+    if !matches!(&first.kind, LineTokenKind::Ident(s) if s == keyword) {
+        return None;
+    }
+    let value = iter.next()?;
+    match &value.kind {
+        LineTokenKind::Ident(s) => Some(s.clone()),
+        LineTokenKind::Str(s) => Some(s.clone()),
+        LineTokenKind::Int(v) => Some(v.to_string()),
+        _ => None,
+    }
+}
+
+fn line_list(line: &Line, keyword: &str) -> Option<Vec<String>> {
+    let mut iter = line.tokens.iter();
+    let first = iter.next()?;
+    if !matches!(&first.kind, LineTokenKind::Ident(s) if s == keyword) {
+        return None;
+    }
+    let mut out = Vec::new();
+    for tok in iter {
+        match &tok.kind {
+            LineTokenKind::Ident(s) => out.push(s.clone()),
+            LineTokenKind::Str(s) => out.push(s.clone()),
+            LineTokenKind::Int(v) => out.push(v.to_string()),
+            _ => {}
+        }
+    }
+    if out.is_empty() {
+        None
+    } else {
+        Some(out)
+    }
+}
+
+fn line_env(line: &Line) -> Option<(String, String)> {
+    let mut iter = line.tokens.iter();
+    let first = iter.next()?;
+    if !matches!(&first.kind, LineTokenKind::Ident(s) if s == "env") {
+        return None;
+    }
+    let key = iter.next()?;
+    let val = iter.next()?;
+    let key_s = match &key.kind {
+        LineTokenKind::Ident(s) => s.clone(),
+        LineTokenKind::Str(s) => s.clone(),
+        _ => return None,
+    };
+    let val_s = match &val.kind {
+        LineTokenKind::Ident(s) => s.clone(),
+        LineTokenKind::Str(s) => s.clone(),
+        LineTokenKind::Int(v) => v.to_string(),
+        _ => return None,
+    };
+    Some((key_s, val_s))
+}
+
+fn value_to_string(value: &Value) -> String {
+    match value {
+        Value::String(s) => s.clone(),
+        Value::Int(v) => v.to_string(),
+        Value::Bool(v) => v.to_string(),
+        Value::Ident(s) => s.clone(),
+        Value::List(items) => items
+            .iter()
+            .map(value_to_string)
+            .collect::<Vec<_>>()
+            .join(","),
     }
 }
 

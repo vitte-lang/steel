@@ -8,6 +8,8 @@ repository = "https://github.com/gogin/muffin"
 keywords = ["muffin", "mff", "bundle", "config"]
 categories = ["development-tools"]
 
+[workspace]
+
 [lib]
 name = "muffin_mff"
 path = "src/mod.rs"

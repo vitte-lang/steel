@@ -378,7 +378,11 @@ impl Builder {
         let order = match dependancies::topo_sort(&g) {
             Ok(v) => v,
             Err(_) => {
-                r.push(crate::config::Diagnostic::err("DEP_CYCLE", "dependency cycle"));
+                let msg = match dependancies::find_cycle(&g) {
+                    Some(cycle) => format!("dependency cycle detected: {}", cycle.join(" -> ")),
+                    None => "dependency cycle detected".to_string(),
+                };
+                r.push(crate::config::Diagnostic::err("DEP_CYCLE", msg));
                 return (Vec::new(), None, r);
             }
         };

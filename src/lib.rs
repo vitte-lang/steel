@@ -24,10 +24,7 @@
 // ============================================================================
 
 /// Lexical and syntactic analysis of Muffin files
-pub mod parser {
-    pub use crate::arscan;      // Lexer/tokenizer
-    pub use crate::read;        // Block-oriented parser
-}
+pub mod parser;
 
 // ============================================================================
 // RESOLVER MODULE

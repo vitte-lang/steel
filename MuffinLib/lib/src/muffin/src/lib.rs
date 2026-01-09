@@ -31,10 +31,13 @@
 )]
 
 pub mod diag;
+pub mod decompile;
 pub mod emit;
 pub mod hir;
 pub mod ir;
 pub mod lexer;
+pub mod span;
+pub mod token;
 
 /// Version Bakefile attendue par défaut.
 pub const MUFFIN_BAKEFILE_VERSION: u32 = 2;
@@ -64,7 +67,7 @@ pub mod prelude {
         ResolvedRef, Store, StoreMode, Switch, SwitchAction, Tool, TypeRef, Value, VarDecl,
     };
     pub use crate::ir::{lower_hir_to_ir, Dag as IrDag, IrProgram};
-    pub use crate::lexer::{Lexer, Token, TokenKind, TokenStream};
+    pub use crate::token::{Token, TokenKind, TokenStream};
 }
 
 /// ------------------------------------------------------------
@@ -145,8 +148,8 @@ pub struct CompileResult {
 /// ------------------------------------------------------------
 
 /// Lex uniquement (utile pour debug/outils).
-pub fn lex_source(file: &SourceFile, diags: &mut diag::DiagBag) -> Vec<lexer::Token> {
-    lexer::Lexer::new(file.id, &file.text).lex_all(diags)
+pub fn lex_source(file: &SourceFile, _diags: &mut diag::DiagBag) -> token::TokenStream {
+    token::lex(span::FileId(file.id), &file.text)
 }
 
 /// Émission directe d’un plan d’artefacts (couche “output” pure).
@@ -186,21 +189,28 @@ pub fn compile_stub(_layout: &WorkspaceLayout, file: &SourceFile, opts: &Compile
     let mut saw_header = false;
 
     // Pattern: KwMuffin KwBake Int
-    for w in toks.windows(3) {
-        if w[0].kind == lexer::TokenKind::KwMuffin
-            && w[1].kind == lexer::TokenKind::KwBake
-            && w[2].kind == lexer::TokenKind::Int
+    for w in toks.tokens.windows(3) {
+        if w[0].kind == token::TokenKind::KwMuffin
+            && w[1].kind == token::TokenKind::KwBake
+            && w[2].kind == token::TokenKind::IntLit
         {
             saw_header = true;
             if let Some(txt) = &w[2].text {
                 if let Ok(v) = txt.parse::<u32>() {
                     if v != opts.expected_version {
+                        let span = diag::Span::new(
+                            w[2].span.file.0,
+                            w[2].span.lo.0,
+                            w[2].span.hi.0,
+                        );
                         diags.push(
-                            diag::Diagnostic::error(format!(
-                                "unsupported Muffin Bakefile version: got {}, expected {}",
-                                v, opts.expected_version
-                            ))
-                            .with_span(w[2].span),
+                            diag::err_at(
+                                span,
+                                format!(
+                                    "unsupported Muffin Bakefile version: got {}, expected {}",
+                                    v, opts.expected_version
+                                ),
+                            ),
                         );
                     }
                 }

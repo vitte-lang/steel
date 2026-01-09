@@ -21,7 +21,7 @@ use std::env;
 use std::path::PathBuf;
 use std::process::ExitCode;
 
-use muffinlib::muffin::decompile::{decompile_mff, DecompileOptions, ReportFormat};
+use mcfg::decompile::{decompile_mff, DecompileOptions, ReportFormat};
 
 fn main() -> ExitCode {
     match run() {

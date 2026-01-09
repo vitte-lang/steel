@@ -219,7 +219,7 @@ impl FileEntry {
     pub fn line_col_char(&self, pos: Pos) -> LineCol {
         let p = min(pos.0, self.len());
         let idx = self.line_index(Pos(p));
-        let line_start = self.line_starts.get(idx).copied().unwrap_or(0);
+        let _line_start = self.line_starts.get(idx).copied().unwrap_or(0);
         let (ls, _le) = self.line_bounds(Pos(p));
 
         let ls_usize = ls as usize;
@@ -530,7 +530,7 @@ fn caret_string(line: &str, caret: Caret, tab_width: usize, min_width: usize) ->
     let hi = caret.hi_byte as usize;
 
     // if empty span => caret at lo
-    let mut lo2 = lo;
+    let lo2 = lo;
     let mut hi2 = hi;
     if lo2 == hi2 {
         hi2 = lo2 + min_width;
