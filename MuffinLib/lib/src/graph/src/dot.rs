@@ -12,7 +12,7 @@
 //!   dot -Tsvg bake.dot > bake.svg
 //!   dot -Tpng bake.dot > bake.png
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 
 use super::bake::{Artifact, ArtifactId, ArtifactKind, BakeGraph, Node, NodeId};
 

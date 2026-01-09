@@ -1,20 +1,20 @@
 //! Muffin: Declarative configuration layer for Vitte build system
 //!
 //! Muffin parses, validates, and resolves a workspace configuration (packages, profiles,
-//! toolchains, targets), then generates a stable configuration artifact `Muffinconfig.mcfg`.
+//! toolchains, targets), then generates a stable configuration artifact `Muffinconfig.mff`.
 //!
 //! # Architecture
 //!
 //! The architecture follows a "Freeze then Build" principle:
 //! - **Phase 1**: Configuration (validation + resolution)
-//! - **Phase 2**: Construction (DAG execution via Steel)
+//! - **Phase 2**: Construction (DAG execution via runner)
 //!
 //! # Modules
 //!
 //! - `parser` — Lexical and syntactic analysis of Muffin files
 //! - `validator` — Coherence checking and constraint validation
 //! - `resolver` — Profile inheritance, variable interpolation, dependency resolution
-//! - `generator` — Serialization to Muffinconfig.mcfg and exports
+//! - `generator` — Serialization to Muffinconfig.mff and exports
 //! - `model` — Core data structures (Workspace, Package, Profile, Target, Toolchain)
 //! - `interface` — Runtime abstraction and CLI interface
 //! - `commands` — CLI command implementations
@@ -30,17 +30,6 @@ pub mod parser {
 }
 
 // ============================================================================
-// VALIDATOR MODULE
-// ============================================================================
-
-/// Validation: coherence checking, references resolution, constraint validation
-pub mod validator {
-    pub use crate::config;           // Configuration coherence
-    pub use crate::dependancies;     // Dependency graph validation
-    pub use crate::target_file;      // Target specification validation
-}
-
-// ============================================================================
 // RESOLVER MODULE
 // ============================================================================
 
@@ -50,16 +39,6 @@ pub mod resolver {
     pub use crate::expand;           // Macro and variable expansion
     pub use crate::implicit;         // Implicit rule resolution
     pub use crate::default;          // Default value application
-}
-
-// ============================================================================
-// GENERATOR MODULE
-// ============================================================================
-
-/// Generation: Muffinconfig.mcfg serialization and export utilities
-pub mod generator {
-    pub use crate::interface;        // Runtime interface (abstract I/O)
-    pub use crate::output;           // Output formatting and serialization
 }
 
 // ============================================================================
@@ -143,20 +122,62 @@ pub mod platform {
 pub use crate::loadapi::*;     // Main public API (parse, resolve, emit)
 pub use crate::build_muf::*;   // Build muffin command
 
-pub mod config;
-pub mod compiler;
-pub mod validator;
-pub mod parser;
+// Leaf modules.
+pub mod arscan;
+pub mod build_muf;
 pub mod builder;
-pub mod generator;
+pub mod commands;
+pub mod compiler;
+pub mod config;
+pub mod debug;
+pub mod def_target_file;
+pub mod default;
+pub mod dependancies;
+pub mod directory;
 pub mod error;
-pub mod mcfg;
+pub mod expand;
+pub mod externs;
+pub mod generator;
+pub mod gettext;
+pub mod hash;
+pub mod implicit;
+pub mod interface;
+pub mod job;
+pub mod load;
+pub mod loadapi;
+pub mod misc;
+pub mod muffincustom;
+pub mod muffinint;
+pub mod os;
+pub mod output;
+pub mod posixos;
+pub mod read;
+pub mod remake;
+#[path = "remote-cstms.rs"]
+pub mod remote_cstms;
+#[path = "remote-stub.rs"]
+pub mod remote_stub;
+pub mod rule;
+pub mod shuffle;
+pub mod signame;
+pub mod strcache;
+pub mod target_file;
+pub mod validator;
+pub mod variable;
+pub mod version;
+pub mod vms_exit;
+pub mod vms_export_symbol;
+pub mod vms_progname;
+pub mod vmsdir;
+pub mod vmsfunctions;
+pub mod vmsify;
+pub mod vmsjobs;
+pub mod vpath;
+pub mod warning;
 
 pub use config::Config;
 pub use compiler::Compiler;
 pub use validator::Validator;
-pub use parser::Parser;
 pub use builder::Builder;
 pub use generator::Generator;
 pub use error::MuffinError;
-pub use mcfg::{McfgParser, McfgConfig, McfgSerializer, McfgValidator};

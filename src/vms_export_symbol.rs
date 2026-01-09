@@ -4,7 +4,7 @@
 // Export symbol normalization, validation, and formatting.
 //
 // Why:
-// - Steel/Muffin may need stable exported symbol names for:
+// - The build pipeline may need stable exported symbol names for:
 //   - dynamic plugins (dll/so/dylib)
 //   - tool entrypoints
 //   - runtime hooks / ABI surface

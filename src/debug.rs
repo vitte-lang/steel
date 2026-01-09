@@ -132,7 +132,7 @@ fn should_color(cfg: &DebugConfig) -> bool {
     }
 }
 
-fn ansi(code: &str, enabled: bool) -> &'static str {
+fn ansi(code: &'static str, enabled: bool) -> &'static str {
     if enabled {
         code
     } else {
@@ -299,6 +299,7 @@ impl std::error::Error for SimpleError {}
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::BTreeMap;
 
     #[test]
     fn parse_levels() {

@@ -1,0 +1,23 @@
+[package]
+name = "muffin_path"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Path normalization and glob helpers for Muffin (std-only)."
+repository = "https://github.com/gogin/muffin"
+keywords = ["muffin", "path", "glob", "normalize"]
+categories = ["development-tools"]
+
+[lib]
+name = "muffin_path"
+path = "src/mod.rs"
+
+[features]
+default = ["std-only"]
+std-only = []
+
+[dependencies]
+# std-only
+
+[dev-dependencies]
+# std-only

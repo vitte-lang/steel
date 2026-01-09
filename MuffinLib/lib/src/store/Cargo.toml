@@ -10,7 +10,7 @@ categories = ["development-tools"]
 
 [lib]
 name = "muffin_store"
-path = "src/lib.rs"
+path = "src/mod.rs"
 
 [features]
 default = ["std-only"]

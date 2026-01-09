@@ -1,7 +1,7 @@
 // /Users/vincent/Documents/Github/muffin/src/dependancies.rs
 //! dependancies — dependency graph validation + utilities (std-only)
 //!
-//! This module focuses on *graph-level* invariants used by Muffin and Steel:
+//! This module focuses on *graph-level* invariants used by Muffin:
 //! - cycle detection
 //! - topological ordering (deterministic)
 //! - missing nodes detection

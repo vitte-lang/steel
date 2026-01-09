@@ -3,7 +3,7 @@
 //! Schéma “MCFG” (Muffin Config) : représentation sérialisable des unités `.mff` / `.muff`.
 //!
 //! Objectif : fournir un format de configuration *stable* entre le générateur Muffin,
-//! le compilateur Vitte, et l’outillage (Steel/Vitte driver).
+//! le compilateur Vitte, et l’outillage (runner/Vitte driver).
 //!
 //! Design :
 //! - structure explicite et versionnée

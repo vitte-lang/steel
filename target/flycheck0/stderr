@@ -1,11 +1,82 @@
-error: failed to load manifest for workspace member `/Users/vincent/Documents/Github/muffin/.`
-referenced by workspace at `/Users/vincent/Documents/Github/muffin/Cargo.toml`
+    Blocking waiting for file lock on build directory
+   0.666620708s  INFO prepare_target{force=false package_id=MuffinLib v0.1.0 (/Users/vincent/Documents/Github/muffin/MuffinLib/lib) target="vittelib"}: cargo::core::compiler::fingerprint: fingerprint error for MuffinLib v0.1.0 (/Users/vincent/Documents/Github/muffin/MuffinLib/lib)/Check { test: true }/TargetInner { ..: lib_target("vittelib", ["lib"], "/Users/vincent/Documents/Github/muffin/MuffinLib/lib/src/lib.rs", Edition2021) }
+   0.667075792s  INFO prepare_target{force=false package_id=MuffinLib v0.1.0 (/Users/vincent/Documents/Github/muffin/MuffinLib/lib) target="vittelib"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/vincent/Documents/Github/muffin/target/debug/.fingerprint/MuffinLib-b6546d81f07b6e34/test-lib-vittelib`
 
 Caused by:
-  failed to load manifest for dependency `vittelib`
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: std::backtrace::Backtrace::create
+   1: std::backtrace::Backtrace::capture
+   2: cargo_util::paths::read_bytes
+   3: cargo_util::paths::read
+   4: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   5: cargo::core::compiler::fingerprint::prepare_target
+   6: cargo::core::compiler::compile
+   7: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   8: cargo::ops::cargo_compile::compile_ws
+   9: cargo::ops::cargo_compile::compile_with_exec
+  10: cargo::ops::cargo_compile::compile
+  11: cargo::commands::check::exec
+  12: <cargo::cli::Exec>::exec
+  13: cargo::main
+  14: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  15: std::rt::lang_start::<()>::{closure#0}
+  16: std::rt::lang_start_internal
+  17: _main
+   0.729348792s  INFO prepare_target{force=false package_id=muffin v0.1.0 (/Users/vincent/Documents/Github/muffin) target="muffin"}: cargo::core::compiler::fingerprint: fingerprint error for muffin v0.1.0 (/Users/vincent/Documents/Github/muffin)/Check { test: true }/TargetInner { ..: lib_target("muffin", ["lib"], "/Users/vincent/Documents/Github/muffin/src/lib.rs", Edition2021) }
+   0.729369542s  INFO prepare_target{force=false package_id=muffin v0.1.0 (/Users/vincent/Documents/Github/muffin) target="muffin"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/vincent/Documents/Github/muffin/target/debug/.fingerprint/muffin-7b3cc90f7af686e2/test-lib-muffin`
 
 Caused by:
-  failed to read `/Users/vincent/Documents/Github/muffin/vitteLib/Cargo.toml`
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: std::backtrace::Backtrace::create
+   1: std::backtrace::Backtrace::capture
+   2: cargo_util::paths::read_bytes
+   3: cargo_util::paths::read
+   4: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   5: cargo::core::compiler::fingerprint::prepare_target
+   6: cargo::core::compiler::compile
+   7: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   8: cargo::ops::cargo_compile::compile_ws
+   9: cargo::ops::cargo_compile::compile_with_exec
+  10: cargo::ops::cargo_compile::compile
+  11: cargo::commands::check::exec
+  12: <cargo::cli::Exec>::exec
+  13: cargo::main
+  14: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  15: std::rt::lang_start::<()>::{closure#0}
+  16: std::rt::lang_start_internal
+  17: _main
+   0.734300250s  INFO prepare_target{force=false package_id=muffin v0.1.0 (/Users/vincent/Documents/Github/muffin) target="os_compatibility"}: cargo::core::compiler::fingerprint: fingerprint error for muffin v0.1.0 (/Users/vincent/Documents/Github/muffin)/Check { test: true }/TargetInner { kind: "test", name: "os_compatibility", benched: false, ..: with_path("/Users/vincent/Documents/Github/muffin/tests/os_compatibility.rs", Edition2021) }
+   0.734311083s  INFO prepare_target{force=false package_id=muffin v0.1.0 (/Users/vincent/Documents/Github/muffin) target="os_compatibility"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/vincent/Documents/Github/muffin/target/debug/.fingerprint/muffin-71f7aa0388ca9066/test-integration-test-os_compatibility`
 
 Caused by:
-  No such file or directory (os error 2)
+    No such file or directory (os error 2)
+
+Stack backtrace:
+   0: std::backtrace::Backtrace::create
+   1: std::backtrace::Backtrace::capture
+   2: cargo_util::paths::read_bytes
+   3: cargo_util::paths::read
+   4: cargo::core::compiler::fingerprint::_compare_old_fingerprint
+   5: cargo::core::compiler::fingerprint::prepare_target
+   6: cargo::core::compiler::compile
+   7: <cargo::core::compiler::build_runner::BuildRunner>::compile
+   8: cargo::ops::cargo_compile::compile_ws
+   9: cargo::ops::cargo_compile::compile_with_exec
+  10: cargo::ops::cargo_compile::compile
+  11: cargo::commands::check::exec
+  12: <cargo::cli::Exec>::exec
+  13: cargo::main
+  14: std::sys::backtrace::__rust_begin_short_backtrace::<fn(), ()>
+  15: std::rt::lang_start::<()>::{closure#0}
+  16: std::rt::lang_start_internal
+  17: _main
+    Checking MuffinLib v0.1.0 (/Users/vincent/Documents/Github/muffin/MuffinLib/lib)
+    Checking muffin v0.1.0 (/Users/vincent/Documents/Github/muffin)
+error: could not compile `muffin` (test "os_compatibility") due to 6 previous errors; 1 warning emitted
+warning: build failed, waiting for other jobs to finish...
+error: could not compile `MuffinLib` (lib test) due to 1 previous error
+error: could not compile `muffin` (lib test) due to 4 previous errors; 1 warning emitted

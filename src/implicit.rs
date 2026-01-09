@@ -266,8 +266,9 @@ fn insert_tool(ws: &mut Workspace, cfg: &ImplicitConfig, tr: &mut ImplicitTrace,
     if ws.tools.contains_key(&tool.name) && !cfg.allow_override {
         return Ok(());
     }
-    ws.tools.insert(tool.name.clone(), tool);
-    tr.injected_tools.push((tool.name.clone(), reason.to_string()));
+    let name = tool.name.clone();
+    ws.tools.insert(name.clone(), tool);
+    tr.injected_tools.push((name, reason.to_string()));
     Ok(())
 }
 

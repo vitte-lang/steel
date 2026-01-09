@@ -31,7 +31,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 pub const MFF_MAGIC: [u8; 4] = *b"MFF\0";
 
@@ -518,7 +518,12 @@ pub fn normalize_bundle_path(p: impl AsRef<Path>) -> String {
                 parts.pop();
             }
             Component::Normal(s) => {
-                parts.push(s.to_string_lossy().to_string());
+                let raw = s.to_string_lossy();
+                for seg in raw.replace('\\', "/").split('/') {
+                    if !seg.is_empty() {
+                        parts.push(seg.to_string());
+                    }
+                }
             }
         }
     }
@@ -566,6 +571,7 @@ fn compute_entry_id(e: &MffEntry) -> EntryId {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     #[test]
     fn normalize_path_windows_like() {

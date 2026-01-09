@@ -26,12 +26,8 @@ pub mod index;
 
 pub use index::{
     normalize_bundle_path, Compression, Endian, EntryFlags, EntryId, EntryKind, IndexError, MffEntry,
-    MffIndex, MffVersion, MFF_MAGIC, GRAPH_JSON_SCHEMA_VERSION,
+    MffIndex, MffVersion, MFF_MAGIC,
 };
-
-/// Schema version re-export for downstream tooling that stores graph JSON alongside MFF.
-/// If you don't embed graph JSON in MFF, you can remove this.
-pub use crate::graph::json::GRAPH_JSON_SCHEMA_VERSION;
 
 #[cfg(test)]
 mod tests {

@@ -20,7 +20,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
 use std::time::{Duration, Instant};
 
-use crate::tool::{ToolSpec, ToolStatus};
+use crate::{ToolSpec, ToolStatus};
 
 #[derive(Debug)]
 pub enum RunnerError {

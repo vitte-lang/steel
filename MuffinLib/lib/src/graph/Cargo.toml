@@ -1,0 +1,23 @@
+[package]
+name = "muffin_graph"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "Build graph types and exporters for Muffin (std-only)."
+repository = "https://github.com/gogin/muffin"
+keywords = ["muffin", "graph", "dag", "build"]
+categories = ["development-tools"]
+
+[lib]
+name = "muffin_graph"
+path = "src/mod.rs"
+
+[features]
+default = ["std-only"]
+std-only = []
+
+[dependencies]
+# std-only
+
+[dev-dependencies]
+# std-only

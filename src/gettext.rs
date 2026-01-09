@@ -1,14 +1,14 @@
 // /Users/vincent/Documents/Github/muffin/src/gettext.rs
 //! gettext — i18n message catalogs (std-only, deterministic)
 //!
-//! This module implements a pragmatic, toolchain-friendly i18n layer for Muffin/Steel.
+//! This module implements a pragmatic, toolchain-friendly i18n layer for Muffin.
 //! It is "gettext-inspired" (keyed messages, domains, locale fallback), but does NOT
 //! parse GNU .mo files.
 //!
 //! Design goals:
 //! - std-only (no deps)
 //! - deterministic load + lookup (BTreeMap/BTreeSet)
-//! - explicit domains (muffin/steel/etc.)
+//! - explicit domains (muffin/runner/etc.)
 //! - locale negotiation with fallback chain (fr-FR -> fr -> default)
 //! - minimal plural support (ngettext-like) without external rule engines
 //! - placeholder formatting `{name}` and `{0}` positional
@@ -47,7 +47,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::{OnceLock, RwLock};
 
 pub type Domain = String;
@@ -92,7 +92,7 @@ impl PluralForm {
 }
 
 /// Minimal plural rules.
-/// In practice Muffin/Steel messages rarely need full CLDR; this is enough to be correct-ish
+/// In practice Muffin messages rarely need full CLDR; this is enough to be correct-ish
 /// for common locales. You can extend rules later without breaking the API.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PluralRule {
@@ -375,11 +375,7 @@ impl<'a> Message<'a> {
             .lookup_plural(self.domain, self.key, self.ctx, form)
             .unwrap_or(self.key);
         // common convenience: make `{n}` available
-        let mut nn = Vec::with_capacity(named.len() + 1);
-        nn.push(("n", n.to_string()));
-        let mut tmp: Vec<(&str, &str)> = Vec::with_capacity(named.len() + 1);
-        // keep lifetime simple: allocate the n string then leak into vec of owned pairs
-        // by reformatting below in owned variant.
+        // Keep lifetime simple: build owned pairs and then borrow them.
         let mut owned: Vec<(String, String)> = Vec::with_capacity(named.len() + 1);
         owned.push(("n".to_string(), n.to_string()));
         for (k, v) in named {
@@ -594,7 +590,7 @@ pub fn load_bundle_from_dir(dir: impl AsRef<Path>, preferred_locale: Option<&str
     }
 
     // load default
-    for (domain, filename) in domain_files {
+    for (_domain, filename) in domain_files {
         let p = dir.join("default").join(filename);
         if p.is_file() {
             let mut cat = Catalog::with_locale(None);
@@ -676,7 +672,7 @@ where
         // if value is exactly """ then body starts on next lines
         // if value starts with """ and has trailing content, treat that as first line
         let mut started_inline = false;
-        let mut inline = v;
+        let inline = v;
 
         if inline.starts_with(r#""""#) {
             let rest = inline.trim_start_matches(r#""""#);
@@ -809,6 +805,7 @@ impl std::error::Error for CatalogError {}
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     #[test]
     fn parse_simple_and_domain_ctx() {
@@ -816,16 +813,16 @@ mod tests {
         c.load_str(
             r#"
             muffin.hello = Hello
-            steel.hello|button = Run
-            steel.hello|menu = Run action
+            runner.hello|button = Run
+            runner.hello|menu = Run action
         "#,
         );
 
         assert_eq!(c.lookup("muffin", "hello", None), Some("Hello"));
-        assert_eq!(c.lookup("steel", "hello", Some("button")), Some("Run"));
-        assert_eq!(c.lookup("steel", "hello", Some("menu")), Some("Run action"));
+        assert_eq!(c.lookup("runner", "hello", Some("button")), Some("Run"));
+        assert_eq!(c.lookup("runner", "hello", Some("menu")), Some("Run action"));
         // ctx fallback to None not present -> None
-        assert_eq!(c.lookup("steel", "hello", Some("missing")), None);
+        assert_eq!(c.lookup("runner", "hello", Some("missing")), None);
     }
 
     #[test]
@@ -865,7 +862,7 @@ mod tests {
         let _ = load_bundle_from_dir(
             PathBuf::from("i18n"),
             Some("fr-FR"),
-            &[("muffin", "muffin.txt"), ("steel", "steel.txt")],
+            &[("muffin", "muffin.txt"), ("runner", "runner.txt")],
         );
     }
 }

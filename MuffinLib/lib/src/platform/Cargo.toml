@@ -10,7 +10,7 @@ categories = ["development-tools", "os"]
 
 [lib]
 name = "muffin_platform"
-path = "src/lib.rs"
+path = "src/mod.rs"
 
 [features]
 default = ["std-only"]

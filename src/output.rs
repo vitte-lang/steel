@@ -3,7 +3,7 @@
 // Muffin — output / logging / console rendering
 //
 // Purpose:
-// - Provide a centralized output layer for Muffin/Steel:
+// - Provide a centralized output layer for Muffin:
 //   - structured events (info/warn/error/debug/trace)
 //   - colored terminal rendering (ANSI), with auto-disable
 //   - progress + spinners (optional, minimal, no external deps)
@@ -32,6 +32,7 @@
 
 use std::collections::BTreeMap;
 use std::fmt;
+use std::hash::Hasher;
 use std::io::{self, Write};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
@@ -324,13 +325,14 @@ impl Output {
 
     pub fn progress_tick(&self, current: u64, total: Option<u64>, message: Option<String>) {
         let mut g = self.inner.lock().unwrap();
+        let color = g.color_enabled;
         if let Some(p) = g.progress.as_mut() {
             p.current = current;
             p.total = total;
             if let Some(m) = message {
                 p.message = m;
             }
-            let s = p.render(g.color_enabled);
+            let s = p.render(color);
             let _ = g.sink.write(Stream::Stdout, s.as_bytes());
         }
     }

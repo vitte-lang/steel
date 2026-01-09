@@ -15,7 +15,7 @@ INPUT (Muffinfile, toolchains, targets)
   ↓
 [GENERATOR] → Muffinconfig.mcfg
   ↓
-OUTPUT (consommé par Steel)
+OUTPUT (consommé par le runner)
 ```
 
 ## Modules par fonction
@@ -104,9 +104,9 @@ OUTPUT (consommé par Steel)
                                + exports (DOT, JSON, etc.)
 ```
 
-### Phase 2 : Construction (build steel)
+### Phase 2 : Construction (execution)
 
-Steel lit Muffinconfig.mcfg et :
+Le runner lit Muffinconfig.mcfg et :
 - Construit le DAG des règles
 - Résout les dépendances de fichiers
 - Exécute l'ordre topologique
@@ -120,7 +120,7 @@ Steel lit Muffinconfig.mcfg et :
   - Config normalisée et validée
   - Pas de détails d'exécution (pas de flags compilateur réels, pas d'ordre d'exécution)
 
-- **Steel** (exécutif) : *Comment y parvenir*
+- **Runner** (exécutif) : *Comment y parvenir*
   - DAG, parallélisation, cache
   - Détails d'exécution isolés
 
@@ -128,7 +128,7 @@ Steel lit Muffinconfig.mcfg et :
 
 - Configuration **gelée** (immutable après génération)
 - **Normalisée** (plus d'ambiguïté)
-- **Explicite** (pas d'implicite côté Steel)
+- **Explicite** (pas d'implicite côté exécution)
 - **Fingerprint** pour invalidation cache
 
 ### Determinisme
@@ -172,7 +172,7 @@ Steel lit Muffinconfig.mcfg et :
 
 1. Implémenter dans `commands.rs`
 2. Ajouter enum variant dans CLI
-3. Router dans `main.rs`
+3. Router dans `src/bin/muffin.rs`
 
 ### Ajouter un nouveau type de target
 
@@ -185,4 +185,3 @@ Steel lit Muffinconfig.mcfg et :
 1. Implémenter trait OS dans `runtime::os.rs`
 2. Ajouter implémentation spécifique dans `platform::*`
 3. Router dans `interface.rs` selon contexte
-

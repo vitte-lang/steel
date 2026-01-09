@@ -17,7 +17,7 @@ pub use crate::error::{MuffinError, Result};
 
 // --- span ---
 pub use crate::span::{
-    FileError, FileId, LineCol, Location, Pos, PosLC, Range, SourceFile, Span, SpanRange,
+    FileError, FileId, LineCol, Location, SourceFile, Span, SpanRange,
 };
 
 // --- store ---
@@ -28,7 +28,7 @@ pub use crate::store::{
 
 // --- tool ---
 pub use crate::tool::{
-    ProbeError, ToolCandidate, ToolError, ToolOutput, ToolProbe, ToolRunner, ToolSpec, ToolStatus,
+    ToolError, ToolOutput, ToolRunner, ToolSpec, ToolStatus,
 };
 
 // --- platform ---

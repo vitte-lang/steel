@@ -1,11 +1,11 @@
 # Muffinconfig.mcf (exemple)
 #
 # Fichier généré par `build muffin`.
-# Objectif: représenter une configuration *résolue* et stable, directement consommable par Steel.
+# Objectif: représenter une configuration *résolue* et stable, directement consommable par le runner.
 #
 # Propriétés attendues:
 # - stable/déterministe (ordre trié, chemins normalisés)
-# - explicite (aucune déduction à refaire côté Steel)
+# - explicite (aucune déduction à refaire côté runner)
 # - portable (pas de dépendance à l’expansion shell)
 
 mcf 1
@@ -37,8 +37,7 @@ paths
   root "/path/to/repo"
   dist "dist"
   build "build"
-  steel "Steel"
-  cache "Steel/cache"
+  cache "build/cache"
   tmp "build/tmp"
 .end
 
@@ -97,7 +96,6 @@ toolchains
     compiler "build/x86_64-unknown-linux-gnu/stage0/bin/vittec"
     build_driver "build/x86_64-unknown-linux-gnu/stage0/bin/build"
     muffin "build/x86_64-unknown-linux-gnu/stage0/bin/muffin"
-    steel "build/x86_64-unknown-linux-gnu/stage0/bin/steel"
 
     # Flags résolus (conventions)
     cflags []
@@ -106,7 +104,7 @@ toolchains
 .end
 
 # ---------------------------------------------------------------------------
-# Env whitelist (ce que Steel est autorisé à lire)
+# Env whitelist (ce que l'exécution est autorisée à lire)
 # ---------------------------------------------------------------------------
 
 env
@@ -126,7 +124,7 @@ env
 # ---------------------------------------------------------------------------
 
 # Note: ces listes sont déjà “figées”.
-# Steel ne doit pas refaire rglob/glob, il consomme cette liste.
+# Le runner ne doit pas refaire rglob/glob, il consomme cette liste.
 
 files
   group "vitte_beryl_src"
@@ -150,8 +148,6 @@ targets
       group "vitte_beryl_src"
 
       # Entrées additionnelles possibles
-      dir "Steel"                 # si Steel doit hasher les rules
-      file "Steel/Steelfile"
     .end
 
     outputs
@@ -186,17 +182,16 @@ targets
 .end
 
 # ---------------------------------------------------------------------------
-# Tool aliases (pour Steel)
+# Tool aliases (pour le runner)
 # ---------------------------------------------------------------------------
 
-# Permet à Steel d’adresser les outils par rôle.
+# Permet d’adresser les outils par rôle.
 # Exemple: tool "vitte.compiler" => toolchains.vitte.compiler
 
 tool_aliases
   alias "vitte.compiler" "toolchains.vitte.compiler"
   alias "vitte.build_driver" "toolchains.vitte.build_driver"
   alias "vitte.muffin" "toolchains.vitte.muffin"
-  alias "vitte.steel" "toolchains.vitte.steel"
 .end
 
 # ---------------------------------------------------------------------------
@@ -204,7 +199,7 @@ tool_aliases
 # ---------------------------------------------------------------------------
 
 # Hash global de la config résolue.
-# Utilisé par Steel/CI pour invalider proprement.
+# Utilisé par CI pour invalider proprement.
 
 fingerprint
   algo "sha256"

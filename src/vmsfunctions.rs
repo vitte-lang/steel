@@ -4,7 +4,7 @@
 //!
 //! Contexte Muffin:
 //! - vmsjobs.rs exécute des JobStep::Command et JobStep::Inline(closure).
-//! - vmsify.rs convertit manifests/config/Steel en JobGraph, mais a besoin d’une couche
+//! - vmsify.rs convertit manifests/config en JobGraph, mais a besoin d’une couche
 //!   de fonctions standard pour:
 //!   - expansions (vars, paths)
 //!   - helpers build (mkdir, writefile, hash, glob minimal, copy/remove, etc.)
@@ -324,27 +324,15 @@ impl<'a> CowStr<'a> {
  * Arg decoding helpers
  * ====================== */
 
-fn arg_required_str(call: &FunctionCall, idx: usize, name: &str) -> FnResult<&str> {
+fn arg_required_str<'a>(call: &'a FunctionCall, idx: usize, name: &str) -> FnResult<&'a str> {
     call.args
         .get(idx)
         .and_then(|v| v.as_str())
         .ok_or_else(|| FnError::InvalidArgs(format!("missing/invalid arg {} ({}: str)", idx, name)))
 }
 
-fn arg_opt_str<'a>(call: &'a FunctionCall, idx: usize) -> Option<&'a str> {
-    call.args.get(idx).and_then(|v| v.as_str())
-}
-
-fn kv_opt_str<'a>(call: &'a FunctionCall, k: &str) -> Option<&'a str> {
-    call.kv.get(k).and_then(|v| v.as_str())
-}
-
 fn kv_opt_bool(call: &FunctionCall, k: &str) -> Option<bool> {
     call.kv.get(k).and_then(|v| v.as_bool())
-}
-
-fn kv_opt_i64(call: &FunctionCall, k: &str) -> Option<i64> {
-    call.kv.get(k).and_then(|v| v.as_i64())
 }
 
 /* ======================
@@ -713,13 +701,12 @@ pub mod builtins {
 ///
 /// Usage:
 /// - vmsify.rs peut transformer TargetStepIR::Inline en InlineSpec::new(|| registry.call(...))
-pub fn inline_from_call(reg: FnRegistry, mut ctx: RuntimeContext, call: FunctionCall) -> crate::vmsjobs::InlineSpec {
-    crate::vmsjobs::InlineSpec {
-        label: Some(format!("fn:{}", call.name)),
-        f: std::sync::Arc::new(move || {
-            reg.call(&mut ctx, &call).map(|_| ()).map_err(|e| e.to_string())
-        }),
-    }
+pub fn inline_from_call(reg: FnRegistry, ctx: RuntimeContext, call: FunctionCall) -> crate::vmsjobs::InlineSpec {
+    inline_from_call_shared(
+        std::sync::Arc::new(reg),
+        std::sync::Arc::new(std::sync::Mutex::new(ctx)),
+        call,
+    )
 }
 
 /// Variante: emprunte registry et contexte via Arc<Mutex<...>>.

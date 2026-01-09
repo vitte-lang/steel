@@ -3,7 +3,7 @@
 // Muffin — validation primitives
 //
 // Purpose:
-// - Provide a small, deterministic validation framework used across Muffin/Steel.
+// - Provide a small, deterministic validation framework used across Muffin.
 // - Validate config, manifests, paths, identifiers, target specs, tool definitions, etc.
 // - Aggregate issues as diagnostics-friendly structures (warnings/errors with optional spans).
 //
@@ -31,7 +31,6 @@
 
 #![allow(dead_code)]
 
-use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::fmt;
 use std::path::Path;
@@ -470,7 +469,9 @@ impl<'a> RequireBuilder<'a> {
     pub fn help(mut self, help: &str) -> Self {
         // If condition fails, attach help to the emitted issue.
         if !self.cond {
-            let mut issue = Issue::new(Severity::Error, self.category, self.code, self.message);
+            let msg = self.message.clone();
+            let code = self.code.clone();
+            let mut issue = Issue::new(Severity::Error, self.category, code, msg);
             if let Some(span) = self.span {
                 issue = issue.at(span);
             }

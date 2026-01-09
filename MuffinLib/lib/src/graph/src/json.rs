@@ -21,7 +21,7 @@
 //!   let parsed = GraphJson::parse(&json)?;
 //!   let g2 = parsed.into_graph()?; // round-trip (best effort)
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::fmt;
 use std::path::PathBuf;
 
@@ -585,6 +585,7 @@ struct JsonWriter {
     out: String,
     indent: usize,
     need_comma_stack: Vec<bool>,
+    suppress_comma_once: bool,
 }
 
 impl JsonWriter {
@@ -594,6 +595,7 @@ impl JsonWriter {
             out: String::new(),
             indent: 0,
             need_comma_stack: Vec::new(),
+            suppress_comma_once: false,
         }
     }
 
@@ -609,13 +611,19 @@ impl JsonWriter {
     }
 
     fn comma_if_needed(&mut self) {
+        if self.suppress_comma_once {
+            self.suppress_comma_once = false;
+            return;
+        }
         if let Some(top) = self.need_comma_stack.last_mut() {
             if *top {
                 self.out.push(',');
             } else {
                 *top = true;
-                return;
             }
+        }
+        if self.pretty {
+            self.push_indent();
         }
     }
 
@@ -653,16 +661,13 @@ impl JsonWriter {
 
     fn key(&mut self, k: &str) {
         self.comma_if_needed();
-        if self.pretty {
-            self.push_indent();
-        }
         push_str(&mut self.out, k);
         self.out.push(':');
         if self.pretty {
             self.out.push(' ');
         }
-        // reset comma state for the value inside current object
-        // (comma state already set by comma_if_needed above)
+        // Suppress comma insertion for the immediate value (objects/arrays).
+        self.suppress_comma_once = true;
     }
 
     fn kv_str(&mut self, k: &str, v: &str) {
@@ -684,14 +689,17 @@ impl JsonWriter {
     }
 
     fn str(&mut self, s: &str) {
+        self.comma_if_needed();
         push_str(&mut self.out, s);
     }
 
     fn u64(&mut self, v: u64) {
+        self.comma_if_needed();
         self.out.push_str(&v.to_string());
     }
 
     fn null(&mut self) {
+        self.comma_if_needed();
         self.out.push_str("null");
     }
 }
@@ -699,6 +707,7 @@ impl JsonWriter {
 /* ----------------------------- JSON Value -------------------------------- */
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 enum JsonValue {
     Null,
     Bool(bool),
@@ -1033,7 +1042,9 @@ mod tests {
 
         assert_eq!(g2.nodes.len(), g.nodes.len());
         assert_eq!(g2.artifacts.len(), g.artifacts.len());
-        assert_eq!(g2.deps.len(), g.deps.len());
+        let deps1: usize = g.deps.values().map(|v| v.len()).sum();
+        let deps2: usize = g2.deps.values().map(|v| v.len()).sum();
+        assert_eq!(deps2, deps1);
     }
 
     #[test]

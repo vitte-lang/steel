@@ -10,7 +10,9 @@ SOURCE TREE ORGANIZATION
 
 src/
 ├── lib.rs                          # Module declarations and re-exports
-├── main.rs                         # CLI entrypoint
+├── main.vit                        # Vitte DSL CLI skeleton
+├── bin/
+│   └── muffin.rs                   # Rust CLI entrypoint
 │
 ├── PARSER (lexical & syntactic analysis)
 │   ├── arscan.rs                   # Lexer/tokenizer
@@ -90,7 +92,7 @@ Muffinfile (input)
 [GENERATOR: output + interface]
     → Muffinconfig.mcfg (frozen config artifact)
     ↓
-Steel (consumed by build orchestrator)
+Execution runner (consumes build artifact)
 
 
 DEPENDENCY GRAPH (simplified)
@@ -128,7 +130,7 @@ ADDING NEW FUNCTIONALITY
 New Command?
   1. Implement in commands.rs
   2. Add variant to CLI enum
-  3. Router in main.rs
+  3. Router in src/bin/muffin.rs
 
 New Target Type?
   1. Extend model::Target in muffinint.rs

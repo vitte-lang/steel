@@ -794,20 +794,6 @@ impl Hasher for Fnv1aHasher {
     }
 }
 
-trait HasherExt {
-    fn write_u8(&mut self, v: u8);
-    fn write_u64(&mut self, v: u64);
-}
-
-impl HasherExt for Fnv1aHasher {
-    fn write_u8(&mut self, v: u8) {
-        self.write(&[v]);
-    }
-    fn write_u64(&mut self, v: u64) {
-        self.write(&v.to_le_bytes());
-    }
-}
-
 fn hash_artifact(h: &mut Fnv1aHasher, a: &Artifact) {
     match a {
         Artifact::Path(p) => {

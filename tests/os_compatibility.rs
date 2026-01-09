@@ -2,6 +2,7 @@
 
 #[cfg(test)]
 mod os_compatibility_tests {
+    use muffin::os::OsAdapter;
     use std::path::Path;
 
     #[test]

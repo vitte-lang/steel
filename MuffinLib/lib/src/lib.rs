@@ -18,31 +18,39 @@
 //! Keep `lib.rs` as the stable entrypoint; internal reorgs should not break downstream.
 
 #![forbid(unsafe_code)]
-#![warn(missing_docs)]
+#![allow(missing_docs)]
 
 pub mod error;
+pub mod prelude;
 
 pub type Result<T> = crate::error::Result<T>;
 pub use crate::error::MuffinError;
 
-// Optional modules: include if these folders exist inside this crate.
-pub mod span;
-pub mod store;
-pub mod tool;
+// Facade: wire module roots to the shared source trees.
+#[path = "diag/src/mod.rs"]
+pub mod diag;
+#[path = "graph/src/mod.rs"]
+pub mod graph;
+#[path = "mff/src/mod.rs"]
+pub mod mff;
+#[path = "path/src/mod.rs"]
+pub mod path;
+#[path = "platform/src/mod.rs"]
 pub mod platform;
-
-// Optional convenience facade.
-pub mod llib;
+#[path = "span/src/mod.rs"]
+pub mod span;
+#[path = "store/src/mod.rs"]
+pub mod store;
+#[path = "tool/src/mod.rs"]
+pub mod tool;
 
 // --- Common ergonomic re-exports (keep stable) ---
-pub use span::{FileError, FileId, LineCol, Location, Pos, PosLC, Range, SourceFile, Span, SpanRange};
+pub use span::{FileError, FileId, LineCol, Location, SourceFile, Span, SpanRange};
 pub use store::{
     Cas, CasConfig, CasError, Digest, DigestAlgo, EntryKind, GcError, GcOptions, GcReport,
     IndexEntry, IndexError, StoreIndex,
 };
-pub use tool::{
-    ProbeError, ToolCandidate, ToolError, ToolOutput, ToolProbe, ToolRunner, ToolSpec, ToolStatus,
-};
+pub use tool::{ToolError, ToolOutput, ToolRunner, ToolSpec, ToolStatus};
 
 // If `platform` module defines `Platform` (recommended), re-export it.
 // If not present, remove these lines.
@@ -62,11 +70,13 @@ pub fn build_profile() -> &'static str {
 
 /// Minimal library info string.
 pub fn info_string() -> String {
+    let os = option_env!("CARGO_CFG_TARGET_OS").unwrap_or("unknown");
+    let arch = option_env!("CARGO_CFG_TARGET_ARCH").unwrap_or("unknown");
     format!(
         "muffinlib {} ({}/{})",
         MUFFINLIB_VERSION,
-        env!("CARGO_CFG_TARGET_OS"),
-        env!("CARGO_CFG_TARGET_ARCH")
+        os,
+        arch
     )
 }
 

@@ -141,7 +141,7 @@ pub struct Diagnostic {
     pub notes: Vec<String>,
     pub help: Vec<String>,
     pub fixes: Vec<FixIt>,
-    /// Catégorie interne (ex: "parser", "config", "steel") utile pour filtrer.
+    /// Catégorie interne (ex: "parser", "config", "runner") utile pour filtrer.
     pub category: Option<String>,
 }
 
@@ -283,8 +283,8 @@ pub struct FsSourceProvider;
 impl SourceProvider for FsSourceProvider {
     fn get(&self, path: &Path) -> io::Result<Cow<'_, str>> {
         let bytes = std::fs::read(path)?;
-        let s = String::from_utf8_lossy(&bytes);
-        Ok(s)
+        let s = String::from_utf8_lossy(&bytes).into_owned();
+        Ok(Cow::Owned(s))
     }
 }
 
@@ -321,7 +321,9 @@ impl<P: SourceProvider> StderrSink<P> {
     pub fn new(provider: P, opts: RenderOptions) -> Self {
         Self { provider, opts }
     }
+}
 
+impl StderrSink<FsSourceProvider> {
     pub fn with_default_fs(opts: RenderOptions) -> Self {
         Self {
             provider: FsSourceProvider,
@@ -696,9 +698,6 @@ fn style_reset() -> &'static str {
 }
 fn style_dim() -> &'static str {
     "\x1b[2m"
-}
-fn style_bold() -> &'static str {
-    "\x1b[1m"
 }
 fn style_yellow() -> &'static str {
     "\x1b[33m"

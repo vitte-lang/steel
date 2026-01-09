@@ -1,0 +1,23 @@
+[package]
+name = "muffin_mff"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "MFF bundle reader/writer for Muffin (std-only)."
+repository = "https://github.com/gogin/muffin"
+keywords = ["muffin", "mff", "bundle", "config"]
+categories = ["development-tools"]
+
+[lib]
+name = "muffin_mff"
+path = "src/mod.rs"
+
+[features]
+default = ["std-only"]
+std-only = []
+
+[dependencies]
+# std-only
+
+[dev-dependencies]
+# std-only

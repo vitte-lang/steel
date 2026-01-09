@@ -74,7 +74,7 @@ impl Version {
             minor,
             patch,
             pre: None,
-            buildobuild: None,
+            build: None,
         }
     }
 

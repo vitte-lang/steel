@@ -3,6 +3,7 @@ name = "muffin"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.63"
+autobins = false
 authors = ["Vitte Team"]
 description = "Muffin: Declarative configuration layer for Vitte build system"
 repository = "https://github.com/vitte-lang/muffin"
@@ -10,7 +11,7 @@ license = "See COPYING"
 readme = "README.md"
 
 [workspace]
-members = [".", "vitteLib"]
+members = [".", "MuffinLib/lib"]
 resolver = "2"
 
 [dependencies]
@@ -37,7 +38,7 @@ env_logger = "0.11"
 chrono = "0.4"
 
 # VitteLib (utility library)
-vittelib = { path = "vitteLib" }
+vittelib = { path = "MuffinLib/lib", package = "MuffinLib" }
 
 # Utilities
 regex = "1.10"
@@ -75,7 +76,7 @@ path = "src/lib.rs"
 
 [[bin]]
 name = "muffin"
-path = "src/main.rs"
+path = "src/bin/muffin.rs"
 
 [profile.release]
 opt-level = 3

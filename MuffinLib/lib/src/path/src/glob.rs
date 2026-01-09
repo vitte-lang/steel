@@ -343,6 +343,12 @@ fn match_tokens(toks: &[Token], chars: &[char], ti: usize, ci: usize) -> bool {
         }
         Token::DoubleStar => {
             // match any sequence including '/'
+            // Special-case: allow "**/" to match zero segments (skip the slash).
+            if toks.get(ti + 1) == Some(&Token::Slash) {
+                if match_tokens(toks, chars, ti + 2, ci) {
+                    return true;
+                }
+            }
             for j in ci..=chars.len() {
                 if match_tokens(toks, chars, ti + 1, j) {
                     return true;

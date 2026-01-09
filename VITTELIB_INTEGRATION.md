@@ -60,7 +60,7 @@ use std::path::PathBuf;
 
 let pattern = GlobPattern::new("src/**/*.rs").unwrap();
 
-assert!(pattern.matches(&PathBuf::from("src/main.rs")));
+assert!(pattern.matches(&PathBuf::from("src/bin/muffin.rs")));
 assert!(pattern.matches(&PathBuf::from("src/utils/helpers.rs")));
 assert!(!pattern.matches(&PathBuf::from("src/main.txt")));
 ```
@@ -71,7 +71,7 @@ assert!(!pattern.matches(&PathBuf::from("src/main.txt")));
 
 ## Usage in Muffin
 
-### In src/main.rs
+### In src/bin/muffin.rs
 
 ```rust
 use vittelib::glob::GlobPattern;
@@ -187,7 +187,7 @@ Example test:
 #[test]
 fn test_glob_recursive() {
     let pattern = GlobPattern::new("src/**/*.rs").unwrap();
-    assert!(pattern.matches(&PathBuf::from("src/main.rs")));
+    assert!(pattern.matches(&PathBuf::from("src/bin/muffin.rs")));
     assert!(pattern.matches(&PathBuf::from("src/a/b/c.rs")));
 }
 ```

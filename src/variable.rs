@@ -3,7 +3,7 @@
 // Muffin — variables and expansion primitives
 //
 // Purpose:
-// - Centralize variable representation used by Muffin/Steel build pipeline.
+// - Centralize variable representation used by Muffin build pipeline.
 // - Provide deterministic parsing/validation and safe expansion into strings.
 // - Support layered scopes (env / global / target / profile / job / local).
 // - Provide diagnostics-friendly errors (span optional).
@@ -31,8 +31,7 @@
 
 #![allow(dead_code)]
 
-use std::borrow::Cow;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap};
 use std::fmt;
 use std::path::{Path, PathBuf};
 
@@ -174,6 +173,12 @@ pub enum VariableScope {
     Profile,
     Job,
     Local,
+}
+
+impl Default for VariableScope {
+    fn default() -> Self {
+        VariableScope::Global
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -674,7 +679,7 @@ impl fmt::Display for VariableError {
             VariableError::UnknownVariable { name } => write!(f, "unknown variable '{name}'"),
             VariableError::RequiredMissing { name, message } => write!(f, "required variable '{name}' missing: {message}"),
 
-            VariableError::UnclosedBraced => write!(f, "unclosed ${...} expression"),
+            VariableError::UnclosedBraced => write!(f, "unclosed ${{...}} expression"),
             VariableError::ExpansionCycle { cycle } => write!(f, "variable expansion cycle: {}", cycle.join(" -> ")),
             VariableError::ExpandDepthExceeded { max_depth } => write!(f, "variable expansion exceeded max depth {max_depth}"),
             VariableError::OutputTooLarge { max_len } => write!(f, "expanded output exceeds max length {max_len}"),

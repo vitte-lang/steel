@@ -11,7 +11,7 @@ categories = ["development-tools"]
 
 [lib]
 name = "muffin_span"
-path = "src/lib.rs"
+path = "src/mod.rs"
 
 [features]
 default = ["std-only"]

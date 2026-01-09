@@ -8,7 +8,7 @@
 //! Supported commands (current contract):
 //! - `help` / `--help`
 //! - `version`
-//! - `build muffin [flags...]`  (Configuration phase; emits Muffinconfig.mcfg)
+//! - `build muffin [flags...]`  (Configuration phase; emits Muffinconfig.mff)
 //! - `resolve [flags...]`       (alias of `build muffin`)
 //! - `check [flags...]`         (best-effort validate; emits then deletes unless strict)
 //! - `print [flags...]`         (emits + prints the resolved mcfg)
@@ -152,6 +152,9 @@ pub fn parse_command(args: &[String]) -> Result<Cmd> {
 }
 
 fn parse_build(rest: &[String]) -> Result<Cmd> {
+    if matches!(rest.first().map(String::as_str), Some("-h" | "--help" | "help")) {
+        return Err(CommandError::Usage(usage_text().to_string()));
+    }
     if rest.is_empty() {
         // `build` alone => help
         return Err(CommandError::Usage(usage_text().to_string()));
@@ -164,10 +167,6 @@ fn parse_build(rest: &[String]) -> Result<Cmd> {
                 .map_err(|e| CommandError::Usage(e.to_string()))?;
             Ok(Cmd::BuildMuffin(o))
         }
-        // reserved for pipeline `build steel` (implemented elsewhere later)
-        "steel" => Err(CommandError::Usage(
-            "build steel: not implemented in muffin (Steel owns this command)".to_string(),
-        )),
         other => Err(CommandError::Usage(format!(
             "unknown build target: {other}\n\n{}",
             usage_text()
@@ -358,29 +357,29 @@ fn usage_unknown(cmd: &str) -> String {
 }
 
 pub fn usage_text() -> &'static str {
-    "muffin — Declarative configuration layer for the Muffin/Steel pipeline
+    "muffin — Declarative configuration layer for the Muffin pipeline
 
 USAGE:
   muffin <command> [args...]
 
 COMMANDS:
-  help
-  version
+  help, -h, --help
+  version, -V, --version
 
   build muffin [--root <path>] [--file <path>] [--profile <name>] [--target <triple>] [--emit <path>]
               [--offline] [--strict] [--no-tool-fingerprint] [--include-hidden] [--follow-symlinks]
               [--max-depth <n>] [--print] [-v]
 
-  resolve      Alias of: build muffin (emits Muffinconfig.mcfg)
-  check        Validate best-effort (emits then deletes Muffinconfig.mcfg under .muffin-cache/check/)
-  print        Emit + print Muffinconfig.mcfg to stdout
+  resolve      Alias of: build muffin (emits Muffinconfig.mff)
+  check        Validate best-effort (emits then deletes Muffinconfig.mff under .muffin-cache/check/)
+  print        Emit + print Muffinconfig.mff to stdout
 
   graph        (stub) Export graph (text|dot)
   fmt          (stub) Format Muffinfile
 
 NOTES:
-  - `build muffin` performs the Configuration phase and emits Muffinconfig.mcfg.
-  - Steel is responsible for the Construction phase (`build steel`)."
+  - `build muffin` performs the Configuration phase and emits Muffinconfig.mff.
+  - Running `muffin` with no args shows this help."
 }
 
 fn graph_help() -> &'static str {

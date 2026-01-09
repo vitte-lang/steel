@@ -1,7 +1,7 @@
 //! arscan — Artifact/manifest scanner
 //!
-//! Small, dependency-free directory scanner used to discover Muffin/Steel files
-//! (e.g. `build.muf`, `mod.muf`, `Muffinfile`, `Muffinconfig.mcfg`, `Steelfile`).
+//! Small, dependency-free directory scanner used to discover Muffin files
+//! (e.g. `build.muf`, `mod.muf`, `Muffinfile`, `Muffinconfig.mff`).
 //!
 //! Goals
 //! - No external crates
@@ -16,7 +16,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
-/// Known Muffin / Steel artifact kinds.
+/// Known Muffin artifact kinds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ArtifactKind {
     /// A bake/build file (canonical: `build.muf`).
@@ -25,20 +25,16 @@ pub enum ArtifactKind {
     ModMuf,
     /// Main Muffin configuration file (canonical: `Muffinfile` or `muffin`).
     Muffinfile,
-    /// Resolved configuration (canonical: `Muffinconfig.mcfg`).
+    /// Resolved configuration (canonical: `Muffinconfig.mff`).
     MuffinConfig,
     /// Legacy resolved configuration (historical: `.mcf`).
     LegacyMcf,
     /// Legacy/alt config files mentioned in ecosystem (e.g. `.mfg`).
     LegacyMfg,
-    /// Steel rules entry file (canonical: `Steelfile`).
-    Steelfile,
     /// Any `*.muf` file that is not recognized as a known canonical name.
     GenericMuf,
-    /// Any `*.mcfg` file that is not recognized as `Muffinconfig.mcfg`.
-    GenericMcfg,
-    /// Any `*.steel` file (optional ecosystem extension).
-    GenericSteel,
+    /// Any `*.mff` file that is not recognized as `Muffinconfig.mff`.
+    GenericMff,
     /// Unknown / not classified.
     Unknown,
 }
@@ -55,14 +51,10 @@ impl ArtifactKind {
                 | ArtifactKind::LegacyMcf
                 | ArtifactKind::LegacyMfg
                 | ArtifactKind::GenericMuf
-                | ArtifactKind::GenericMcfg
+                | ArtifactKind::GenericMff
         )
     }
 
-    #[inline]
-    pub fn is_steel(&self) -> bool {
-        matches!(self, ArtifactKind::Steelfile | ArtifactKind::GenericSteel)
-    }
 }
 
 /// File metadata snapshot captured during scan.
@@ -84,7 +76,7 @@ pub struct Artifact {
 }
 
 /// Error captured during scan.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct ScanError {
     pub path: PathBuf,
     pub op: &'static str,
@@ -132,7 +124,7 @@ impl Default for ScanOptions {
 }
 
 /// Scan result.
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Default)]
 pub struct ScanReport {
     pub artifacts: Vec<Artifact>,
     pub errors: Vec<ScanError>,
@@ -141,7 +133,7 @@ pub struct ScanReport {
     pub skipped_entries: u64,
 }
 
-/// Scan a directory tree for Muffin/Steel artifacts.
+/// Scan a directory tree for Muffin artifacts.
 pub fn scan(root: impl AsRef<Path>, opts: &ScanOptions) -> ScanReport {
     let root = root.as_ref();
 
@@ -288,9 +280,8 @@ fn classify_path(path: &Path) -> ArtifactKind {
         "build.muf" => return ArtifactKind::BuildMuf,
         "mod.muf" => return ArtifactKind::ModMuf,
         "Muffinfile" | "muffin" => return ArtifactKind::Muffinfile,
-        "Muffinconfig.mcfg" => return ArtifactKind::MuffinConfig,
+        "Muffinconfig.mff" => return ArtifactKind::MuffinConfig,
         "Muffinconfig.mcf" => return ArtifactKind::LegacyMcf,
-        "Steelfile" => return ArtifactKind::Steelfile,
         _ => {}
     }
 
@@ -298,10 +289,9 @@ fn classify_path(path: &Path) -> ArtifactKind {
     let ext = path.extension().and_then(|s| s.to_str()).unwrap_or("");
     match ext {
         "muf" => ArtifactKind::GenericMuf,
-        "mcfg" => ArtifactKind::GenericMcfg,
+        "mff" => ArtifactKind::GenericMff,
         "mcf" => ArtifactKind::LegacyMcf,
         "mfg" => ArtifactKind::LegacyMfg,
-        "steel" => ArtifactKind::GenericSteel,
         _ => ArtifactKind::Unknown,
     }
 }
@@ -374,13 +364,12 @@ mod tests {
         touch(&root.join("build.muf"), "bake ...");
         touch(&root.join("mod.muf"), "mod ...");
         touch(&root.join("Muffinfile"), "workspace ...");
-        touch(&root.join("Muffinconfig.mcfg"), "mcfg 1");
-        touch(&root.join("Steel/Steelfile"), "target app ...");
+        touch(&root.join("Muffinconfig.mff"), "mff 1");
 
         // Noise
         touch(&root.join("README.md"), "hello");
         touch(&root.join("nested/other.muf"), "x");
-        touch(&root.join("nested/other.mcfg"), "y");
+        touch(&root.join("nested/other.mff"), "y");
 
         let opts = ScanOptions {
             max_depth: 8,
@@ -394,9 +383,8 @@ mod tests {
         let mut mod_muf = 0;
         let mut muffinfile = 0;
         let mut mcfg = 0;
-        let mut steelfile = 0;
         let mut generic_muf = 0;
-        let mut generic_mcfg = 0;
+        let mut generic_mff = 0;
 
         for a in &rep.artifacts {
             match a.kind {
@@ -404,9 +392,8 @@ mod tests {
                 ArtifactKind::ModMuf => mod_muf += 1,
                 ArtifactKind::Muffinfile => muffinfile += 1,
                 ArtifactKind::MuffinConfig => mcfg += 1,
-                ArtifactKind::Steelfile => steelfile += 1,
                 ArtifactKind::GenericMuf => generic_muf += 1,
-                ArtifactKind::GenericMcfg => generic_mcfg += 1,
+                ArtifactKind::GenericMff => generic_mff += 1,
                 _ => {}
             }
         }
@@ -415,9 +402,8 @@ mod tests {
         assert_eq!(mod_muf, 1);
         assert_eq!(muffinfile, 1);
         assert_eq!(mcfg, 1);
-        assert_eq!(steelfile, 1);
         assert_eq!(generic_muf, 1);
-        assert_eq!(generic_mcfg, 1);
+        assert_eq!(generic_mff, 1);
 
         // Cleanup (best effort).
         let _ = fs::remove_dir_all(&root);
@@ -430,7 +416,7 @@ mod tests {
 
         touch(&root.join("z/build.muf"), "b");
         touch(&root.join("a/mod.muf"), "m");
-        touch(&root.join("b/Muffinconfig.mcfg"), "c");
+        touch(&root.join("b/Muffinconfig.mff"), "c");
 
         let opts = ScanOptions {
             max_depth: 8,
@@ -456,7 +442,7 @@ mod tests {
 
         touch(&root.join(".git/build.muf"), "b");
         touch(&root.join("target/mod.muf"), "m");
-        touch(&root.join(".hidden/Muffinconfig.mcfg"), "c");
+        touch(&root.join(".hidden/Muffinconfig.mff"), "c");
         touch(&root.join("ok/build.muf"), "b");
 
         let opts = ScanOptions::default();

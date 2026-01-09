@@ -4,7 +4,7 @@
 // Process exit codes, termination policy, and "best-effort" exit helpers.
 //
 // Goals:
-// - Single source of truth for exit codes across Muffin/Steel.
+// - Single source of truth for exit codes across Muffin.
 // - Provide ergonomic conversion from errors/diagnostics to exit status.
 // - Support "soft exit" (return code) vs "hard exit" (std::process::exit).
 // - Keep policy consistent: 0 success, non-zero failures.

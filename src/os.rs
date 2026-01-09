@@ -3,7 +3,7 @@
 //! Provides a unified interface for OS-specific operations, with implementations
 //! for Windows (modern and legacy), Unix-like systems, and a fallback pure Rust mode.
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::{Child, Command};
 use anyhow::Result;
 

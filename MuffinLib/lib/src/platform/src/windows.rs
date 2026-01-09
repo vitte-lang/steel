@@ -39,8 +39,8 @@ pub struct WindowsInfo {
 impl WindowsInfo {
     pub fn gather() -> Self {
         Self {
-            target_os: env!("CARGO_CFG_TARGET_OS"),
-            target_arch: env!("CARGO_CFG_TARGET_ARCH"),
+            target_os: option_env!("CARGO_CFG_TARGET_OS").unwrap_or("unknown"),
+            target_arch: option_env!("CARGO_CFG_TARGET_ARCH").unwrap_or("unknown"),
             computer_name: env::var("COMPUTERNAME").ok(),
             username: username_best_effort(),
             user_profile: env::var_os("USERPROFILE").map(PathBuf::from),

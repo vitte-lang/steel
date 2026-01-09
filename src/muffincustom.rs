@@ -3,7 +3,7 @@
 // Muffin — customs (custom behaviors / extension points)
 //
 // Purpose:
-// - Provide a stable extension surface for Muffin/Steel without committing to a plugin ABI yet.
+// - Provide a stable extension surface for Muffin without committing to a plugin ABI yet.
 // - Centralize "custom" hooks that can be injected by:
 //   - build.muf / Muffinfile configuration
 //   - workspace policy (company CI rules, sandbox rules, registry rules)
@@ -29,7 +29,7 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 /* ============================== core errors ============================== */
 

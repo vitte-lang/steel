@@ -1,563 +1,650 @@
-//! lexer.rs 
+//! MUF v4.1 lexer ("Bracket + Dot Ops", no `.end`)
 //!
-//! Lexer pour Muffin Bakefile v2 (Muffinfile / build.muf).
-//!
-//! Couverture EBNF (résumé):
-//! - comments: `# ...` (line comment)
-//! - header: `muffin bake <int>`
-//! - keywords: store, capsule, var, profile, tool, bake, wire, export, plan, switch, set,
-//!             path, mode, env, fs, net, time, allow, deny, allow_read, allow_write,
-//!             allow_write_exact, stable, exec, expect_version, sandbox, in, out, make,
-//!             glob, file, text, value, run, takes, emits, cache, output, at, flag, as,
-//!             exports, true, false
-//! - literals: int, string (escapes: \", \\, \n, \r, \t)
-//! - punctuation: .end, :, =, ->, ., ,, [, ], (legacy: { } pas utilisé), newline
-//!
-//! Contraintes : std uniquement.
-//!
-//! Intégration diag:
-//! - Le lexer émet des tokens avec Span (crate::diag::Span).
-//! - En cas d’erreur, ajoute un Diagnostic dans DiagBag, mais continue (recover).
-//!
-//! API:
-//! - Lexer::new(file_id, &str) -> Lexer
-//! - lexer.lex_all(&mut DiagBag) -> Vec<Token>
-//!
-//! Remarque : la grammaire est orientée lignes, mais le lexer est whitespace-tolérant.
-//! On expose des tokens Newline pour permettre au parser d’implémenter des règles
-//! “line-based” si nécessaire.
+//! Surface tokens:
+//! - Header keyword: `!muf`
+//! - Block head: `[TAG name?]`
+//! - Directive: `.op arg...`
+//! - Block close: `..` (POP marker)
+//! - Comment: `;; ...` (to end-of-line)
+//! - Refs: `~name/name/...`
+//! - Strings: `"..."` with escapes
+//! - Numbers: int/float with optional sign and exponent
 
-use std::ops::Range;
+use std::fmt;
 
-use crate::diag::{DiagBag, Diagnostic, Span};
+// -------------------------------------------------------------------------------------------------
+// Spans
+// -------------------------------------------------------------------------------------------------
 
-/// ------------------------------------------------------------
-/// Token model
-/// ------------------------------------------------------------
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TokenKind {
-    // structural
-    Eof,
-    Newline,
-
-    // identifiers / literals
-    Ident,
-    Int,
-    String,
-
-    // keywords (subset utile)
-    KwMuffin,
-    KwBake,
-
-    KwStore,
-    KwCapsule,
-    KwVar,
-    KwProfile,
-    KwTool,
-    KwBakeBlock,
-    KwWire,
-    KwExport,
-    KwPlan,
-    KwSwitch,
-    KwSet,
-
-    KwPath,
-    KwMode,
-    KwEnv,
-    KwFs,
-    KwNet,
-    KwTime,
-    KwAllow,
-    KwDeny,
-    KwAllowRead,
-    KwAllowWrite,
-    KwAllowWriteExact,
-    KwStable,
-
-    KwExec,
-    KwExpectVersion,
-    KwSandbox,
-
-    KwIn,
-    KwOut,
-    KwMake,
-    KwGlob,
-    KwFile,
-    KwText,
-    KwValue,
-
-    KwRun,
-    KwToolRef, // `tool` après `run` (optionnel côté parser)
-    KwTakes,
-    KwEmits,
-    KwAs,
-
-    KwCache,
-    KwOutput,
-    KwAt,
-
-    KwFlag,
-    KwExports,
-
-    KwTrue,
-    KwFalse,
-
-    // punctuation/operators
-    Dot,        // .
-    Colon,      // :
-    Eq,         // =
-    Comma,      // ,
-    LBracket,   // [
-    RBracket,   // ]
-    Arrow,      // ->
-    DotEnd,     // .end
-
-    // errors / unknown
-    Unknown,
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct Pos {
+    /// 1-based
+    pub line: usize,
+    /// 1-based (byte-based; MUF syntax is ASCII by design)
+    pub col: usize,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct Span {
+    pub start: Pos,
+    pub end: Pos,
+}
+
+impl Span {
+    pub fn point(line: usize, col: usize) -> Self {
+        Self {
+            start: Pos { line, col },
+            end: Pos { line, col },
+        }
+    }
+
+    pub fn new(start: Pos, end: Pos) -> Self {
+        Self { start, end }
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+// Errors
+// -------------------------------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct LexError {
+    pub message: String,
+    pub span: Span,
+}
+
+impl fmt::Display for LexError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} (L{}:C{})",
+            self.message, self.span.start.line, self.span.start.col
+        )
+    }
+}
+
+impl std::error::Error for LexError {}
+
+// -------------------------------------------------------------------------------------------------
+// Tokens
+// -------------------------------------------------------------------------------------------------
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum TokenKind {
+    // structure
+    HeaderMuf,   // !muf
+    LBracket,    // [
+    RBracket,    // ]
+    Dot,         // .
+    Close,       // ..
+
+    // atoms / words
+    Name(String),
+    Int { raw: String, value: i64 },
+    Float { raw: String, value: f64 },
+    Str(String),
+
+    // path/ref
+    Tilde, // ~
+    Slash, // /
+
+    // trivia
+    Newline,
+    Comment(String),
+    Eof,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct Token {
     pub kind: TokenKind,
     pub span: Span,
-    /// Lexeme optionnel: utilisé pour Ident/String/Int (et Unknown).
-    pub text: Option<String>,
 }
 
-impl Token {
-    pub fn new(kind: TokenKind, span: Span) -> Self {
-        Self { kind, span, text: None }
-    }
-    pub fn with_text(mut self, s: String) -> Self {
-        self.text = Some(s);
-        self
-    }
-}
+// -------------------------------------------------------------------------------------------------
+// Lexer
+// -------------------------------------------------------------------------------------------------
 
-/// ------------------------------------------------------------
-/// Lexer
-/// ------------------------------------------------------------
-
-#[derive(Debug)]
 pub struct Lexer<'a> {
-    file_id: u32,
     src: &'a str,
     bytes: &'a [u8],
     i: usize,
-    len: usize,
-
-    /// Option: si true, émettre Newline tokens (sinon, les consommer comme ws).
-    emit_newlines: bool,
+    line: usize,
+    col: usize,
+    pub emit_comments: bool,
 }
 
 impl<'a> Lexer<'a> {
-    pub fn new(file_id: u32, src: &'a str) -> Self {
+    pub fn new(src: &'a str) -> Self {
         Self {
-            file_id,
             src,
             bytes: src.as_bytes(),
             i: 0,
-            len: src.len(),
-            emit_newlines: true,
+            line: 1,
+            col: 1,
+            emit_comments: false,
         }
     }
 
-    pub fn emit_newlines(mut self, on: bool) -> Self {
-        self.emit_newlines = on;
+    pub fn with_comments(mut self, emit: bool) -> Self {
+        self.emit_comments = emit;
         self
     }
 
-    pub fn lex_all(mut self, diags: &mut DiagBag) -> Vec<Token> {
+    pub fn next_token(&mut self) -> Result<Token, LexError> {
+        loop {
+            self.skip_ws0();
+
+            let start = self.pos();
+
+            if self.eof() {
+                return Ok(Token {
+                    kind: TokenKind::Eof,
+                    span: Span::new(start, start),
+                });
+            }
+
+            // newline (\n or \r\n)
+            if self.peek() == Some(b'\n') || self.peek() == Some(b'\r') {
+                let span = self.lex_newline_span();
+                return Ok(Token {
+                    kind: TokenKind::Newline,
+                    span,
+                });
+            }
+
+            // comment line: `;; ...` (not in-string)
+            if self.starts_with(b";;") {
+                let (text, span) = self.lex_comment()?;
+                if self.emit_comments {
+                    return Ok(Token {
+                        kind: TokenKind::Comment(text),
+                        span,
+                    });
+                }
+                // skip comment and continue
+                continue;
+            }
+
+            // special: `..` close marker
+            if self.starts_with(b"..") {
+                let span = self.take_n(2);
+                return Ok(Token {
+                    kind: TokenKind::Close,
+                    span,
+                });
+            }
+
+            // header keyword `!muf`
+            if self.starts_with(b"!muf") {
+                let span = self.take_n(4);
+                return Ok(Token {
+                    kind: TokenKind::HeaderMuf,
+                    span,
+                });
+            }
+
+            // single-char tokens
+            match self.peek().unwrap() {
+                b'[' => {
+                    let span = self.take_n(1);
+                    return Ok(Token {
+                        kind: TokenKind::LBracket,
+                        span,
+                    });
+                }
+                b']' => {
+                    let span = self.take_n(1);
+                    return Ok(Token {
+                        kind: TokenKind::RBracket,
+                        span,
+                    });
+                }
+                b'.' => {
+                    let span = self.take_n(1);
+                    return Ok(Token {
+                        kind: TokenKind::Dot,
+                        span,
+                    });
+                }
+                b'~' => {
+                    let span = self.take_n(1);
+                    return Ok(Token {
+                        kind: TokenKind::Tilde,
+                        span,
+                    });
+                }
+                b'/' => {
+                    let span = self.take_n(1);
+                    return Ok(Token {
+                        kind: TokenKind::Slash,
+                        span,
+                    });
+                }
+                b'"' => {
+                    let (s, span) = self.lex_string()?;
+                    return Ok(Token {
+                        kind: TokenKind::Str(s),
+                        span,
+                    });
+                }
+                b'+' | b'-' => {
+                    // number only (MUF doesn't allow signed names)
+                    let (nk, span) = self.lex_number()?;
+                    return Ok(Token { kind: nk, span });
+                }
+                b'0'..=b'9' => {
+                    let (nk, span) = self.lex_number()?;
+                    return Ok(Token { kind: nk, span });
+                }
+                _ => {}
+            }
+
+            // name
+            if let Some(b) = self.peek() {
+                if is_ident_start(b) {
+                    let (name, span) = self.lex_name();
+                    return Ok(Token {
+                        kind: TokenKind::Name(name),
+                        span,
+                    });
+                }
+            }
+
+            // unknown
+            return Err(LexError {
+                message: "unexpected byte".to_string(),
+                span: Span::point(start.line, start.col),
+            });
+        }
+    }
+
+    pub fn lex_all(&mut self) -> Result<Vec<Token>, LexError> {
         let mut out = Vec::new();
         loop {
-            let t = self.next_token(diags);
-            let k = t.kind;
+            let t = self.next_token()?;
+            let is_eof = matches!(t.kind, TokenKind::Eof);
             out.push(t);
-            if k == TokenKind::Eof {
+            if is_eof {
                 break;
             }
         }
-        out
+        Ok(out)
     }
 
-    fn next_token(&mut self, diags: &mut DiagBag) -> Token {
-        // skip spaces/tabs + comments; optionally newlines
-        loop {
-            if self.i >= self.len {
-                return Token::new(TokenKind::Eof, self.span(self.i..self.i));
-            }
+    // ---------------------------------------------------------------------------------------------
+    // internals
+    // ---------------------------------------------------------------------------------------------
 
-            let b = self.bytes[self.i];
-
-            // whitespace
-            if b == b' ' || b == b'\t' {
-                self.i += 1;
-                continue;
-            }
-
-            // newline
-            if b == b'\n' {
-                let start = self.i;
-                self.i += 1;
-                if self.emit_newlines {
-                    return Token::new(TokenKind::Newline, self.span(start..self.i));
-                }
-                continue;
-            }
-            if b == b'\r' {
-                let start = self.i;
-                self.i += 1;
-                if self.i < self.len && self.bytes[self.i] == b'\n' {
-                    self.i += 1;
-                }
-                if self.emit_newlines {
-                    return Token::new(TokenKind::Newline, self.span(start..self.i));
-                }
-                continue;
-            }
-
-            // comment (# ... to end-of-line)
-            if b == b'#' {
-                self.skip_comment();
-                continue;
-            }
-
-            break;
+    fn pos(&self) -> Pos {
+        Pos {
+            line: self.line,
+            col: self.col,
         }
+    }
 
-        let start = self.i;
-        let b = self.bytes[self.i];
+    fn eof(&self) -> bool {
+        self.i >= self.bytes.len()
+    }
 
-        // .end
-        if b == b'.' {
-            if self.starts_with_bytes(b".end") {
-                self.i += 4;
-                return Token::new(TokenKind::DotEnd, self.span(start..self.i));
-            }
-            self.i += 1;
-            return Token::new(TokenKind::Dot, self.span(start..self.i));
-        }
+    fn peek(&self) -> Option<u8> {
+        self.bytes.get(self.i).copied()
+    }
 
-        // ->
-        if b == b'-' && self.peek_byte(1) == Some(b'>') {
-            self.i += 2;
-            return Token::new(TokenKind::Arrow, self.span(start..self.i));
-        }
+    fn starts_with(&self, pat: &[u8]) -> bool {
+        self.bytes.get(self.i..).map(|s| s.starts_with(pat)).unwrap_or(false)
+    }
 
-        // punctuation
-        match b {
-            b':' => {
-                self.i += 1;
-                return Token::new(TokenKind::Colon, self.span(start..self.i));
-            }
-            b'=' => {
-                self.i += 1;
-                return Token::new(TokenKind::Eq, self.span(start..self.i));
-            }
-            b',' => {
-                self.i += 1;
-                return Token::new(TokenKind::Comma, self.span(start..self.i));
-            }
-            b'[' => {
-                self.i += 1;
-                return Token::new(TokenKind::LBracket, self.span(start..self.i));
-            }
-            b']' => {
-                self.i += 1;
-                return Token::new(TokenKind::RBracket, self.span(start..self.i));
-            }
-            b'"' => return self.lex_string(diags),
-            _ => {}
-        }
-
-        // int
-        if is_digit(b) {
-            return self.lex_int();
-        }
-
-        // ident / keyword
-        if is_ident_start(b) {
-            return self.lex_ident_or_kw();
-        }
-
-        // unknown char
+    fn bump(&mut self) -> Option<u8> {
+        let b = self.peek()?;
         self.i += 1;
-        let span = self.span(start..self.i);
-        diags.push(Diagnostic::error(format!("unexpected character `{}`", byte_as_char(b))).with_span(span));
-        Token::new(TokenKind::Unknown, span).with_text(byte_as_char(b).to_string())
+        self.col += 1;
+        Some(b)
     }
 
-    fn lex_int(&mut self) -> Token {
-        let start = self.i;
-        while self.i < self.len && is_digit(self.bytes[self.i]) {
-            self.i += 1;
+    fn take_n(&mut self, n: usize) -> Span {
+        let start = self.pos();
+        for _ in 0..n {
+            self.bump();
         }
-        let span = self.span(start..self.i);
-        let text = self.src[start..self.i].to_string();
-        Token::new(TokenKind::Int, span).with_text(text)
+        let end = Pos {
+            line: self.line,
+            col: self.col.saturating_sub(1),
+        };
+        Span::new(start, end)
     }
 
-    fn lex_ident_or_kw(&mut self) -> Token {
-        let start = self.i;
-        self.i += 1;
-        while self.i < self.len && is_ident_continue(self.bytes[self.i]) {
-            self.i += 1;
+    fn skip_ws0(&mut self) {
+        while matches!(self.peek(), Some(b' ' | b'\t')) {
+            self.bump();
         }
-        let span = self.span(start..self.i);
-        let text = &self.src[start..self.i];
-
-        let kind = keyword_kind(text).unwrap_or(TokenKind::Ident);
-        let mut t = Token::new(kind, span);
-        if kind == TokenKind::Ident {
-            t.text = Some(text.to_string());
-        }
-        t
     }
 
-    fn lex_string(&mut self, diags: &mut DiagBag) -> Token {
-        let start = self.i;
-        self.i += 1; // consume '"'
-        let mut out = String::new();
-
-        while self.i < self.len {
-            let b = self.bytes[self.i];
-
-            // end
-            if b == b'"' {
-                self.i += 1;
-                let span = self.span(start..self.i);
-                return Token::new(TokenKind::String, span).with_text(out);
+    fn lex_newline_span(&mut self) -> Span {
+        let start = self.pos();
+        if self.peek() == Some(b'\r') {
+            self.bump();
+            if self.peek() == Some(b'\n') {
+                self.bump();
             }
+        } else {
+            self.bump();
+        }
+        // line increment and reset col
+        self.line += 1;
+        self.col = 1;
+        let end = Pos {
+            line: start.line,
+            col: start.col,
+        };
+        Span::new(start, end)
+    }
 
-            // newline in string => error + recover
+    fn lex_comment(&mut self) -> Result<(String, Span), LexError> {
+        let start = self.pos();
+        // consume leading `;;`
+        self.bump();
+        self.bump();
+
+        let mut buf = String::new();
+        while let Some(b) = self.peek() {
             if b == b'\n' || b == b'\r' {
-                let span = self.span(start..self.i);
-                diags.push(Diagnostic::error("unterminated string literal").with_span(span));
-                // do not consume newline here; let outer loop handle
-                return Token::new(TokenKind::String, span).with_text(out);
+                break;
             }
+            buf.push(b as char);
+            self.bump();
+        }
+        let end = Pos {
+            line: self.line,
+            col: self.col.saturating_sub(1),
+        };
+        Ok((buf, Span::new(start, end)))
+    }
 
-            // escape
-            if b == b'\\' {
-                if self.i + 1 >= self.len {
-                    let span = self.span(start..self.i + 1);
-                    diags.push(Diagnostic::error("unterminated escape sequence").with_span(span));
-                    self.i += 1;
-                    let span2 = self.span(start..self.i);
-                    return Token::new(TokenKind::String, span2).with_text(out);
-                }
-                let esc = self.bytes[self.i + 1];
-                match esc {
-                    b'"' => out.push('"'),
-                    b'\\' => out.push('\\'),
-                    b'n' => out.push('\n'),
-                    b'r' => out.push('\r'),
-                    b't' => out.push('\t'),
-                    _ => {
-                        let sp = self.span(self.i..self.i + 2);
-                        diags.push(Diagnostic::warning(format!(
-                            "unknown escape sequence: \\{}",
-                            byte_as_char(esc)
-                        ))
-                        .with_span(sp));
-                        out.push(byte_as_char(esc));
+    fn lex_name(&mut self) -> (String, Span) {
+        let start = self.pos();
+        let mut s = String::new();
+
+        // first
+        if let Some(b) = self.peek() {
+            s.push(b as char);
+            self.bump();
+        }
+        // rest
+        while let Some(b) = self.peek() {
+            if is_ident_cont(b) {
+                s.push(b as char);
+                self.bump();
+            } else {
+                break;
+            }
+        }
+
+        let end = Pos {
+            line: self.line,
+            col: self.col.saturating_sub(1),
+        };
+        (s, Span::new(start, end))
+    }
+
+    fn lex_number(&mut self) -> Result<(TokenKind, Span), LexError> {
+        let start = self.pos();
+        let start_i = self.i;
+
+        // sign
+        if matches!(self.peek(), Some(b'+' | b'-')) {
+            self.bump();
+        }
+
+        // digits
+        let mut saw_digit = false;
+        while let Some(b) = self.peek() {
+            if (b'0'..=b'9').contains(&b) {
+                saw_digit = true;
+                self.bump();
+            } else {
+                break;
+            }
+        }
+
+        if !saw_digit {
+            return Err(LexError {
+                message: "expected digits".to_string(),
+                span: Span::point(start.line, start.col),
+            });
+        }
+
+        // fraction
+        let mut is_float = false;
+        if self.peek() == Some(b'.') {
+            // lookahead digit (avoid eating close marker `..`)
+            if self.bytes.get(self.i + 1).copied().map(|d| (b'0'..=b'9').contains(&d)).unwrap_or(false) {
+                is_float = true;
+                self.bump(); // '.'
+                while let Some(b) = self.peek() {
+                    if (b'0'..=b'9').contains(&b) {
+                        self.bump();
+                    } else {
+                        break;
                     }
                 }
-                self.i += 2;
-                continue;
             }
-
-            // regular
-            out.push(byte_as_char(b));
-            self.i += 1;
         }
 
-        // EOF reached
-        let span = self.span(start..self.i);
-        diags.push(Diagnostic::error("unterminated string literal").with_span(span));
-        Token::new(TokenKind::String, span).with_text(out)
-    }
-
-    fn skip_comment(&mut self) {
-        // consume until \n or \r or eof
-        while self.i < self.len {
-            let b = self.bytes[self.i];
-            if b == b'\n' || b == b'\r' {
-                break;
+        // exponent
+        if matches!(self.peek(), Some(b'e' | b'E')) {
+            is_float = true;
+            self.bump();
+            if matches!(self.peek(), Some(b'+' | b'-')) {
+                self.bump();
             }
-            self.i += 1;
+            let d0 = self.peek().ok_or_else(|| LexError {
+                message: "expected exponent digits".to_string(),
+                span: Span::point(self.line, self.col),
+            })?;
+            if !(b'0'..=b'9').contains(&d0) {
+                return Err(LexError {
+                    message: "expected exponent digits".to_string(),
+                    span: Span::point(self.line, self.col),
+                });
+            }
+            while let Some(b) = self.peek() {
+                if (b'0'..=b'9').contains(&b) {
+                    self.bump();
+                } else {
+                    break;
+                }
+            }
+        }
+
+        let end = Pos {
+            line: self.line,
+            col: self.col.saturating_sub(1),
+        };
+        let raw = self.src[start_i..self.i].to_string();
+
+        if is_float {
+            let v = raw.parse::<f64>().map_err(|_| LexError {
+                message: "invalid float".to_string(),
+                span: Span::new(start, end),
+            })?;
+            Ok((TokenKind::Float { raw, value: v }, Span::new(start, end)))
+        } else {
+            let v = raw.parse::<i64>().map_err(|_| LexError {
+                message: "invalid int".to_string(),
+                span: Span::new(start, end),
+            })?;
+            Ok((TokenKind::Int { raw, value: v }, Span::new(start, end)))
         }
     }
 
-    fn span(&self, r: Range<usize>) -> Span {
-        Span::new(self.file_id, r.start as u32, r.end as u32)
-    }
+    fn lex_string(&mut self) -> Result<(String, Span), LexError> {
+        let start = self.pos();
+        // opening quote
+        self.bump();
 
-    fn peek_byte(&self, n: usize) -> Option<u8> {
-        let j = self.i + n;
-        if j < self.len { Some(self.bytes[j]) } else { None }
-    }
+        let mut out = String::new();
+        while let Some(b) = self.peek() {
+            match b {
+                b'"' => {
+                    self.bump();
+                    let end = Pos {
+                        line: self.line,
+                        col: self.col.saturating_sub(1),
+                    };
+                    return Ok((out, Span::new(start, end)));
+                }
+                b'\n' | b'\r' => {
+                    return Err(LexError {
+                        message: "newline in string".to_string(),
+                        span: Span::point(self.line, self.col),
+                    });
+                }
+                b'\\' => {
+                    self.bump();
+                    let esc = self.peek().ok_or_else(|| LexError {
+                        message: "unterminated escape".to_string(),
+                        span: Span::point(self.line, self.col),
+                    })?;
+                    match esc {
+                        b'"' => {
+                            out.push('"');
+                            self.bump();
+                        }
+                        b'\\' => {
+                            out.push('\\');
+                            self.bump();
+                        }
+                        b'n' => {
+                            out.push('\n');
+                            self.bump();
+                        }
+                        b'r' => {
+                            out.push('\r');
+                            self.bump();
+                        }
+                        b't' => {
+                            out.push('\t');
+                            self.bump();
+                        }
+                        b'0' => {
+                            out.push('\0');
+                            self.bump();
+                        }
+                        b'x' => {
+                            self.bump();
+                            let h1 = self.bump().ok_or_else(|| LexError {
+                                message: "expected hex digit".to_string(),
+                                span: Span::point(self.line, self.col),
+                            })?;
+                            let h2 = self.bump().ok_or_else(|| LexError {
+                                message: "expected hex digit".to_string(),
+                                span: Span::point(self.line, self.col),
+                            })?;
+                            let v = (hex_val(h1)? << 4) | hex_val(h2)?;
+                            out.push(v as char);
+                        }
+                        b'u' => {
+                            self.bump();
+                            let mut v: u32 = 0;
+                            for _ in 0..4 {
+                                let h = self.bump().ok_or_else(|| LexError {
+                                    message: "expected hex digit".to_string(),
+                                    span: Span::point(self.line, self.col),
+                                })?;
+                                v = (v << 4) | (hex_val(h)? as u32);
+                            }
+                            let ch = char::from_u32(v).ok_or_else(|| LexError {
+                                message: "invalid unicode escape".to_string(),
+                                span: Span::point(self.line, self.col),
+                            })?;
+                            out.push(ch);
+                        }
+                        _ => {
+                            return Err(LexError {
+                                message: "unknown escape".to_string(),
+                                span: Span::point(self.line, self.col),
+                            });
+                        }
+                    }
+                }
+                _ => {
+                    out.push(b as char);
+                    self.bump();
+                }
+            }
+        }
 
-    fn starts_with_bytes(&self, pat: &[u8]) -> bool {
-        self.bytes.get(self.i..self.i + pat.len()).map(|s| s == pat).unwrap_or(false)
+        Err(LexError {
+            message: "unterminated string".to_string(),
+            span: Span::point(start.line, start.col),
+        })
     }
 }
 
-/// ------------------------------------------------------------
-/// Keyword map
-/// ------------------------------------------------------------
-
-fn keyword_kind(s: &str) -> Option<TokenKind> {
-    Some(match s {
-        "muffin" => TokenKind::KwMuffin,
-        "bake" => TokenKind::KwBake,
-
-        "store" => TokenKind::KwStore,
-        "capsule" => TokenKind::KwCapsule,
-        "var" => TokenKind::KwVar,
-        "profile" => TokenKind::KwProfile,
-        "tool" => TokenKind::KwTool,
-        "bake" => TokenKind::KwBakeBlock,
-        "wire" => TokenKind::KwWire,
-        "export" => TokenKind::KwExport,
-        "plan" => TokenKind::KwPlan,
-        "switch" => TokenKind::KwSwitch,
-        "set" => TokenKind::KwSet,
-
-        "path" => TokenKind::KwPath,
-        "mode" => TokenKind::KwMode,
-        "env" => TokenKind::KwEnv,
-        "fs" => TokenKind::KwFs,
-        "net" => TokenKind::KwNet,
-        "time" => TokenKind::KwTime,
-        "allow" => TokenKind::KwAllow,
-        "deny" => TokenKind::KwDeny,
-        "allow_read" => TokenKind::KwAllowRead,
-        "allow_write" => TokenKind::KwAllowWrite,
-        "allow_write_exact" => TokenKind::KwAllowWriteExact,
-        "stable" => TokenKind::KwStable,
-
-        "exec" => TokenKind::KwExec,
-        "expect_version" => TokenKind::KwExpectVersion,
-        "sandbox" => TokenKind::KwSandbox,
-
-        "in" => TokenKind::KwIn,
-        "out" => TokenKind::KwOut,
-        "make" => TokenKind::KwMake,
-        "glob" => TokenKind::KwGlob,
-        "file" => TokenKind::KwFile,
-        "text" => TokenKind::KwText,
-        "value" => TokenKind::KwValue,
-
-        "run" => TokenKind::KwRun,
-        "takes" => TokenKind::KwTakes,
-        "emits" => TokenKind::KwEmits,
-        "as" => TokenKind::KwAs,
-        "cache" => TokenKind::KwCache,
-        "output" => TokenKind::KwOutput,
-        "at" => TokenKind::KwAt,
-
-        "flag" => TokenKind::KwFlag,
-        "exports" => TokenKind::KwExports,
-
-        "true" => TokenKind::KwTrue,
-        "false" => TokenKind::KwFalse,
-
-        _ => return None,
-    })
-}
-
-/// ------------------------------------------------------------
-/// Char helpers
-/// ------------------------------------------------------------
-
-fn is_digit(b: u8) -> bool {
-    b'0' <= b && b <= b'9'
-}
+// -------------------------------------------------------------------------------------------------
+// helpers
+// -------------------------------------------------------------------------------------------------
 
 fn is_ident_start(b: u8) -> bool {
-    (b'A' <= b && b <= b'Z') || (b'a' <= b && b <= b'z') || b == b'_'
+    (b'A'..=b'Z').contains(&b) || (b'a'..=b'z').contains(&b) || b == b'_'
 }
 
-fn is_ident_continue(b: u8) -> bool {
-    is_ident_start(b) || is_digit(b)
+fn is_ident_cont(b: u8) -> bool {
+    is_ident_start(b) || (b'0'..=b'9').contains(&b)
 }
 
-fn byte_as_char(b: u8) -> char {
-    if b.is_ascii() { b as char } else { '\u{FFFD}' }
-}
-
-/// ------------------------------------------------------------
-/// Token stream convenience
-/// ------------------------------------------------------------
-
-#[derive(Debug)]
-pub struct TokenStream {
-    pub toks: Vec<Token>,
-    pub i: usize,
-}
-
-impl TokenStream {
-    pub fn new(toks: Vec<Token>) -> Self {
-        Self { toks, i: 0 }
-    }
-
-    pub fn peek(&self) -> &Token {
-        self.toks.get(self.i).unwrap_or_else(|| self.toks.last().unwrap())
-    }
-
-    pub fn next(&mut self) -> &Token {
-        let t = self.peek();
-        if t.kind != TokenKind::Eof {
-            self.i += 1;
-        }
-        t
-    }
-
-    pub fn eat(&mut self, kind: TokenKind) -> bool {
-        if self.peek().kind == kind {
-            self.next();
-            true
-        } else {
-            false
-        }
+fn hex_val(b: u8) -> Result<u8, LexError> {
+    match b {
+        b'0'..=b'9' => Ok(b - b'0'),
+        b'a'..=b'f' => Ok(10 + (b - b'a')),
+        b'A'..=b'F' => Ok(10 + (b - b'A')),
+        _ => Err(LexError {
+            message: "expected hex digit".to_string(),
+            span: Span::point(0, 0),
+        }),
     }
 }
 
-/// ------------------------------------------------------------
-/// Tests
-/// ------------------------------------------------------------
+// -------------------------------------------------------------------------------------------------
+// Tests
+// -------------------------------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn lex_header_and_end() {
-        let src = "muffin bake 2\nstore cache\npath \"./x\"\n.end\n";
-        let mut diags = DiagBag::new();
-        let toks = Lexer::new(0, src).lex_all(&mut diags);
-        assert!(toks.iter().any(|t| t.kind == TokenKind::KwMuffin));
-        assert!(toks.iter().any(|t| t.kind == TokenKind::KwBake));
-        assert!(toks.iter().any(|t| t.kind == TokenKind::DotEnd));
-        assert!(!diags.has_error());
+    fn lexes_header_and_block() {
+        let src = "!muf 4\n[WS x]\n  .root \".\"\n..\n";
+        let mut lx = Lexer::new(src);
+        let toks = lx.lex_all().unwrap();
+        assert!(matches!(toks[0].kind, TokenKind::HeaderMuf));
+        assert!(toks.iter().any(|t| matches!(t.kind, TokenKind::LBracket)));
+        assert!(toks.iter().any(|t| matches!(t.kind, TokenKind::Close)));
     }
 
     #[test]
-    fn lex_string_escapes() {
-        let src = "\"a\\\\b\\n\\t\\\"c\"";
-        let mut diags = DiagBag::new();
-        let toks = Lexer::new(0, src).emit_newlines(false).lex_all(&mut diags);
-        let s = toks.iter().find(|t| t.kind == TokenKind::String).unwrap().text.clone().unwrap();
-        assert_eq!(s, "a\\b\n\t\"c");
+    fn lexes_comment_and_skips_by_default() {
+        let src = "!muf 4\n;; hello\n[WS x]\n..\n";
+        let mut lx = Lexer::new(src);
+        let toks = lx.lex_all().unwrap();
+        assert!(!toks.iter().any(|t| matches!(t.kind, TokenKind::Comment(_))));
     }
 
     #[test]
-    fn lex_comment() {
-        let src = "# c\nmuffin bake 2\n";
-        let mut diags = DiagBag::new();
-        let toks = Lexer::new(0, src).lex_all(&mut diags);
-        assert!(toks.iter().any(|t| t.kind == TokenKind::KwMuffin));
+    fn lexes_string_escapes() {
+        let src = "!muf 4\n[WS x]\n  .t \"a\\n\\t\\\"b\"\n..\n";
+        let mut lx = Lexer::new(src);
+        let toks = lx.lex_all().unwrap();
+        let mut saw = false;
+        for t in toks {
+            if let TokenKind::Str(s) = t.kind {
+                saw = true;
+                assert!(s.contains('\n'));
+                assert!(s.contains('\t'));
+                assert!(s.contains('"'));
+            }
+        }
+        assert!(saw);
     }
 }

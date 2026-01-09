@@ -457,7 +457,12 @@ mod tests {
 
     fn tmp_root() -> PathBuf {
         let mut p = std::env::temp_dir();
-        p.push("muffin_cas_test");
+        let pid = std::process::id();
+        let ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_else(|_| std::time::Duration::from_secs(0))
+            .as_nanos();
+        p.push(format!("muffin_cas_test_{pid}_{ts}"));
         let _ = std::fs::remove_dir_all(&p);
         p
     }

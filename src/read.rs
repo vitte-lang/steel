@@ -4,7 +4,7 @@
 // Muffin — robust file reading utilities
 //
 // Purpose:
-// - Centralize file/stream reading logic used across Muffin/Steel.
+// - Centralize file/stream reading logic used across Muffin.
 // - Provide consistent behavior for:
 //   - reading UTF-8 text with BOM handling
 //   - reading bytes

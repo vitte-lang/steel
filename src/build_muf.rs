@@ -1,8 +1,8 @@
 //! build_muf — `build muffin` (Configuration phase)
 //!
-//! Implements the **Configuration** step of the Muffin/Steel pipeline:
+//! Implements the **Configuration** step of the Muffin pipeline:
 //! parse/validate/resolve workspace configuration, then emit the canonical
-//! resolved configuration artifact `Muffinconfig.mcfg`.
+//! resolved configuration artifact `Muffinconfig.mff`.
 //!
 //! Design constraints
 //! - std-only (no external crates)
@@ -11,11 +11,11 @@
 //!
 //! Integration points
 //! - A real Muffinfile parser/resolver can replace `resolve_workspace()`.
-//! - Steel consumes the emitted `Muffinconfig.mcfg`.
+//! - A build runner can consume the emitted `Muffinconfig.mff`.
 
 use std::collections::BTreeMap;
 use std::env;
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 use std::fmt;
 use std::fs;
 use std::io;
@@ -24,7 +24,10 @@ use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Canonical emitted file name.
-pub const DEFAULT_EMIT_NAME: &str = "Muffinconfig.mcfg";
+pub const DEFAULT_EMIT_NAME: &str = "Muffinconfig.mff";
+
+/// Current mff schema version (header: `mff <version>`).
+pub const MFF_SCHEMA_VERSION: u32 = 1;
 
 /// Default Muffinfile names for discovery.
 pub const DEFAULT_MUFFINFILE_NAMES: &[&str] = &["Muffinfile", "muffin"];
@@ -84,7 +87,7 @@ pub struct BuildMufOptions {
     /// Selected target triple (e.g. x86_64-unknown-linux-gnu).
     pub target: Option<String>,
 
-    /// Emit path for resolved config. If None, defaults to `${root}/Muffinconfig.mcfg`
+    /// Emit path for resolved config. If None, defaults to `${root}/Muffinconfig.mff`
     /// (or MUFFIN_EMIT if set).
     pub emit_path: Option<PathBuf>,
 
@@ -133,7 +136,7 @@ impl Default for BuildMufOptions {
     }
 }
 
-/// Canonical resolved configuration (mcfg v1, text).
+/// Canonical resolved configuration (mff v1, text).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResolvedConfig {
     pub schema_version: u32,
@@ -337,7 +340,7 @@ Flags:
   --file <path>             Explicit Muffinfile path (skip discovery)
   --profile <name>          Profile (default: MUFFIN_PROFILE or debug)
   --target <triple>         Target triple (default: host triple best-effort)
-  --emit <path>             Emit path (default: root/Muffinconfig.mcfg or MUFFIN_EMIT)
+  --emit <path>             Emit path (default: root/Muffinconfig.mff or MUFFIN_EMIT)
   --print                   Also print emitted config to stdout
   --offline                 Offline mode
   --strict                  Fail on any IO irregularity
@@ -353,7 +356,7 @@ Flags:
 /// 1) discover Muffinfile if needed
 /// 2) validate minimal invariants
 /// 3) resolve into a canonical `ResolvedConfig`
-/// 4) emit `Muffinconfig.mcfg`
+/// 4) emit `Muffinconfig.mff`
 pub fn run(opts: &BuildMufOptions) -> Result<ResolvedConfig> {
     let root = normalize_path(&opts.root_dir);
 
@@ -411,7 +414,6 @@ fn discover_with_local_scan(root: &Path, opts: &BuildMufOptions) -> Option<PathB
         OsString::from("node_modules"),
         OsString::from("dist"),
         OsString::from("build"),
-        OsString::from("Steel"),
         OsString::from(".muffin"),
         OsString::from(".muffin-cache"),
     ];
@@ -559,7 +561,7 @@ fn resolve_workspace(root: &Path, muffinfile: &Path, opts: &BuildMufOptions) -> 
     }
 
     Ok(ResolvedConfig {
-        schema_version: 1,
+        schema_version: MFF_SCHEMA_VERSION,
         project_root: root.to_path_buf(),
         muffinfile_path: muffinfile.to_path_buf(),
         profile,
@@ -585,7 +587,7 @@ fn choose_emit_path(root: &Path, opts: &BuildMufOptions) -> PathBuf {
     root.join(DEFAULT_EMIT_NAME)
 }
 
-/// Emit `Muffinconfig.mcfg`.
+/// Emit `Muffinconfig.mff`.
 pub fn emit_mcfg(path: &Path, cfg: &ResolvedConfig) -> Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
@@ -597,12 +599,12 @@ pub fn emit_mcfg(path: &Path, cfg: &ResolvedConfig) -> Result<()> {
     Ok(())
 }
 
-/// Render config as deterministic text (mcfg v1).
+/// Render config as deterministic text (mff v1).
 pub fn format_mcfg(cfg: &ResolvedConfig) -> String {
     let mut out = String::new();
 
     // Header
-    out.push_str(&format!("mcfg {}\n\n", cfg.schema_version));
+    out.push_str(&format!("mff {}\n\n", cfg.schema_version));
 
     // Project
     out.push_str("project\n");
@@ -840,7 +842,7 @@ pub fn generate_default_mcfg(root: impl AsRef<Path>) -> ResolvedConfig {
     let fingerprint = compute_fingerprint(b"", &profile, &target, &toolchain);
 
     ResolvedConfig {
-        schema_version: 1,
+        schema_version: MFF_SCHEMA_VERSION,
         project_root: root.clone(),
         muffinfile_path: muffinfile,
         profile,
@@ -892,7 +894,7 @@ mod tests {
             "--target".into(),
             "x86_64-unknown-linux-gnu".into(),
             "--emit".into(),
-            "out/Muffinconfig.mcfg".into(),
+            "out/Muffinconfig.mff".into(),
             "--offline".into(),
             "--strict".into(),
             "--print".into(),
@@ -905,7 +907,7 @@ mod tests {
         assert_eq!(o.root_dir, PathBuf::from("./proj"));
         assert_eq!(o.profile.as_deref(), Some("release"));
         assert_eq!(o.target.as_deref(), Some("x86_64-unknown-linux-gnu"));
-        assert_eq!(o.emit_path.as_deref(), Some(Path::new("out/Muffinconfig.mcfg")));
+        assert_eq!(o.emit_path.as_deref(), Some(Path::new("out/Muffinconfig.mff")));
         assert!(o.offline);
         assert!(o.strict);
         assert!(o.print);
@@ -919,7 +921,7 @@ mod tests {
         let a = format_mcfg(&cfg);
         let b = format_mcfg(&cfg);
         assert_eq!(a, b);
-        assert!(a.starts_with("mcfg 1\n"));
+        assert!(a.starts_with(&format!("mff {MFF_SCHEMA_VERSION}\n")));
         assert!(a.contains("fingerprint\n"));
     }
 
@@ -931,25 +933,25 @@ mod tests {
 
         let mut o = BuildMufOptions::default();
         o.root_dir = root.clone();
-        o.emit_path = Some(PathBuf::from("out/Muffinconfig.mcfg"));
+        o.emit_path = Some(PathBuf::from("out/Muffinconfig.mff"));
         assert_eq!(
             choose_emit_path(&root, &o),
-            PathBuf::from("/workspace/out/Muffinconfig.mcfg")
+            PathBuf::from("/workspace/out/Muffinconfig.mff")
         );
 
         // env fallback
         o.emit_path = None;
-        env::set_var("MUFFIN_EMIT", "dist/Muffinconfig.mcfg");
+        env::set_var("MUFFIN_EMIT", "dist/Muffinconfig.mff");
         assert_eq!(
             choose_emit_path(&root, &o),
-            PathBuf::from("/workspace/dist/Muffinconfig.mcfg")
+            PathBuf::from("/workspace/dist/Muffinconfig.mff")
         );
 
         // default fallback
         env::remove_var("MUFFIN_EMIT");
         assert_eq!(
             choose_emit_path(&root, &o),
-            PathBuf::from("/workspace/Muffinconfig.mcfg")
+            PathBuf::from("/workspace/Muffinconfig.mff")
         );
     }
 
@@ -975,7 +977,7 @@ mod tests {
         assert!(emitted.is_file());
 
         let text = fs::read_to_string(&emitted).unwrap();
-        assert!(text.starts_with("mcfg 1\n"));
+        assert!(text.starts_with(&format!("mff {MFF_SCHEMA_VERSION}\n")));
 
         let _ = fs::remove_dir_all(&dir);
     }

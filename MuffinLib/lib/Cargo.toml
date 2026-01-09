@@ -1,0 +1,18 @@
+[package]
+name = "MuffinLib"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.63"
+description = "Core utility library for Muffin"
+license = "MIT"
+repository = "https://github.com/vitte-lang/muffin"
+publish = false
+
+[lib]
+name = "vittelib"
+path = "src/lib.rs"
+
+[features]
+default = []
+
+[dependencies]

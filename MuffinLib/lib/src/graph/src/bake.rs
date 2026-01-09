@@ -13,7 +13,7 @@
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::fmt;
 use std::hash::{Hash, Hasher};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 /// A stable identifier for a node in the build graph.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -307,14 +307,19 @@ impl BakeGraph {
             }
         }
 
+        let mut edges = Vec::new();
         for (nid, n) in &self.nodes {
             for &inp in &n.inputs {
                 if let Some(&p) = producer.get(&inp) {
                     if p != *nid {
-                        self.add_dep(p, *nid)?;
+                        edges.push((p, *nid));
                     }
                 }
             }
+        }
+
+        for (a, b) in edges {
+            self.add_dep(a, b)?;
         }
         Ok(())
     }

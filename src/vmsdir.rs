@@ -23,7 +23,7 @@ use std::fs;
 use std::fs::{File, OpenOptions};
 use std::io::{self, Read, Write};
 use std::path::{Component, Path, PathBuf};
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Erreur FS “build-oriented”.
 #[derive(Debug)]

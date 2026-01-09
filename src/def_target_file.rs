@@ -2,7 +2,7 @@
 //! def_target_file — target file definition + serialization (std-only)
 //!
 //! This module defines a compact, explicit representation for a resolved Target,
-//! suitable for inclusion in `Muffinconfig.mcfg` and/or for consumption by Steel.
+//! suitable for inclusion in `Muffinconfig.mff` and/or for consumption by a build runner.
 //!
 //! Key design points:
 //! - deterministic ordering (BTreeMap/BTreeSet)
@@ -10,8 +10,8 @@
 //! - explicit host/target selection + options
 //! - optional lists of rules/steps (can be expanded later)
 //!
-//! Not a full build graph. Steel owns DAG orchestration; Muffin emits resolved
-//! target *configuration* and optional rule metadata.
+//! Not a full build graph. The execution layer owns DAG orchestration; Muffin emits
+//! resolved target *configuration* and optional rule metadata.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -59,7 +59,7 @@ impl TargetKind {
     }
 }
 
-/// Output artifact type (what Steel is expected to produce).
+/// Output artifact type (what the build runner is expected to produce).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum OutputKind {
     Exe,
@@ -192,7 +192,7 @@ pub fn validate_target_def(t: &TargetDef) -> Result<()> {
     Ok(())
 }
 
-/// Serialize a target into a deterministic text block for inclusion in `.mcfg`.
+/// Serialize a target into a deterministic text block for inclusion in `.mff`.
 ///
 /// Example:
 /// ```text
@@ -267,7 +267,7 @@ pub fn format_target_block(t: &TargetDef) -> String {
 
 /// Parse a target block from an extremely small line-based format.
 ///
-/// This is *not* the Muffinfile grammar. This is a utility parser for the emitted `.mcfg` blocks
+/// This is *not* the Muffinfile grammar. This is a utility parser for the emitted `.mff` blocks
 /// in tests/tools, using a minimal subset:
 /// - `target "<id>"` begins a block
 /// - `kind "<k>"`, `output "<o>"`, `root "<path>"`, `name "<name>"`

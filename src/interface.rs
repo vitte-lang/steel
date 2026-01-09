@@ -20,7 +20,7 @@
 //
 // Notes:
 // - "max": includes many extension points and default adapters.
-// - Use this as a central place for your "Steel API" boundary too.
+// - Use this as a central place for your execution boundary too.
 
 #![allow(dead_code)]
 

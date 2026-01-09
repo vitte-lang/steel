@@ -16,7 +16,7 @@
 //! - For strict timeouts/process trees, add feature-gated platform backends.
 
 use std::collections::BTreeMap;
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 use std::fmt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus, Stdio};
@@ -300,6 +300,7 @@ fn fake_status_failure() -> ExitStatus {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::ffi::OsStr;
 
     #[test]
     fn argv_lossy_includes_program() {

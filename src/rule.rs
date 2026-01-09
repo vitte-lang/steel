@@ -1,6 +1,6 @@
 // src/rule.rs
 //
-// Muffin — build rules (Steel/Muffin planning primitives)
+// Muffin — build rules (planning primitives)
 //
 // Purpose:
 // - Model a "Rule" (like Makefile rule) in a modern, typed way.
@@ -27,7 +27,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
-use std::time::{SystemTime, UNIX_EPOCH};
+use std::time::SystemTime;
 
 /* ============================== model ============================== */
 
@@ -495,21 +495,6 @@ impl Hasher for Fnv1aHasher {
         } else {
             self.state
         }
-    }
-}
-
-trait HasherExt {
-    fn write_u8(&mut self, v: u8);
-    fn write_u64(&mut self, v: u64);
-}
-
-impl HasherExt for Fnv1aHasher {
-    fn write_u8(&mut self, v: u8) {
-        self.write(&[v]);
-    }
-
-    fn write_u64(&mut self, v: u64) {
-        self.write(&v.to_le_bytes());
     }
 }
 

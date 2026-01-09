@@ -37,8 +37,8 @@ pub struct LinuxInfo {
 impl LinuxInfo {
     pub fn gather() -> Self {
         Self {
-            target_os: env!("CARGO_CFG_TARGET_OS"),
-            target_arch: env!("CARGO_CFG_TARGET_ARCH"),
+            target_os: option_env!("CARGO_CFG_TARGET_OS").unwrap_or("unknown"),
+            target_arch: option_env!("CARGO_CFG_TARGET_ARCH").unwrap_or("unknown"),
             hostname: hostname_best_effort(),
             username: username_best_effort(),
             home_dir: home_dir_best_effort(),

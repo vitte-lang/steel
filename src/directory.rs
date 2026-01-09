@@ -67,7 +67,6 @@ impl Default for WalkOptions {
             "node_modules",
             "dist",
             "build",
-            "Steel",
             ".muffin",
             ".muffin-cache",
         ] {
@@ -202,10 +201,9 @@ pub fn find_file_named(root: impl AsRef<Path>, filename: &str, opts: &WalkOption
         return Ok(Some(root.join(filename)));
     }
 
-    let mut local = opts.clone();
     // For discovery, avoid ignoring build/dist by default if caller wants them.
     // (Callers can override via opts.ignore_dirs.)
-    let entries = walk(root, &local)?;
+    let entries = walk(root, opts)?;
     for e in entries {
         if e.file_type == FileType::File {
             if let Some(n) = e.file_name.to_str() {
@@ -321,7 +319,6 @@ pub fn default_ignore_dirs() -> BTreeSet<OsString> {
         "node_modules",
         "dist",
         "build",
-        "Steel",
         ".muffin",
         ".muffin-cache",
     ] {

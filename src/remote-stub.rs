@@ -3,7 +3,7 @@
 // Muffin — Remote Stub (network abstraction placeholder)
 //
 // Purpose:
-// - Provide a minimal, dependency-free "remote" abstraction for Muffin/Steel that can be
+// - Provide a minimal, dependency-free "remote" abstraction for Muffin that can be
 //   compiled even when real networking/registry support is not enabled.
 // - Define the stable API surface that the rest of the codebase can depend on:
 //   - Remote client trait

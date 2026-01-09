@@ -30,7 +30,7 @@
 
 #![allow(dead_code)]
 
-use std::borrow::Borrow;
+use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::collections::HashMap;
 use std::fmt;
@@ -158,7 +158,7 @@ impl StrCache {
         Self {
             opts,
             frozen: false,
-            map: HashMap::with_capacity(1024),
+            map: HashMap::with_capacity_and_hasher(1024, ArcStrBuildHasher::default()),
             vec: Vec::with_capacity(1024),
             bytes: 0,
         }
@@ -391,13 +391,6 @@ impl Hasher for Fnv1aHasher {
         } else {
             self.state
         }
-    }
-}
-
-// Allow HashMap<Arc<str>, _> lookups by &str without allocating.
-impl Borrow<str> for Arc<str> {
-    fn borrow(&self) -> &str {
-        self.as_ref()
     }
 }
 

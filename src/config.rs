@@ -20,6 +20,7 @@
 //! - small reusable validators (profile name, target triple, paths, toolchain)
 
 use std::collections::BTreeMap;
+use std::ffi::OsStr;
 use std::fmt;
 use std::path::{Path, PathBuf};
 
@@ -589,7 +590,7 @@ impl Config {
     pub fn load() -> Result<Self, Box<dyn std::error::Error>> {
         // ...existing code...
         Ok(Config {
-            output: "build/.mcfg".to_string(),
+            output: "build/.mff".to_string(),
         })
     }
 }
