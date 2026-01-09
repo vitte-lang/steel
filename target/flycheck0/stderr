@@ -1,6 +1,10 @@
-    Blocking waiting for file lock on build directory
-   0.666620708s  INFO prepare_target{force=false package_id=MuffinLib v0.1.0 (/Users/vincent/Documents/Github/muffin/MuffinLib/lib) target="vittelib"}: cargo::core::compiler::fingerprint: fingerprint error for MuffinLib v0.1.0 (/Users/vincent/Documents/Github/muffin/MuffinLib/lib)/Check { test: true }/TargetInner { ..: lib_target("vittelib", ["lib"], "/Users/vincent/Documents/Github/muffin/MuffinLib/lib/src/lib.rs", Edition2021) }
-   0.667075792s  INFO prepare_target{force=false package_id=MuffinLib v0.1.0 (/Users/vincent/Documents/Github/muffin/MuffinLib/lib) target="vittelib"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/vincent/Documents/Github/muffin/target/debug/.fingerprint/MuffinLib-b6546d81f07b6e34/test-lib-vittelib`
+   0.208483584s  INFO prepare_target{force=false package_id=MuffinLib v0.1.0 (/Users/vincent/Documents/Github/muffin/MuffinLib/lib) target="vittelib"}: cargo::core::compiler::fingerprint: stale: changed "/Users/vincent/Documents/Github/muffin/MuffinLib/lib/src/path/src/glob.rs"
+   0.208504042s  INFO prepare_target{force=false package_id=MuffinLib v0.1.0 (/Users/vincent/Documents/Github/muffin/MuffinLib/lib) target="vittelib"}: cargo::core::compiler::fingerprint:           (vs) "/Users/vincent/Documents/Github/muffin/target/debug/.fingerprint/MuffinLib-ceec5104ec0aca84/dep-lib-vittelib"
+   0.208509917s  INFO prepare_target{force=false package_id=MuffinLib v0.1.0 (/Users/vincent/Documents/Github/muffin/MuffinLib/lib) target="vittelib"}: cargo::core::compiler::fingerprint:                FileTime { seconds: 1767916034, nanos: 231966221 } < FileTime { seconds: 1767920829, nanos: 500063529 }
+   0.208591125s  INFO prepare_target{force=false package_id=MuffinLib v0.1.0 (/Users/vincent/Documents/Github/muffin/MuffinLib/lib) target="vittelib"}: cargo::core::compiler::fingerprint: fingerprint dirty for MuffinLib v0.1.0 (/Users/vincent/Documents/Github/muffin/MuffinLib/lib)/Check { test: false }/TargetInner { ..: lib_target("vittelib", ["lib"], "/Users/vincent/Documents/Github/muffin/MuffinLib/lib/src/lib.rs", Edition2021) }
+   0.208606084s  INFO prepare_target{force=false package_id=MuffinLib v0.1.0 (/Users/vincent/Documents/Github/muffin/MuffinLib/lib) target="vittelib"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleItem(ChangedFile { reference: "/Users/vincent/Documents/Github/muffin/target/debug/.fingerprint/MuffinLib-ceec5104ec0aca84/dep-lib-vittelib", reference_mtime: FileTime { seconds: 1767916034, nanos: 231966221 }, stale: "/Users/vincent/Documents/Github/muffin/MuffinLib/lib/src/path/src/glob.rs", stale_mtime: FileTime { seconds: 1767920829, nanos: 500063529 } }))
+   0.208818334s  INFO prepare_target{force=false package_id=MuffinLib v0.1.0 (/Users/vincent/Documents/Github/muffin/MuffinLib/lib) target="vittelib"}: cargo::core::compiler::fingerprint: fingerprint error for MuffinLib v0.1.0 (/Users/vincent/Documents/Github/muffin/MuffinLib/lib)/Check { test: true }/TargetInner { ..: lib_target("vittelib", ["lib"], "/Users/vincent/Documents/Github/muffin/MuffinLib/lib/src/lib.rs", Edition2021) }
+   0.208825292s  INFO prepare_target{force=false package_id=MuffinLib v0.1.0 (/Users/vincent/Documents/Github/muffin/MuffinLib/lib) target="vittelib"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/vincent/Documents/Github/muffin/target/debug/.fingerprint/MuffinLib-b6546d81f07b6e34/test-lib-vittelib`
 
 Caused by:
     No such file or directory (os error 2)
@@ -24,8 +28,10 @@ Stack backtrace:
   15: std::rt::lang_start::<()>::{closure#0}
   16: std::rt::lang_start_internal
   17: _main
-   0.729348792s  INFO prepare_target{force=false package_id=muffin v0.1.0 (/Users/vincent/Documents/Github/muffin) target="muffin"}: cargo::core::compiler::fingerprint: fingerprint error for muffin v0.1.0 (/Users/vincent/Documents/Github/muffin)/Check { test: true }/TargetInner { ..: lib_target("muffin", ["lib"], "/Users/vincent/Documents/Github/muffin/src/lib.rs", Edition2021) }
-   0.729369542s  INFO prepare_target{force=false package_id=muffin v0.1.0 (/Users/vincent/Documents/Github/muffin) target="muffin"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/vincent/Documents/Github/muffin/target/debug/.fingerprint/muffin-7b3cc90f7af686e2/test-lib-muffin`
+   0.219073542s  INFO prepare_target{force=false package_id=muffin v0.1.0 (/Users/vincent/Documents/Github/muffin) target="muffin"}: cargo::core::compiler::fingerprint: fingerprint dirty for muffin v0.1.0 (/Users/vincent/Documents/Github/muffin)/Check { test: false }/TargetInner { ..: lib_target("muffin", ["lib"], "/Users/vincent/Documents/Github/muffin/src/lib.rs", Edition2021) }
+   0.219089000s  INFO prepare_target{force=false package_id=muffin v0.1.0 (/Users/vincent/Documents/Github/muffin) target="muffin"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "vittelib" })
+   0.236016750s  INFO prepare_target{force=false package_id=muffin v0.1.0 (/Users/vincent/Documents/Github/muffin) target="muffin"}: cargo::core::compiler::fingerprint: fingerprint error for muffin v0.1.0 (/Users/vincent/Documents/Github/muffin)/Check { test: true }/TargetInner { ..: lib_target("muffin", ["lib"], "/Users/vincent/Documents/Github/muffin/src/lib.rs", Edition2021) }
+   0.236036167s  INFO prepare_target{force=false package_id=muffin v0.1.0 (/Users/vincent/Documents/Github/muffin) target="muffin"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/vincent/Documents/Github/muffin/target/debug/.fingerprint/muffin-7b3cc90f7af686e2/test-lib-muffin`
 
 Caused by:
     No such file or directory (os error 2)
@@ -49,8 +55,12 @@ Stack backtrace:
   15: std::rt::lang_start::<()>::{closure#0}
   16: std::rt::lang_start_internal
   17: _main
-   0.734300250s  INFO prepare_target{force=false package_id=muffin v0.1.0 (/Users/vincent/Documents/Github/muffin) target="os_compatibility"}: cargo::core::compiler::fingerprint: fingerprint error for muffin v0.1.0 (/Users/vincent/Documents/Github/muffin)/Check { test: true }/TargetInner { kind: "test", name: "os_compatibility", benched: false, ..: with_path("/Users/vincent/Documents/Github/muffin/tests/os_compatibility.rs", Edition2021) }
-   0.734311083s  INFO prepare_target{force=false package_id=muffin v0.1.0 (/Users/vincent/Documents/Github/muffin) target="os_compatibility"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/vincent/Documents/Github/muffin/target/debug/.fingerprint/muffin-71f7aa0388ca9066/test-integration-test-os_compatibility`
+   0.238532625s  INFO prepare_target{force=false package_id=muffin v0.1.0 (/Users/vincent/Documents/Github/muffin) target="muffin"}: cargo::core::compiler::fingerprint: fingerprint dirty for muffin v0.1.0 (/Users/vincent/Documents/Github/muffin)/Check { test: false }/TargetInner { name: "muffin", doc: true, ..: with_path("/Users/vincent/Documents/Github/muffin/src/bin/muffin.rs", Edition2021) }
+   0.238588292s  INFO prepare_target{force=false package_id=muffin v0.1.0 (/Users/vincent/Documents/Github/muffin) target="muffin"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "vittelib" })
+   0.240023625s  INFO prepare_target{force=false package_id=muffin v0.1.0 (/Users/vincent/Documents/Github/muffin) target="muffin"}: cargo::core::compiler::fingerprint: fingerprint dirty for muffin v0.1.0 (/Users/vincent/Documents/Github/muffin)/Check { test: true }/TargetInner { name: "muffin", doc: true, ..: with_path("/Users/vincent/Documents/Github/muffin/src/bin/muffin.rs", Edition2021) }
+   0.240034167s  INFO prepare_target{force=false package_id=muffin v0.1.0 (/Users/vincent/Documents/Github/muffin) target="muffin"}: cargo::core::compiler::fingerprint:     dirty: FsStatusOutdated(StaleDepFingerprint { name: "vittelib" })
+   0.242204125s  INFO prepare_target{force=false package_id=muffin v0.1.0 (/Users/vincent/Documents/Github/muffin) target="os_compatibility"}: cargo::core::compiler::fingerprint: fingerprint error for muffin v0.1.0 (/Users/vincent/Documents/Github/muffin)/Check { test: true }/TargetInner { kind: "test", name: "os_compatibility", benched: false, ..: with_path("/Users/vincent/Documents/Github/muffin/tests/os_compatibility.rs", Edition2021) }
+   0.242218542s  INFO prepare_target{force=false package_id=muffin v0.1.0 (/Users/vincent/Documents/Github/muffin) target="os_compatibility"}: cargo::core::compiler::fingerprint:     err: failed to read `/Users/vincent/Documents/Github/muffin/target/debug/.fingerprint/muffin-71f7aa0388ca9066/test-integration-test-os_compatibility`
 
 Caused by:
     No such file or directory (os error 2)
@@ -76,7 +86,4 @@ Stack backtrace:
   17: _main
     Checking MuffinLib v0.1.0 (/Users/vincent/Documents/Github/muffin/MuffinLib/lib)
     Checking muffin v0.1.0 (/Users/vincent/Documents/Github/muffin)
-error: could not compile `muffin` (test "os_compatibility") due to 6 previous errors; 1 warning emitted
-warning: build failed, waiting for other jobs to finish...
-error: could not compile `MuffinLib` (lib test) due to 1 previous error
-error: could not compile `muffin` (lib test) due to 4 previous errors; 1 warning emitted
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 4.46s
