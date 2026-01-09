@@ -163,7 +163,17 @@ pub fn argv0_to_progname(argv0: &OsStr, opts: &ProgNameOptions) -> Option<String
     // - "C:\...\muffin.exe"
     // - quoted or odd; we treat as path-like and take basename.
     let p = Path::new(argv0);
-    if p.components().count() > 1 || p.as_os_str().to_string_lossy().contains(std::path::MAIN_SEPARATOR) {
+    let raw = p.as_os_str().to_string_lossy();
+    if raw.contains('\\') {
+        let file = raw.rsplit('\\').next().unwrap_or(raw.as_ref());
+        let mut s = file.to_string();
+        if opts.strip_exe_extension {
+            s = strip_exe_ext(&s);
+        }
+        let s = finalize_string(s, opts);
+        return if s.is_empty() { None } else { Some(s) };
+    }
+    if p.components().count() > 1 || raw.contains(std::path::MAIN_SEPARATOR) {
         path_to_progname(p, opts)
     } else {
         os_to_clean_string(argv0, opts)

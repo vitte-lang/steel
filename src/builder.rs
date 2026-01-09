@@ -585,20 +585,40 @@ mod tests {
 
     #[test]
     fn planning_toposort_respects_deps() {
-        let mut cfg = build_muf::generate_default_mcfg("/tmp/muffin");
+        let mut root = std::env::temp_dir();
+        let pid = std::process::id();
+        let ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_else(|_| std::time::Duration::from_secs(0))
+            .as_nanos();
+        root.push(format!("muffin_builder_plan_{pid}_{ts}"));
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::write(root.join("Muffinfile"), "workspace ...\n").unwrap();
+
+        let mut cfg = build_muf::generate_default_mcfg(&root);
         cfg.profile = "debug".into();
         cfg.target = "x86_64-unknown-linux-gnu".into();
 
-        let mut app = TargetDef::new("app", TargetKind::Program, OutputKind::Exe, "pkg/app");
+        let mut app = TargetDef::new(
+            "app",
+            TargetKind::Program,
+            OutputKind::Exe,
+            cfg.project_root.join("pkg/app"),
+        );
         app.deps.insert("core".into());
 
-        let core = TargetDef::new("core", TargetKind::Library, OutputKind::StaticLib, "pkg/core");
+        let core = TargetDef::new(
+            "core",
+            TargetKind::Library,
+            OutputKind::StaticLib,
+            cfg.project_root.join("pkg/core"),
+        );
 
         let b = Builder::default();
         let sess = SessionConfig { resolved: cfg, targets: vec![app, core], mcfg_out: None };
         let out = b.run(BuildStage::Plan, sess);
 
-        assert!(!out.report.has_errors());
+        assert!(!out.report.has_errors(), "report: {0}", out.report);
         let ia = out.target_order.iter().position(|x| x == "app").unwrap();
         let ic = out.target_order.iter().position(|x| x == "core").unwrap();
         assert!(ic < ia);

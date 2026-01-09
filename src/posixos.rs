@@ -263,10 +263,30 @@ mod tests {
         };
         assert_eq!(classify_tier(legacy), OsTier::Legacy);
 
-        let modern = OsVersion {
-            major: 10,
-            minor: 0,
-            patch: 0,
+        let modern = if cfg!(target_os = "macos") {
+            OsVersion {
+                major: 12,
+                minor: 0,
+                patch: 0,
+            }
+        } else if cfg!(target_os = "linux") {
+            OsVersion {
+                major: 2,
+                minor: 33,
+                patch: 0,
+            }
+        } else if cfg!(target_os = "windows") {
+            OsVersion {
+                major: 10,
+                minor: 0,
+                patch: 0,
+            }
+        } else {
+            OsVersion {
+                major: 10,
+                minor: 0,
+                patch: 0,
+            }
         };
         assert_eq!(classify_tier(modern), OsTier::Modern);
     }
