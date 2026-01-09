@@ -2,7 +2,7 @@ mff 1
 
 project
   root "/Users/vincent/Documents/Github/muffin"
-  muffinfile "/Users/vincent/Documents/Github/muffin/fichier.muf"
+  muffinfile "/Users/vincent/Documents/Github/muffin/examples/vitte/Muffinfile"
 .end
 
 select
@@ -20,12 +20,12 @@ toolchain
   rustc "rustc"
 
   versions
-    rustc "rustc 1.90.0 (1159e78c4 2025-09-14) (Homebrew)"
+    rustc "rustc 1.91.0 (f8297e351 2025-10-28)"
   .end
 .end
 
 vars
-  set "muffin.file" "/Users/vincent/Documents/Github/muffin/fichier.muf"
+  set "muffin.file" "/Users/vincent/Documents/Github/muffin/examples/vitte/Muffinfile"
   set "muffin.offline" "false"
   set "muffin.profile" "debug"
   set "muffin.root" "/Users/vincent/Documents/Github/muffin"
@@ -33,5 +33,5 @@ vars
 .end
 
 fingerprint
-  value "fnv1a64:a6a51acc79598a45"
+  value "fnv1a64:6a6bbd3726c1c51f"
 .end

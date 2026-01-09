@@ -529,3 +529,439 @@ paths
 ## Licence
 
 Voir `COPYING`.
+
+# Muffin
+
+![Muffin](https://img.shields.io/badge/Muffin-config-orange)
+
+Muffin est le **compilateur de configuration** du build Vitte.
+
+- **Entrée** : un seul fichier à la racine du dépôt : **`MuffinConfig.muff`**.
+- **Sortie** : un **binaire universel** de configuration **`MuffinConfig.mub`** (Universal Binary Config), identique d’une machine à l’autre.
+- **Consommateur** : **Vitte** lit `MuffinConfig.mub` pour exécuter le build (DAG, cache, incrémental) de manière déterministe.
+
+L’objectif : **un modèle unique**, **un workflow unique**, **un artefact unique**.
+
+---
+
+## Pourquoi un binaire universel ?
+
+Le build a besoin d’une configuration **gelée** (plus d’implicites) :
+
+- toutes les valeurs résolues (profils, targets, toolchains, variables),
+- la liste normalisée des inputs (globs développés),
+- l’empreinte toolchain/policy pour l’invalidation cache,
+- un graphe exécutable (ports `inputs → outputs`).
+
+`MuffinConfig.mub` est cette barrière contractuelle entre :
+
+- **déclaratif** (Muffin) : ce qu’on veut construire,
+- **exécutable** (Vitte) : comment on le construit.
+
+---
+
+## Pipeline
+
+1) **Configurer (freeze)**
+
+```text
+build muffin
+```
+
+- lit `MuffinConfig.muff`
+- valide + résout
+- émet `MuffinConfig.mub`
+
+2) **Construire (build)**
+
+```text
+build vitte
+```
+
+- lit `MuffinConfig.mub`
+- exécute le DAG (compile/link/test/package)
+- gère incrémental + cache
+
+---
+
+## Commandes
+
+### Configuration
+
+```text
+build muffin [flags]
+```
+
+Flags usuels :
+
+- `-debug` / `-release`
+- `-j <n>` : parallélisme
+- `-D KEY=VALUE` : override sans modifier `MuffinConfig.muff`
+- `-why <ref>` : diagnostic d’invalidation
+- `-graph[=text|dot|json]` : export graphe
+- `-watch` : mode dev
+
+### Introspection
+
+```text
+muffin print <scope>
+muffin graph [--format <text|dot|json>]
+muffin why <ref>
+```
+
+---
+
+## Format du fichier `MuffinConfig.muff` (aperçu)
+
+Le fichier est orienté blocs, lisible, et conçu pour être **résolu** puis **gelé**.
+
+```text
+muf 2
+
+workspace
+  name "vitte"
+  root "."
+.end
+
+profile debug
+  opt 0
+  debug true
+.end
+
+profile release
+  opt 3
+  debug false
+.end
+
+toolchain host
+  cc "clang"
+  ar "llvm-ar"
+  ld "clang"
+.end
+
+target host
+  profile "release"
+  ;; étapes déclaratives (exemple minimal)
+  step "compile" tool "cc"  inputs "src/**/*.c"  outputs "build/**/*.o"
+  step "link"    tool "ld"  inputs "build/**/*.o" outputs "out/bin/vittec"
+.end
+
+default
+  target "host"
+.end
+```
+
+---
+
+## Fichiers
+
+- **`MuffinConfig.muff`** : source de configuration (unique, à la racine).
+- **`MuffinConfig.mub`** : binaire universel de configuration gelée (artefact canonique).
+- Artefacts Vitte (selon targets) : `*.vo`, `*.va`, exécutables, etc.
+
+---
+
+## Notes de compatibilité
+
+- Le binaire `MuffinConfig.mub` est conçu pour être **portable** (endianness/versions gérées par en-tête + schéma).
+- Pour outiller CI/IDE, Muffin peut exposer en plus des exports `--json`/`--dot`, mais **Vitte ne dépend que de `MuffinConfig.mub`**.
+
+---
+
+## Licence
+
+Voir `COPYING`.
+# Muffin
+
+![Muffin](https://img.shields.io/badge/Muffin-config-orange)
+
+Muffin est la **configuration déclarative** du build Vitte.
+
+- **Entrée** : un seul fichier à la racine du dépôt : **`MuffinConfig.muff`**.
+- **Sortie** : un dossier **`target/`** créé à la racine (artefacts + configuration résolue).
+- **Consommateur** : **Vitte** lit la configuration résolue depuis `target/` et exécute le build de manière déterministe.
+
+---
+
+## Principe
+
+Le workflow est volontairement en 2 phases :
+
+1) **Configurer (freeze)**
+
+```text
+build muffin
+```
+
+- parse + valide `MuffinConfig.muff`
+- résout profiles/targets/toolchains/variables
+- **matérialise** une configuration stable dans `target/`
+
+2) **Construire (build)**
+
+```text
+build vitte
+```
+
+- lit la config résolue depuis `target/`
+- exécute le DAG (compile/link/test/package)
+- gère incrémental + cache
+
+---
+
+## Layout généré dans `target/`
+
+Par défaut, Muffin crée (ou met à jour) une arborescence standard :
+
+```text
+target/
+  muffin/
+    config.mub
+    graph.json
+    fingerprints.json
+  build/
+    <triple>/
+      <profile>/
+        obj/
+        gen/
+  out/
+    <triple>/
+      <profile>/
+        bin/
+        lib/
+  cache/
+    cas/
+    meta/
+```
+
+Notes :
+
+- `target/muffin/config.mub` : **binaire universel** de configuration résolue (portable, versionné).
+- `target/muffin/graph.json` : export outillable du DAG (CI/IDE).
+- `target/muffin/fingerprints.json` : empreintes toolchain/policy pour l’invalidation.
+
+---
+
+## Commandes
+
+### Configuration
+
+```text
+build muffin [flags]
+```
+
+Flags usuels :
+
+- `-debug` / `-release`
+- `-j <n>` : parallélisme
+- `-D KEY=VALUE` : override sans modifier `MuffinConfig.muff`
+- `-why <ref>` : diagnostic d’invalidation
+- `-graph[=text|dot|json]` : export graphe
+- `-watch` : mode dev
+
+### Introspection
+
+```text
+muffin print <scope>
+muffin graph [--format <text|dot|json>]
+muffin why <ref>
+```
+
+---
+
+## Format minimal de `MuffinConfig.muff` (aperçu)
+
+```text
+muf 2
+
+workspace
+  name "vitte"
+  root "."
+  target_dir "target"
+.end
+
+profile debug
+  opt 0
+  debug true
+.end
+
+profile release
+  opt 3
+  debug false
+.end
+
+toolchain host
+  cc "clang"
+  ar "llvm-ar"
+  ld "clang"
+.end
+
+target host
+  profile "release"
+  step "compile" tool "cc" inputs "src/**/*.c" outputs "target/build/${TRIPLE}/${PROFILE}/obj/**/*.o"
+  step "link"    tool "ld" inputs "target/build/${TRIPLE}/${PROFILE}/obj/**/*.o" outputs "target/out/${TRIPLE}/${PROFILE}/bin/vittec"
+.end
+
+default
+  target "host"
+.end
+```
+
+---
+
+## Fichiers
+
+- **`MuffinConfig.muff`** : source de configuration (unique).
+- **`target/`** : **racine canonique** de toutes les sorties (config résolue + build + cache + outputs).
+
+---
+
+## Licence
+
+Voir `COPYING`.
+# Muffin
+
+![Muffin](https://img.shields.io/badge/Muffin-config-orange)
+
+Muffin est la couche de configuration **déclarative** du build Vitte.
+
+- **Entrée** : un seul fichier à la racine du dépôt : **`MuffinConfig.muff`**.
+- **Sortie** : un dossier **`target/`** créé à la racine (config résolue + build + cache + outputs).
+- **Contrat universel** : `target/muffin/config.mub` (**binaire universel** de configuration résolue).
+- **Consommateur** : **Vitte** lit `target/muffin/config.mub` et exécute le build de manière déterministe.
+
+---
+
+## Pipeline
+
+1) **Configurer (freeze)**
+
+```text
+build muffin
+```
+
+- parse + valide `MuffinConfig.muff`
+- résout profiles/targets/toolchains/variables
+- matérialise la configuration stable dans `target/muffin/config.mub`
+
+2) **Construire (build)**
+
+```text
+build vitte
+```
+
+- lit `target/muffin/config.mub`
+- exécute le DAG (compile/link/test/package)
+- gère incrémental + cache
+
+---
+
+## Layout par défaut dans `target/`
+
+```text
+target/
+  muffin/
+    config.mub
+    graph.json
+    fingerprints.json
+  build/
+    <triple>/
+      <profile>/
+        obj/
+        gen/
+  out/
+    <triple>/
+      <profile>/
+        bin/
+        lib/
+  cache/
+    cas/
+    meta/
+```
+
+Notes :
+
+- `config.mub` : binaire universel (portable + versionné).
+- `graph.json` : export outillable du DAG (CI/IDE).
+- `fingerprints.json` : empreintes toolchain/policy pour l’invalidation.
+
+---
+
+## Commandes
+
+### Configuration
+
+```text
+build muffin [flags]
+```
+
+Flags usuels :
+
+- `-debug` / `-release`
+- `-j <n>` : parallélisme
+- `-D KEY=VALUE` : override sans modifier `MuffinConfig.muff`
+- `-why <ref>` : diagnostic d’invalidation
+- `-graph[=text|dot|json]` : export graphe
+- `-watch` : mode dev
+
+### Introspection
+
+```text
+muffin print <scope>
+muffin graph [--format <text|dot|json>]
+muffin why <ref>
+```
+
+---
+
+## Format minimal de `MuffinConfig.muff` (aperçu)
+
+```text
+muf 2
+
+workspace
+  name "vitte"
+  root "."
+  target_dir "target"
+.end
+
+profile debug
+  opt 0
+  debug true
+.end
+
+profile release
+  opt 3
+  debug false
+.end
+
+toolchain host
+  cc "clang"
+  ar "llvm-ar"
+  ld "clang"
+.end
+
+target host
+  profile "release"
+  step "compile" tool "cc" inputs "src/**/*.c" outputs "target/build/${TRIPLE}/${PROFILE}/obj/**/*.o"
+  step "link"    tool "ld" inputs "target/build/${TRIPLE}/${PROFILE}/obj/**/*.o" outputs "target/out/${TRIPLE}/${PROFILE}/bin/vittec"
+.end
+
+default
+  target "host"
+.end
+```
+
+---
+
+## Fichiers
+
+- **`MuffinConfig.muff`** : source de configuration (unique).
+- **`target/`** : racine canonique de toutes les sorties.
+- **`target/muffin/config.mub`** : contrat universel consommé par Vitte.
+
+---
+
+## Licence
+
+Voir `COPYING`.
