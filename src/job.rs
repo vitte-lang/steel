@@ -233,6 +233,15 @@ impl JobExecutor {
 
     pub fn run(&self, plan: &JobPlan) -> Result<JobsReport, JobsError> {
         validate_plan(plan)?;
+        if plan.jobs.is_empty() {
+            return Ok(JobsReport {
+                results: Vec::new(),
+                ok: true,
+                started: 0,
+                finished: 0,
+                failed: 0,
+            });
+        }
 
         let by_id = plan.by_id();
 

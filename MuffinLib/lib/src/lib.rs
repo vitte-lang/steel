@@ -44,6 +44,14 @@ pub mod store;
 #[path = "tool/src/mod.rs"]
 pub mod tool;
 
+// MUF v4.1 lexer/parser/AST (Bracket + Dot Ops).
+#[path = "muffin/src/ast.rs"]
+pub mod muf_ast;
+#[path = "muffin/src/lexer.rs"]
+pub mod muf_lexer;
+#[path = "muffin/src/parser.rs"]
+pub mod muf_parser;
+
 // --- Common ergonomic re-exports (keep stable) ---
 pub use span::{FileError, FileId, LineCol, Location, SourceFile, Span, SpanRange};
 pub use store::{
@@ -51,6 +59,12 @@ pub use store::{
     IndexEntry, IndexError, StoreIndex,
 };
 pub use tool::{ToolError, ToolOutput, ToolRunner, ToolSpec, ToolStatus};
+pub use muf_ast::{
+    Atom as MufAtom, Block as MufBlock, BlockItem as MufBlockItem, MufFile, Number as MufNumber,
+    Pos as MufPos, RefPath as MufRefPath, Span as MufSpan,
+};
+pub use muf_lexer::{LexError as MufLexError, Lexer as MufLexer, Token as MufToken, TokenKind as MufTokenKind};
+pub use muf_parser::{parse_muf, ParseError as MufParseError};
 
 // If `platform` module defines `Platform` (recommended), re-export it.
 // If not present, remove these lines.
