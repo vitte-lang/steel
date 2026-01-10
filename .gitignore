@@ -102,3 +102,4 @@ Thumbs.db
 # Muffin artifacts
 # =========================
 *.mff
+.DS_Store
