@@ -40,18 +40,25 @@ fn run() -> Result<(), String> {
     let _prog = argv.next().unwrap_or_else(|| "muffin".into());
 
     let cmd = match argv.peek() {
-        None => return Err(help_text()),
+        None => {
+            return Err("missing command. Run `muffin help` for the list of commands.".to_string())
+        }
         Some(c) => c.clone(),
     };
 
     match cmd.as_str() {
-        "help" | "-h" | "--help" => Err(help_text()),
+        "help" | "-h" | "--help" => {
+            print!("{}", help_text());
+            Ok(())
+        }
         "version" | "-V" | "--version" => {
             println!("{}", version_text());
             Ok(())
         }
-        "decompile" => cmd_decompile(argv.consume()) ,
-        _ => Err(help_text()),
+        "decompile" => cmd_decompile(argv.consume()),
+        _ => Err(format!(
+            "unknown command: {cmd}. Run `muffin help` for the list of commands."
+        )),
     }
 }
 
@@ -94,7 +101,10 @@ fn cmd_decompile(args: Vec<String>) -> Result<(), String> {
             }
             "--verify" => opts.verify = true,
             "--no-strict-paths" => opts.strict_paths = false,
-            "-h" | "--help" => return Err(decompile_help_text()),
+            "-h" | "--help" => {
+                print!("{}", decompile_help_text());
+                return Ok(());
+            }
             _ => return Err(format!("decompile: unknown flag: {t}")),
         }
     }
