@@ -21,20 +21,21 @@ use std::path::{Path, PathBuf};
 
 use crate::build_muf;
 use crate::build_muf::BuildMufError;
+use crate::run_muf;
 
 pub const CLI_NAME: &str = "muffin";
 
 #[derive(Debug)]
 pub enum CommandError {
     Usage(String),
-    Failure(String),
+    Failure { code: i32, msg: String },
 }
 
 impl std::fmt::Display for CommandError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             CommandError::Usage(s) => write!(f, "{s}"),
-            CommandError::Failure(s) => write!(f, "{s}"),
+            CommandError::Failure { msg, .. } => write!(f, "{msg}"),
         }
     }
 }
@@ -52,6 +53,7 @@ pub enum Cmd {
     Resolve(build_muf::BuildMufOptions),
     Check(build_muf::BuildMufOptions),
     Print(build_muf::BuildMufOptions),
+    Run(run_muf::RunOptions),
 
     Graph(GraphOptions),
     Fmt(FmtOptions),
@@ -87,9 +89,9 @@ pub fn run_cli(args: &[String]) -> i32 {
             eprintln!("{msg}");
             2
         }
-        Err(CommandError::Failure(msg)) => {
+        Err(CommandError::Failure { code, msg }) => {
             eprintln!("{msg}");
-            1
+            if code <= 0 { 1 } else { code }
         }
     }
 }
@@ -104,7 +106,10 @@ pub fn dispatch(args: &[String]) -> Result<()> {
 /// `args` is expected to be the full argv (including program name at index 0).
 pub fn parse_command(args: &[String]) -> Result<Cmd> {
     if args.len() <= 1 {
-        return Ok(Cmd::Help);
+        return Err(CommandError::Usage(err_msg(
+            "U001",
+            "missing command. Run `muffin -help` for the list of commands.",
+        )));
     }
 
     let sub = args[1].as_str();
@@ -139,13 +144,15 @@ pub fn parse_command(args: &[String]) -> Result<Cmd> {
             o.print = true;
             Ok(Cmd::Print(o))
         }
+        // `run ...` (execute tools)
+        "run" => {
+            let o = parse_run_args(&args[2..])?;
+            Ok(Cmd::Run(o))
+        }
         // stubs reserved for future
         "graph" => parse_graph(&args[2..]),
         "fmt" => parse_fmt(&args[2..]),
-        other => Err(CommandError::Usage(format!(
-            "{}",
-            usage_unknown(other)
-        ))),
+        other => Err(CommandError::Usage(usage_unknown(other))),
     }
 }
 
@@ -246,18 +253,102 @@ fn parse_build_args(rest: &[String]) -> Result<build_muf::BuildMufOptions> {
     build_muf::parse_args(rest).map_err(map_build_error)
 }
 
-fn map_build_error(err: BuildMufError) -> CommandError {
-    match err {
-        BuildMufError::Arg { msg } => CommandError::Usage(ensure_build_help(msg)),
-        other => CommandError::Failure(other.to_string()),
+fn parse_run_args(rest: &[String]) -> Result<run_muf::RunOptions> {
+    let mut o = run_muf::RunOptions::default();
+
+    let mut positional_root_set = false;
+    let mut it = rest.iter().peekable();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--root" => {
+                let v = it.next().ok_or_else(|| {
+                    CommandError::Usage("--root expects a path\n\n".to_string() + run_help())
+                })?;
+                o.root_dir = PathBuf::from(v);
+                positional_root_set = true;
+            }
+            "--file" => {
+                let v = it.next().ok_or_else(|| {
+                    CommandError::Usage("--file expects a path\n\n".to_string() + run_help())
+                })?;
+                o.muffin_file = Some(PathBuf::from(v));
+            }
+            "--profile" => {
+                let v = it.next().ok_or_else(|| {
+                    CommandError::Usage("--profile expects a name\n\n".to_string() + run_help())
+                })?;
+                o.profile = Some(v.to_string());
+            }
+            "--bake" => {
+                let v = it.next().ok_or_else(|| {
+                    CommandError::Usage("--bake expects a name\n\n".to_string() + run_help())
+                })?;
+                o.bakes.push(v.to_string());
+            }
+            "--all" => o.run_all = true,
+            "--no-cache" => o.no_cache = true,
+            "--print" => o.dry_run = true,
+            "-v" | "--verbose" => o.verbose = true,
+            "--log" => {
+                let v = it.next().ok_or_else(|| {
+                    CommandError::Usage("--log expects a path\n\n".to_string() + run_help())
+                })?;
+                o.log_path = Some(PathBuf::from(v));
+            }
+            "--log-mode" => {
+                let v = it.next().ok_or_else(|| {
+                    CommandError::Usage("--log-mode expects append|truncate\n\n".to_string() + run_help())
+                })?;
+                o.log_mode = match v.as_str() {
+                    "append" => run_muf::LogMode::Append,
+                    "truncate" => run_muf::LogMode::Truncate,
+                    _ => {
+                        return Err(CommandError::Usage(
+                            "invalid --log-mode (use append|truncate)\n\n".to_string() + run_help(),
+                        ))
+                    }
+                };
+            }
+            "-h" | "--help" => return Err(CommandError::Usage(run_help().to_string())),
+            x if x.starts_with('-') => {
+                return Err(CommandError::Usage(format!(
+                    "unknown flag: {x}\n\n{}",
+                    run_help()
+                )))
+            }
+            other => {
+                if positional_root_set {
+                    return Err(CommandError::Usage(format!(
+                        "unexpected argument: {other}\n\n{}",
+                        run_help()
+                    )));
+                }
+                o.root_dir = PathBuf::from(other);
+                positional_root_set = true;
+            }
+        }
     }
+
+    Ok(o)
 }
 
-fn ensure_build_help(msg: String) -> String {
-    if msg.contains("build muffin —") {
-        msg
-    } else {
-        format!("{msg}\n\n{}", build_muf::help_text())
+fn map_build_error(err: BuildMufError) -> CommandError {
+    match err {
+        BuildMufError::Arg { msg } => {
+            if msg.contains("build muffin —") {
+                CommandError::Usage(msg)
+            } else {
+                CommandError::Usage(format!(
+                    "{}\n\n{}",
+                    err_msg("U002", msg),
+                    build_muf::help_text()
+                ))
+            }
+        }
+        other => CommandError::Failure {
+            code: 1,
+            msg: err_msg("E001", other.to_string()),
+        },
     }
 }
 
@@ -279,6 +370,7 @@ pub fn execute(cmd: Cmd) -> Result<()> {
             o.print = true;
             exec_build_muffin(o)
         }
+        Cmd::Run(o) => exec_run_muf(o),
 
         Cmd::Check(mut o) => {
             // Best-effort semantics:
@@ -299,16 +391,25 @@ pub fn execute(cmd: Cmd) -> Result<()> {
             o.emit_path = Some(check_emit.clone());
             o.print = false;
 
-            let _cfg = build_muf::run(&o).map_err(|e| CommandError::Failure(e.to_string()))?;
+            let _cfg = build_muf::run(&o).map_err(|e| CommandError::Failure {
+                code: 1,
+                msg: err_msg("E001", e.to_string()),
+            })?;
 
             match fs::remove_file(&check_emit) {
                 Ok(_) => Ok(()),
                 Err(err) => {
                     if o.strict {
-                        Err(CommandError::Failure(format!(
-                            "check succeeded but could not remove {}: {err}",
-                            check_emit.display()
-                        )))
+                        Err(CommandError::Failure {
+                            code: 1,
+                            msg: err_msg(
+                                "E001",
+                                format!(
+                                    "check succeeded but could not remove {}: {err}",
+                                    check_emit.display()
+                                ),
+                            ),
+                        })
                     } else {
                         // best-effort: ignore cleanup failure
                         Ok(())
@@ -323,7 +424,15 @@ pub fn execute(cmd: Cmd) -> Result<()> {
 }
 
 fn exec_build_muffin(o: build_muf::BuildMufOptions) -> Result<()> {
-    build_muf::run(&o).map_err(|e| CommandError::Failure(e.to_string()))?;
+    build_muf::run(&o).map_err(|e| CommandError::Failure {
+        code: 1,
+        msg: err_msg("E001", e.to_string()),
+    })?;
+    Ok(())
+}
+
+fn exec_run_muf(o: run_muf::RunOptions) -> Result<()> {
+    run_muf::run(&o).map_err(|e| map_run_error(e))?;
     Ok(())
 }
 
@@ -369,7 +478,10 @@ fn version_string() -> String {
 }
 
 fn usage_unknown(cmd: &str) -> String {
-    format!("unknown command: {cmd}\n\n{}", usage_text())
+    err_msg(
+        "U001",
+        format!("unknown command: {cmd}. Run `muffin -help` for the list of commands."),
+    )
 }
 
 pub fn usage_text() -> &'static str {
@@ -389,6 +501,7 @@ COMMANDS:
   resolve      Alias of: build muffin (emits Muffinconfig.mff)
   check        Validate best-effort (emits then deletes Muffinconfig.mff under .muffin-cache/check/)
   print        Emit + print Muffinconfig.mff to stdout
+  run          Execute tool steps from MuffinConfig.muf (runner)
 
   graph        (stub) Export graph (text|dot)
   fmt          (stub) Format Muffinfile
@@ -421,6 +534,66 @@ FLAGS:
   --file <path>   Muffinfile path (default: Muffinfile)
   --check         Check-only mode
   -v, --verbose   Verbose output"
+}
+
+fn run_help() -> &'static str {
+    "muffin run — Execute tool steps from MuffinConfig.muf
+
+USAGE:
+  muffin run [--root <path>] [--file <path>] [--profile <name>] [--bake <name>] [--all] [--print] [--no-cache] [--log <path>] [--log-mode <m>] [-v]
+
+FLAGS:
+  --root <path>     Workspace root (default: cwd)
+  --file <path>     Explicit Muffinfile path (default: MuffinConfig.muf under root)
+  --profile <name>  Select profile (default: workspace.profile or debug)
+  --bake <name>     Run a specific bake (repeatable)
+  --all             Run all bakes in file order (with deps)
+  --print           Dry-run: print commands only
+  --no-cache        Disable incremental skip
+  --log <path>      Write run log to a specific .mff path
+  --log-mode <m>    Log write mode: append (default) or truncate
+  -v, --verbose     Verbose output"
+}
+
+fn err_msg(code: &str, msg: impl Into<String>) -> String {
+    format!("error[{code}]: {}", msg.into())
+}
+
+fn map_run_error(err: run_muf::RunError) -> CommandError {
+    match err {
+        run_muf::RunError::Config { msg, help } => {
+            let msg = if let Some(h) = help {
+                format!("{}\nhelp: {h}", err_msg("C001", msg))
+            } else {
+                err_msg("C001", msg)
+            };
+            CommandError::Failure { code: 2, msg }
+        }
+        run_muf::RunError::Parse { path, msg } => CommandError::Failure {
+            code: 2,
+            msg: err_msg("P001", format!("parse {}: {msg}", path.display())),
+        },
+        run_muf::RunError::Io { op, path, err } => CommandError::Failure {
+            code: 4,
+            msg: err_msg("IO01", format!("{op} {}: {err}", path.display())),
+        },
+        run_muf::RunError::Exec { cmd, status, stderr } => {
+            let mut s = match status {
+                Some(code) => format!("command failed ({code}): {cmd}"),
+                None => format!("command failed: {cmd}"),
+            };
+            if let Some(err) = stderr {
+                if !err.trim().is_empty() {
+                    s.push('\n');
+                    s.push_str(err.trim_end());
+                }
+            }
+            CommandError::Failure {
+                code: 3,
+                msg: err_msg("X001", s),
+            }
+        }
+    }
 }
 
 fn escape_dot(s: &str) -> String {

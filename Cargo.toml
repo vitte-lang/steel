@@ -11,7 +11,7 @@ license = "See COPYING"
 readme = "README.md"
 
 [workspace]
-members = [".", "MuffinLib/lib", "MuffinLib/lib/src/platform"]
+members = [".", "MuffinLib/lib", "MuffinLib/lib/src/platform", "MuffinLib/lib/src/gcc"]
 resolver = "2"
 
 [dependencies]

@@ -1,13 +1,13 @@
 !muf 4
-;; Exemple minimal : build C avec gcc
+;; MuffinConfig.muf — build C (gcc) à la racine
 ;; Usage:
-;;   cd /Users/vincent/Documents/Github/muffin
-;;   muffin build Muffinconfig_exemple.muf
+;;   muffin build
+;; ou:
+;;   muffin build MuffinConfig.muf
 
 
 [workspace]
-  .set name "muffin-example-c"
-  .set root "."
+  .set name "app"
   .set target_dir "target"
   ;; switch: "debug" or "release"
   .set profile "debug"
@@ -33,10 +33,10 @@
 
 
 [bake app]
-  ;; récupère tous les .c sous src/
+  ;; sources C
   .make c_src cglob "**/*.c"
 
-  ;; compile + link (simple)
+  ;; gcc: compile + link (simple)
   [run gcc]
     .takes c_src as "@args"
     .set "-std=c17" 1
@@ -48,7 +48,7 @@
     .emits exe as "-o"
   ..
 
-  ;; binaire final
+  ;; sortie finale
   .output exe "target/out/app"
 ..
 

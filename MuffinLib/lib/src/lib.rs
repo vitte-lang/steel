@@ -31,8 +31,6 @@ pub use crate::error::MuffinError;
 pub mod diag;
 #[path = "graph/src/mod.rs"]
 pub mod graph;
-#[path = "mff/src/mod.rs"]
-pub mod mff;
 #[path = "path/src/mod.rs"]
 pub mod path;
 #[path = "platform/src/mod.rs"]

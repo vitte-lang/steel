@@ -30,16 +30,12 @@ L’objectif est de pouvoir orchestrer des projets **mono-langage** comme des pr
 
 Le pipeline est volontairement scindé en deux phases : **Configuration** puis **Construction**.
 
-1. **Configuration** — `build muffin`
+   **Configuration** — `build muffin`
    - Charge la config (workspace/packages/profils/targets/toolchains)
    - Valide la cohérence (contraintes, chemins, compatibilités)
    - Résout les valeurs (defaults, héritages, overrides)
    - **Émet** `Muffinconfig.mff` (artefact canonique)
 
-2. **Construction** — `build vitte`
-   - Lit `Muffinconfig.mff`
-   - Prépare le graphe des étapes (inputs → outputs)
-   - Exécute les étapes (compile/link/generate/test/package) avec incrémental/cache
 
 ## Architecture
 
@@ -48,21 +44,11 @@ Le pipeline est volontairement scindé en deux phases : **Configuration** puis *
 - `build muffin` = **configure** : validation + résolution + **gel** de la configuration.
 - `build vitte` = **build** : orchestration des étapes + production des artefacts.
 
-Le fichier `Muffinconfig.mff` sert de **barrière contractuelle** entre :
-
-- le monde **déclaratif** (profils, targets, options, résolution),
-- et le monde **exécution** (DAG, règles, incrémental, cache, production).
 
 ### Détection de reconstruction (incrémental)
 
 Au cœur du pipeline, **Muffin** calcule automatiquement **ce qui doit être reconstruit**.
 
-- À partir du buildfile, Muffin **résout** toutes les entrées (globs/fichiers/valeurs) et construit une vue normalisée du workspace.
-- Il produit un artefact `Muffinconfig.mff` qui contient notamment :
-  - la liste **exhaustive** des inputs (fichiers, globs développés, dépendances transitives),
-  - les paramètres de build (profil/target/toolchain),
-  - les empreintes nécessaires à l’invalidation (hash des inputs/args/toolchain/policy).
-- **Vitte** consomme `Muffinconfig.mff` et détermine, de manière déterministe, la liste minimale des étapes à rejouer.
 
 
 Pendant la construction, les sources `*.vitte` sont transformées en artefacts (objets, librairies, exécutables) selon les targets et les règles résolues.
@@ -163,7 +149,7 @@ Vitte lit Muffinconfig.mff et :
 - Résolution des valeurs par défaut (implicites)
 
 #### Génération (`interface.rs`, `output.rs`)
-- Sérialisation de la configuration résolue en `Muffinconfig.mff`
+- Sérialisation de la configuration 
 - Export de graphes (texte, DOT, JSON)
 - Génération d'artefacts pour Vitte
 
@@ -214,9 +200,9 @@ Vitte orchestre la phase **construction** à partir de la configuration gelée :
 - Exécution **déterministe** (ordre topologique) avec **incrémental** et **cache**
 - Diagnostics outillables : « pourquoi ça rebuild ? », « qui dépend de quoi ? »
 
-### Contrat `Muffinconfig.mff`
+### Contrat `Muffinconfig.muf`
 
-`Muffinconfig.mff` contient une configuration **normalisée** et **explicite** (plus d’implicite côté build). Exemples de champs attendus :
+`Muffinconfig.muf` contient une configuration **normalisée** et **explicite** (plus d’implicite côté build). Exemples de champs attendus :
 
 - version de schéma (`mcfg 1`),
 - host/target (OS/arch/triple),
@@ -450,32 +436,42 @@ Conseils cross-OS :
 - Si un fichier `muffin` est un script, vérifier le bit exécutable (`chmod +x muffin`) et utiliser des fins de lignes LF.
 - Pour l’outillage, préférer `muffin print ... --json`, `muffin graph --format ...`, `muffin why ...`.
 
-## Format du fichier Muffin (apercu)
+## Langage MUF (v4.1)
 
-Muffin est orienté blocs et se termine par `.end`. Commentaires `# ...`.
+Le format MUF est versionné. La version actuelle est **v4.1**.
+
+- Header : `!muf 4`
+- Blocs : `[tag name?] ... ..`
+- Directives : `.op arg1 arg2 ...`
+- Commentaires : `;; ...`
+- Grammaire EBNF : `assets/grammar/muffin.ebnf`
+
+## Format du fichier Muffin (aperçu)
+
+Exemple MUF v4.1 (blocs + `..`) :
 
 ```text
-muf 2
+!muf 4
 
-workspace
-  name "vitte"
-  root "."
-.end
+[workspace]
+  .set name "vitte"
+  .set root "."
+..
 
-package hello
-  kind "bin"
-  version "0.1.0"
-  src_dir "src"
-.end
+[package hello]
+  .set kind "bin"
+  .set version "0.1.0"
+  .set src_dir "src"
+..
 
-profile debug
-  opt "0"
-  debug true
-.end
+[profile debug]
+  .set opt 0
+  .set debug 1
+..
 
-default
-  target "hello"
-.end
+[default]
+  .set target "hello"
+..
 ```
 
 ## Format `Muffinconfig.mff` (apercu)
@@ -483,22 +479,22 @@ default
 ```text
 mff 1
 
-host
+[host]
   os "linux"
   arch "x86_64"
-.end
+..
 
 profile "debug"
 
-target
+[target]
   name "syntax_smoke"
   kind "test"
-.end
+..
 
-paths
+[paths]
   root "/path/to/repo"
   dist "dist"
-.end
+..
 ```
 
 ## Variables d'environnement
@@ -616,39 +612,39 @@ muffin why <ref>
 Le fichier est orienté blocs, lisible, et conçu pour être **résolu** puis **gelé**.
 
 ```text
-muf 2
+!muf 4
 
-workspace
-  name "vitte"
-  root "."
-.end
+[workspace]
+  .set name "vitte"
+  .set root "."
+..
 
-profile debug
-  opt 0
-  debug true
-.end
+[profile debug]
+  .set opt 0
+  .set debug 1
+..
 
-profile release
-  opt 3
-  debug false
-.end
+[profile release]
+  .set opt 3
+  .set debug 0
+..
 
-toolchain host
-  cc "clang"
-  ar "llvm-ar"
-  ld "clang"
-.end
+[toolchain host]
+  .set cc "clang"
+  .set ar "llvm-ar"
+  .set ld "clang"
+..
 
-target host
-  profile "release"
+[target host]
+  .set profile "release"
   ;; étapes déclaratives (exemple minimal)
-  step "compile" tool "cc"  inputs "src/**/*.c"  outputs "build/**/*.o"
-  step "link"    tool "ld"  inputs "build/**/*.o" outputs "out/bin/vittec"
-.end
+  .set step_compile "tool=cc;inputs=src/**/*.c;outputs=build/**/*.o"
+  .set step_link "tool=ld;inputs=build/**/*.o;outputs=out/bin/vittec"
+..
 
-default
-  target "host"
-.end
+[default]
+  .set target "host"
+..
 ```
 
 ---
@@ -772,39 +768,39 @@ muffin why <ref>
 ## Format minimal de `MuffinConfig.muff` (aperçu)
 
 ```text
-muf 2
+!muf 4
 
-workspace
-  name "vitte"
-  root "."
-  target_dir "target"
-.end
+[workspace]
+  .set name "vitte"
+  .set root "."
+  .set target_dir "target"
+..
 
-profile debug
-  opt 0
-  debug true
-.end
+[profile debug]
+  .set opt 0
+  .set debug 1
+..
 
-profile release
-  opt 3
-  debug false
-.end
+[profile release]
+  .set opt 3
+  .set debug 0
+..
 
-toolchain host
-  cc "clang"
-  ar "llvm-ar"
-  ld "clang"
-.end
+[toolchain host]
+  .set cc "clang"
+  .set ar "llvm-ar"
+  .set ld "clang"
+..
 
-target host
-  profile "release"
-  step "compile" tool "cc" inputs "src/**/*.c" outputs "target/build/${TRIPLE}/${PROFILE}/obj/**/*.o"
-  step "link"    tool "ld" inputs "target/build/${TRIPLE}/${PROFILE}/obj/**/*.o" outputs "target/out/${TRIPLE}/${PROFILE}/bin/vittec"
-.end
+[target host]
+  .set profile "release"
+  .set step_compile "tool=cc;inputs=src/**/*.c;outputs=target/build/${TRIPLE}/${PROFILE}/obj/**/*.o"
+  .set step_link "tool=ld;inputs=target/build/${TRIPLE}/${PROFILE}/obj/**/*.o;outputs=target/out/${TRIPLE}/${PROFILE}/bin/vittec"
+..
 
-default
-  target "host"
-.end
+[default]
+  .set target "host"
+..
 ```
 
 ---
@@ -917,39 +913,39 @@ muffin why <ref>
 ## Format minimal de `MuffinConfig.muff` (aperçu)
 
 ```text
-muf 2
+!muf 4
 
-workspace
-  name "vitte"
-  root "."
-  target_dir "target"
-.end
+[workspace]
+  .set name "vitte"
+  .set root "."
+  .set target_dir "target"
+..
 
-profile debug
-  opt 0
-  debug true
-.end
+[profile debug]
+  .set opt 0
+  .set debug 1
+..
 
-profile release
-  opt 3
-  debug false
-.end
+[profile release]
+  .set opt 3
+  .set debug 0
+..
 
-toolchain host
-  cc "clang"
-  ar "llvm-ar"
-  ld "clang"
-.end
+[toolchain host]
+  .set cc "clang"
+  .set ar "llvm-ar"
+  .set ld "clang"
+..
 
-target host
-  profile "release"
-  step "compile" tool "cc" inputs "src/**/*.c" outputs "target/build/${TRIPLE}/${PROFILE}/obj/**/*.o"
-  step "link"    tool "ld" inputs "target/build/${TRIPLE}/${PROFILE}/obj/**/*.o" outputs "target/out/${TRIPLE}/${PROFILE}/bin/vittec"
-.end
+[target host]
+  .set profile "release"
+  .set step_compile "tool=cc;inputs=src/**/*.c;outputs=target/build/${TRIPLE}/${PROFILE}/obj/**/*.o"
+  .set step_link "tool=ld;inputs=target/build/${TRIPLE}/${PROFILE}/obj/**/*.o;outputs=target/out/${TRIPLE}/${PROFILE}/bin/vittec"
+..
 
-default
-  target "host"
-.end
+[default]
+  .set target "host"
+..
 ```
 
 ---

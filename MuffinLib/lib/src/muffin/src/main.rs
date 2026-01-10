@@ -22,27 +22,29 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use mcfg::decompile::{decompile_mff, DecompileOptions, ReportFormat};
+use MuffinLib::error::MuffinError;
 
 fn main() -> ExitCode {
     match run() {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
-            eprintln!("muffin: error: {e}");
-            ExitCode::from(2)
+            eprintln!("{}", e.render_cli("muffin"));
+            ExitCode::from(e.exit_code())
         }
     }
 }
 
-fn run() -> Result<(), String> {
+fn run() -> Result<(), MuffinError> {
     let mut argv = Argv::from_env();
 
     // prog name
     let _prog = argv.next().unwrap_or_else(|| "muffin".into());
 
     let cmd = match argv.peek() {
-        None => {
-            return Err("missing command. Run `muffin help` for the list of commands.".to_string())
-        }
+        None => return Err(cli_usage_error(
+            "missing command",
+            "Run `muffin help` for the list of commands.",
+        )),
         Some(c) => c.clone(),
     };
 
@@ -56,13 +58,14 @@ fn run() -> Result<(), String> {
             Ok(())
         }
         "decompile" => cmd_decompile(argv.consume()),
-        _ => Err(format!(
-            "unknown command: {cmd}. Run `muffin help` for the list of commands."
+        _ => Err(cli_usage_error(
+            format!("unknown command: {cmd}"),
+            "Run `muffin help` for the list of commands.",
         )),
     }
 }
 
-fn cmd_decompile(args: Vec<String>) -> Result<(), String> {
+fn cmd_decompile(args: Vec<String>) -> Result<(), MuffinError> {
     // Minimal flag parsing:
     // muffin decompile <input> [-o out] [--report text|md|json] [--overwrite]
     //                    [--allow-tools] [--no-artifacts] [--no-logs] [--no-skeleton]
@@ -73,7 +76,7 @@ fn cmd_decompile(args: Vec<String>) -> Result<(), String> {
 
     let input = a
         .next()
-        .ok_or_else(|| "decompile: missing <input.mff>".to_string())?;
+        .ok_or_else(|| cli_usage_error("decompile: missing <input.mff>", "Run `muffin decompile --help` for options."))?;
 
     let mut opts = DecompileOptions::default();
 
@@ -91,12 +94,19 @@ fn cmd_decompile(args: Vec<String>) -> Result<(), String> {
             "--no-report" => opts.write_report = false,
             "--no-skeleton" => opts.emit_skeleton = false,
             "--report" => {
-                let v = a.next().ok_or_else(|| "decompile: --report expects text|md|json".to_string())?;
+                let v = a.next().ok_or_else(|| {
+                    cli_usage_error("decompile: --report expects text|md|json", "Run `muffin decompile --help` for options.")
+                })?;
                 opts.report_format = match v.as_str() {
                     "text" | "txt" => ReportFormat::Text,
                     "md" | "markdown" => ReportFormat::Markdown,
                     "json" => ReportFormat::Json,
-                    _ => return Err("decompile: invalid --report (use text|md|json)".to_string()),
+                    _ => {
+                        return Err(cli_usage_error(
+                            "decompile: invalid --report (use text|md|json)",
+                            "Run `muffin decompile --help` for options.",
+                        ))
+                    }
                 };
             }
             "--verify" => opts.verify = true,
@@ -105,11 +115,17 @@ fn cmd_decompile(args: Vec<String>) -> Result<(), String> {
                 print!("{}", decompile_help_text());
                 return Ok(());
             }
-            _ => return Err(format!("decompile: unknown flag: {t}")),
+            _ => {
+                return Err(cli_usage_error(
+                    format!("decompile: unknown flag: {t}"),
+                    "Run `muffin decompile --help` for options.",
+                ))
+            }
         }
     }
 
-    let res = decompile_mff(&input, opts).map_err(|e| e.to_string())?;
+    let res = decompile_mff(&input, opts)
+        .map_err(|e| MuffinError::ExecutionFailed(format!("decompile: {e}")))?;
 
     // Minimal human output
     println!("Input: {}", res.input.display());
@@ -123,6 +139,13 @@ fn cmd_decompile(args: Vec<String>) -> Result<(), String> {
     }
 
     Ok(())
+}
+
+fn cli_usage_error(message: impl Into<String>, help: impl Into<String>) -> MuffinError {
+    MuffinError::InvalidCommand {
+        message: message.into(),
+        help: vec![help.into()],
+    }
 }
 
 /* ----------------------------- Argv helper ----------------------------- */

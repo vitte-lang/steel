@@ -71,6 +71,9 @@ pub mod cli {
     pub use crate::interface;        // CLI interface
 }
 
+// Minimal MUF runner (exec tools from MuffinConfig.muf)
+pub mod run_muf;
+
 // ============================================================================
 // UTILITIES MODULE
 // ============================================================================

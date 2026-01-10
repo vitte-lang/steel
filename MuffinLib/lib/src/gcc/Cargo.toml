@@ -20,7 +20,7 @@ trace = []
 
 [dependencies]
 # Internal Muffin crate layout (adjust names/paths if your workspace differs)
-MuffinLib = { path = ".." }
+MuffinLib = { path = "../.." }
 
 # Common utilities
 anyhow = "1"

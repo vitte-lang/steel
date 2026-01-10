@@ -1,0 +1,1003 @@
+// src/run_muf.rs
+//! run_muf — minimal MUF runner for executing tool steps (gcc).
+//!
+//! This is intentionally narrow: it supports the MUF constructs used in the
+//! examples (workspace/profile/tool/bake/run/make/output).
+
+use std::collections::BTreeMap;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::Command;
+
+use vittelib::muf_parser::{Atom, Block, BlockItem, MufFile, Number};
+use vittelib::path::{GlobSet, WalkOptions};
+
+#[derive(Debug)]
+pub enum RunError {
+    Io {
+        op: &'static str,
+        path: PathBuf,
+        err: String,
+    },
+    Parse {
+        path: PathBuf,
+        msg: String,
+    },
+    Config {
+        msg: String,
+        help: Option<String>,
+    },
+    Exec {
+        cmd: String,
+        status: Option<i32>,
+        stderr: Option<String>,
+    },
+}
+
+impl std::fmt::Display for RunError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RunError::Io { op, path, err } => write!(f, "{op} {}: {err}", path.display()),
+            RunError::Parse { path, msg } => write!(f, "parse {}: {msg}", path.display()),
+            RunError::Config { msg, help } => {
+                if let Some(h) = help {
+                    write!(f, "{msg}\nhelp: {h}")
+                } else {
+                    write!(f, "{msg}")
+                }
+            }
+            RunError::Exec { cmd, status, stderr } => {
+                if let Some(code) = status {
+                    if let Some(err) = stderr {
+                        write!(f, "command failed ({code}): {cmd}\n{err}")
+                    } else {
+                        write!(f, "command failed ({code}): {cmd}")
+                    }
+                } else if let Some(err) = stderr {
+                    write!(f, "command failed: {cmd}\n{err}")
+                } else {
+                    write!(f, "command failed: {cmd}")
+                }
+            }
+        }
+    }
+}
+
+impl std::error::Error for RunError {}
+
+#[derive(Debug, Default, Clone)]
+pub struct RunOptions {
+    pub root_dir: PathBuf,
+    pub muffin_file: Option<PathBuf>,
+    pub profile: Option<String>,
+    pub dry_run: bool,
+    pub bakes: Vec<String>,
+    pub run_all: bool,
+    pub no_cache: bool,
+    pub verbose: bool,
+    pub log_path: Option<PathBuf>,
+    pub log_mode: LogMode,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LogMode {
+    Append,
+    Truncate,
+}
+
+impl Default for LogMode {
+    fn default() -> Self {
+        LogMode::Append
+    }
+}
+
+pub fn run(opts: &RunOptions) -> Result<(), RunError> {
+    let cwd = std::env::current_dir().map_err(|e| RunError::Io {
+        op: "cwd",
+        path: PathBuf::from("."),
+        err: e.to_string(),
+    })?;
+    let root = if opts.root_dir.as_os_str().is_empty() {
+        cwd
+    } else if opts.root_dir.is_absolute() {
+        opts.root_dir.clone()
+    } else {
+        cwd.join(&opts.root_dir)
+    };
+
+    let muffinfile = resolve_muffinfile(&root, opts.muffin_file.as_deref())?;
+    let src = fs::read_to_string(&muffinfile).map_err(|e| RunError::Io {
+        op: "read",
+        path: muffinfile.clone(),
+        err: e.to_string(),
+    })?;
+
+    let muf = vittelib::muf_parser::parse_muf(&src).map_err(|e| RunError::Parse {
+        path: muffinfile.clone(),
+        msg: e.to_string(),
+    })?;
+    let cfg = interpret_muf(&muf)?;
+
+    let profile_name = opts
+        .profile
+        .clone()
+        .or_else(|| cfg.workspace.get("profile").cloned())
+        .unwrap_or_else(|| "debug".to_string());
+
+    let profile = cfg
+        .profiles
+        .get(&profile_name)
+        .ok_or_else(|| RunError::Config {
+            msg: format!("unknown profile `{profile_name}`"),
+            help: Some("use --profile <name> or set workspace.profile".into()),
+        })?;
+
+    let selected = select_bakes(&cfg, opts)?;
+    let order = topo_order(&cfg, &selected)?;
+
+    let mut vars = cfg.workspace.clone();
+    for (k, v) in &profile.settings {
+        vars.insert(k.clone(), v.clone());
+    }
+
+    let log_path = run_log_path(&root, &cfg.workspace, opts.log_path.as_deref());
+    if opts.log_mode == LogMode::Truncate {
+        prepare_log(&log_path)?;
+    }
+
+    if opts.verbose {
+        println!("run log: {}", log_path.display());
+    }
+
+    for name in order {
+        let bake = cfg.bakes.get(&name).expect("bake exists");
+        let sources = expand_sources(&root, &bake.makes)?;
+        if sources.is_empty() {
+            return Err(RunError::Config {
+                msg: format!("bake `{}`: no sources matched", name),
+                help: Some("check your .make cglob pattern and --root".into()),
+            });
+        }
+
+        let output_rel = expand_vars(&bake.output_path, &vars);
+        let output_abs = resolve_path_under_root(&root, &output_rel);
+        if !opts.dry_run && should_skip(&root, &output_abs, &sources, opts.no_cache) {
+            if opts.verbose {
+                println!("skip {name} (up to date)");
+            }
+            continue;
+        }
+
+        if let Some(parent) = output_abs.parent() {
+            fs::create_dir_all(parent).map_err(|e| RunError::Io {
+                op: "mkdir",
+                path: parent.to_path_buf(),
+                err: e.to_string(),
+            })?;
+        }
+
+        let mut bake_run_count = 0u32;
+        let mut bake_duration_ms = 0u64;
+        if !opts.dry_run {
+            append_bake_log_start(&log_path, &name)?;
+        }
+
+        for run in &bake.runs {
+            let tool = cfg.tools.get(&run.tool).ok_or_else(|| RunError::Config {
+                msg: format!("missing tool `{}`", run.tool),
+                help: Some("add [tool <name>] with .exec".into()),
+            })?;
+
+            let args = build_args(run, &sources, &bake.output_port, &output_rel, &vars)?;
+            if opts.dry_run {
+                println!("{} {}", tool.exec, args.join(" "));
+                continue;
+            }
+
+            let mut cmd = Command::new(&tool.exec);
+            cmd.args(&args).current_dir(&root);
+            let cmd_str = format!("{} {}", tool.exec, args.join(" "));
+            let start = std::time::Instant::now();
+            let output = cmd.output().map_err(|e| RunError::Exec {
+                cmd: cmd_str.clone(),
+                status: None,
+                stderr: Some(e.to_string()),
+            })?;
+            let duration_ms = start.elapsed().as_millis() as u64;
+
+            bake_run_count = bake_run_count.saturating_add(1);
+            bake_duration_ms = bake_duration_ms.saturating_add(duration_ms);
+            append_run_log(&log_path, &cmd_str, &output, duration_ms)?;
+
+            if !output.status.success() {
+                if !opts.dry_run {
+                    append_bake_log_end(&log_path)?;
+                }
+                return Err(RunError::Exec {
+                    cmd: cmd_str,
+                    status: output.status.code(),
+                    stderr: Some(String::from_utf8_lossy(&output.stderr).to_string()),
+                });
+            }
+        }
+
+        if !opts.dry_run {
+            append_bake_log_summary(&log_path, bake_run_count, bake_duration_ms)?;
+            append_bake_log_end(&log_path)?;
+        }
+    }
+
+    if !opts.dry_run {
+        append_global_log_summary(&log_path)?;
+    }
+
+    Ok(())
+}
+
+fn run_log_path(root: &Path, workspace: &BTreeMap<String, String>, override_path: Option<&Path>) -> PathBuf {
+    if let Some(p) = override_path {
+        return resolve_path_under_root(root, p.to_string_lossy().as_ref());
+    }
+    let target_dir = workspace
+        .get("target_dir")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from("target"));
+    let ts = run_log_stamp();
+    let name = format!("muffin_run_{ts}.mff");
+    resolve_path_under_root(root, &target_dir.join(name).to_string_lossy())
+}
+
+fn append_run_log(
+    path: &Path,
+    cmd: &str,
+    output: &std::process::Output,
+    duration_ms: u64,
+) -> Result<(), RunError> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| RunError::Io {
+            op: "mkdir",
+            path: parent.to_path_buf(),
+            err: e.to_string(),
+        })?;
+    }
+
+    let mut f = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|e| RunError::Io {
+            op: "open",
+            path: path.to_path_buf(),
+            err: e.to_string(),
+        })?;
+
+    let status = output.status.code().unwrap_or(-1);
+    let ok = output.status.success();
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    use std::io::Write;
+    let ts = run_log_stamp();
+    let ts_iso = run_log_stamp_iso();
+    writeln!(f, "[run log]") .map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    writeln!(f, "ts {ts}").map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    writeln!(f, "ts_iso \"{ts_iso}\"").map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    writeln!(f, "duration_ms {duration_ms}").map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    writeln!(f, "cmd \"{}\"", cmd.replace('"', "\\\"")).map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    writeln!(f, "status {status}").map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    writeln!(f, "ok {}", if ok { "true" } else { "false" }).map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    if !stdout.is_empty() {
+        writeln!(f, "stdout \"{}\"", stdout.replace('"', "\\\"")).map_err(|e| RunError::Io {
+            op: "write",
+            path: path.to_path_buf(),
+            err: e.to_string(),
+        })?;
+    }
+    if !stderr.is_empty() {
+        writeln!(f, "stderr \"{}\"", stderr.replace('"', "\\\"")).map_err(|e| RunError::Io {
+            op: "write",
+            path: path.to_path_buf(),
+            err: e.to_string(),
+        })?;
+    }
+    writeln!(f, "..").map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+
+    Ok(())
+}
+
+fn append_bake_log_start(path: &Path, bake: &str) -> Result<(), RunError> {
+    let mut f = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|e| RunError::Io {
+            op: "open",
+            path: path.to_path_buf(),
+            err: e.to_string(),
+        })?;
+
+    use std::io::Write;
+    writeln!(f, "[bake log \"{}\"]", bake.replace('"', "\\\"")).map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    Ok(())
+}
+
+fn append_bake_log_end(path: &Path) -> Result<(), RunError> {
+    let mut f = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|e| RunError::Io {
+            op: "open",
+            path: path.to_path_buf(),
+            err: e.to_string(),
+        })?;
+
+    use std::io::Write;
+    writeln!(f, "..").map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    Ok(())
+}
+
+fn append_bake_log_summary(path: &Path, runs: u32, duration_ms: u64) -> Result<(), RunError> {
+    let mut f = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|e| RunError::Io {
+            op: "open",
+            path: path.to_path_buf(),
+            err: e.to_string(),
+        })?;
+
+    use std::io::Write;
+    writeln!(f, "runs {runs}").map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    writeln!(f, "duration_ms {duration_ms}").map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    Ok(())
+}
+
+fn append_global_log_summary(path: &Path) -> Result<(), RunError> {
+    let mut f = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|e| RunError::Io {
+            op: "open",
+            path: path.to_path_buf(),
+            err: e.to_string(),
+        })?;
+
+    let ts_iso = run_log_stamp_iso();
+    use std::io::Write;
+    writeln!(f, "[run summary]").map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    writeln!(f, "ts_iso \"{ts_iso}\"").map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    writeln!(f, "..").map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    Ok(())
+}
+
+fn prepare_log(path: &Path) -> Result<(), RunError> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| RunError::Io {
+            op: "mkdir",
+            path: parent.to_path_buf(),
+            err: e.to_string(),
+        })?;
+    }
+    fs::File::create(path).map_err(|e| RunError::Io {
+        op: "truncate",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    Ok(())
+}
+
+fn run_log_stamp() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let secs = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    secs.to_string()
+}
+
+fn run_log_stamp_iso() -> String {
+    use chrono::{SecondsFormat, Utc};
+    Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true)
+}
+
+fn build_args(
+    run: &RunBlock,
+    sources: &[String],
+    output_port: &str,
+    output_rel: &str,
+    vars: &BTreeMap<String, String>,
+) -> Result<Vec<String>, RunError> {
+    let mut args = Vec::new();
+
+    for set in &run.sets {
+        let flag = expand_vars(&set.flag, vars);
+        let value = expand_vars(&set.value, vars);
+        match value.as_str() {
+            "1" | "true" | "yes" => args.push(flag),
+            "0" | "false" | "no" => {}
+            _ => {
+                args.push(flag);
+                args.push(value);
+            }
+        }
+    }
+
+    for inc in &run.includes {
+        let val = expand_vars(inc, vars);
+        args.push("-I".to_string());
+        args.push(val);
+    }
+
+    for (k, v) in &run.defines {
+        let key = expand_vars(k, vars);
+        let arg = if let Some(v) = v {
+            format!("-D{}={}", key, expand_vars(v, vars))
+        } else {
+            format!("-D{}", key)
+        };
+        args.push(arg);
+    }
+
+    for d in &run.lib_dirs {
+        let val = expand_vars(d, vars);
+        args.push("-L".to_string());
+        args.push(val);
+    }
+
+    for take in &run.takes {
+        if take.flag == "@args" {
+            for src in sources {
+                args.push(src.clone());
+            }
+        } else {
+            return Err(RunError::Config {
+                msg: format!("unsupported takes flag `{}` (expected @args)", take.flag),
+                help: Some("use: .takes c_src as \"@args\"".into()),
+            });
+        }
+    }
+
+    for lib in &run.libs {
+        let val = expand_vars(lib, vars);
+        args.push("-l".to_string());
+        args.push(val);
+    }
+
+    for emit in &run.emits {
+        if emit.port == output_port {
+            args.push(emit.flag.clone());
+            args.push(output_rel.to_string());
+        }
+    }
+
+    Ok(args)
+}
+
+fn resolve_muffinfile(root: &Path, explicit: Option<&Path>) -> Result<PathBuf, RunError> {
+    if let Some(p) = explicit {
+        let out = if p.is_absolute() {
+            p.to_path_buf()
+        } else {
+            root.join(p)
+        };
+        return Ok(out);
+    }
+
+    let candidate = root.join("MuffinConfig.muf");
+    if candidate.exists() {
+        Ok(candidate)
+    } else {
+        Err(RunError::Config {
+            msg: format!("missing MuffinConfig.muf in {}", root.display()),
+            help: Some("pass --file <path> or create MuffinConfig.muf".into()),
+        })
+    }
+}
+
+fn select_bakes(cfg: &Config, opts: &RunOptions) -> Result<Vec<String>, RunError> {
+    if opts.run_all {
+        return Ok(cfg.bake_order.clone());
+    }
+    if !opts.bakes.is_empty() {
+        return Ok(opts.bakes.clone());
+    }
+    if cfg.bakes.contains_key("app") {
+        return Ok(vec!["app".to_string()]);
+    }
+    if let Some(first) = cfg.bake_order.first() {
+        return Ok(vec![first.clone()]);
+    }
+    Err(RunError::Config {
+        msg: "no bakes defined".into(),
+        help: Some("add [bake <name>] blocks".into()),
+    })
+}
+
+fn topo_order(cfg: &Config, targets: &[String]) -> Result<Vec<String>, RunError> {
+    let mut out = Vec::new();
+    let mut visiting = BTreeMap::new();
+    let mut visited = BTreeMap::new();
+
+    for t in targets {
+        visit_bake(cfg, t, &mut visiting, &mut visited, &mut out)?;
+    }
+
+    Ok(out)
+}
+
+fn visit_bake(
+    cfg: &Config,
+    name: &str,
+    visiting: &mut BTreeMap<String, bool>,
+    visited: &mut BTreeMap<String, bool>,
+    out: &mut Vec<String>,
+) -> Result<(), RunError> {
+    if visited.get(name).copied().unwrap_or(false) {
+        return Ok(());
+    }
+    if visiting.get(name).copied().unwrap_or(false) {
+        return Err(RunError::Config {
+            msg: format!("dependency cycle detected at bake `{name}`"),
+            help: Some("check your .needs declarations".into()),
+        });
+    }
+    let bake = cfg.bakes.get(name).ok_or_else(|| RunError::Config {
+        msg: format!("unknown bake `{name}`"),
+        help: Some("use --bake <name> from the file".into()),
+    })?;
+    visiting.insert(name.to_string(), true);
+    for dep in &bake.deps {
+        visit_bake(cfg, dep, visiting, visited, out)?;
+    }
+    visiting.insert(name.to_string(), false);
+    visited.insert(name.to_string(), true);
+    out.push(name.to_string());
+    Ok(())
+}
+
+fn should_skip(root: &Path, output: &Path, inputs: &[String], no_cache: bool) -> bool {
+    if no_cache {
+        return false;
+    }
+    let out_md = match fs::metadata(output) {
+        Ok(m) => m,
+        Err(_) => return false,
+    };
+    let out_time = match out_md.modified() {
+        Ok(t) => t,
+        Err(_) => return false,
+    };
+    for src in inputs {
+        let p = root.join(src);
+        let md = match fs::metadata(&p) {
+            Ok(m) => m,
+            Err(_) => return false,
+        };
+        let t = match md.modified() {
+            Ok(t) => t,
+            Err(_) => return false,
+        };
+        if t > out_time {
+            return false;
+        }
+    }
+    true
+}
+
+#[derive(Debug)]
+struct Config {
+    workspace: BTreeMap<String, String>,
+    profiles: BTreeMap<String, Profile>,
+    tools: BTreeMap<String, Tool>,
+    bakes: BTreeMap<String, Bake>,
+    bake_order: Vec<String>,
+}
+
+#[derive(Debug)]
+struct Profile {
+    settings: BTreeMap<String, String>,
+}
+
+#[derive(Debug)]
+struct Tool {
+    exec: String,
+}
+
+#[derive(Debug)]
+struct Bake {
+    makes: Vec<Make>,
+    runs: Vec<RunBlock>,
+    deps: Vec<String>,
+    output_port: String,
+    output_path: String,
+}
+
+#[derive(Debug)]
+struct Make {
+    kind: String,
+    pattern: String,
+}
+
+#[derive(Debug)]
+struct RunBlock {
+    tool: String,
+    takes: Vec<TakeBinding>,
+    emits: Vec<EmitBinding>,
+    sets: Vec<RunSet>,
+    includes: Vec<String>,
+    defines: Vec<(String, Option<String>)>,
+    lib_dirs: Vec<String>,
+    libs: Vec<String>,
+}
+
+#[derive(Debug)]
+struct TakeBinding {
+    flag: String,
+}
+
+#[derive(Debug)]
+struct EmitBinding {
+    port: String,
+    flag: String,
+}
+
+#[derive(Debug)]
+struct RunSet {
+    flag: String,
+    value: String,
+}
+
+fn interpret_muf(muf: &MufFile) -> Result<Config, RunError> {
+    let mut cfg = Config {
+        workspace: BTreeMap::new(),
+        profiles: BTreeMap::new(),
+        tools: BTreeMap::new(),
+        bakes: BTreeMap::new(),
+        bake_order: Vec::new(),
+    };
+
+    for blk in &muf.blocks {
+        match blk.tag.as_str() {
+            "workspace" => parse_workspace(blk, &mut cfg)?,
+            "profile" => parse_profile(blk, &mut cfg)?,
+            "tool" => parse_tool(blk, &mut cfg)?,
+            "bake" => parse_bake(blk, &mut cfg)?,
+            _ => {}
+        }
+    }
+
+    Ok(cfg)
+}
+
+fn parse_workspace(blk: &Block, cfg: &mut Config) -> Result<(), RunError> {
+    for item in &blk.items {
+        if let BlockItem::Directive(d) = item {
+            if d.op == "set" && d.args.len() >= 2 {
+                let key = atom_to_string(&d.args[0])?;
+                let val = atom_to_string(&d.args[1])?;
+                cfg.workspace.insert(key, val);
+            }
+        }
+    }
+    Ok(())
+}
+
+fn parse_profile(blk: &Block, cfg: &mut Config) -> Result<(), RunError> {
+    let name = blk
+        .name
+        .clone()
+        .ok_or_else(|| RunError::Config {
+            msg: "profile name missing".into(),
+            help: Some("use: [profile <name>]".into()),
+        })?;
+    let mut settings = BTreeMap::new();
+    for item in &blk.items {
+        if let BlockItem::Directive(d) = item {
+            if d.op == "set" && d.args.len() >= 2 {
+                let key = atom_to_string(&d.args[0])?;
+                let val = atom_to_string(&d.args[1])?;
+                settings.insert(key, val);
+            }
+        }
+    }
+    cfg.profiles.insert(name, Profile { settings });
+    Ok(())
+}
+
+fn parse_tool(blk: &Block, cfg: &mut Config) -> Result<(), RunError> {
+    let name = blk
+        .name
+        .clone()
+        .ok_or_else(|| RunError::Config {
+            msg: "tool name missing".into(),
+            help: Some("use: [tool <name>]".into()),
+        })?;
+    let mut exec = None;
+    for item in &blk.items {
+        if let BlockItem::Directive(d) = item {
+            if d.op == "exec" && !d.args.is_empty() {
+                exec = Some(atom_to_string(&d.args[0])?);
+            }
+        }
+    }
+    let exec = exec.ok_or_else(|| RunError::Config {
+        msg: format!("tool `{name}` missing exec"),
+        help: Some("use: .exec \"gcc\"".into()),
+    })?;
+    cfg.tools.insert(name, Tool { exec });
+    Ok(())
+}
+
+fn parse_bake(blk: &Block, cfg: &mut Config) -> Result<(), RunError> {
+    let name = blk
+        .name
+        .clone()
+        .ok_or_else(|| RunError::Config {
+            msg: "bake name missing".into(),
+            help: Some("use: [bake <name>]".into()),
+        })?;
+
+    let mut makes = Vec::new();
+    let mut runs = Vec::new();
+    let mut deps = Vec::new();
+    let mut output_port = None;
+    let mut output_path = None;
+
+    for item in &blk.items {
+        match item {
+            BlockItem::Directive(d) => {
+                match d.op.as_str() {
+                    "make" if d.args.len() >= 3 => {
+                        let _id = atom_to_string(&d.args[0])?;
+                        let kind = atom_to_string(&d.args[1])?;
+                        let pattern = atom_to_string(&d.args[2])?;
+                        makes.push(Make { kind, pattern });
+                    }
+                    "needs" if d.args.len() >= 1 => {
+                        let dep = atom_to_string(&d.args[0])?;
+                        deps.push(dep);
+                    }
+                    "output" if d.args.len() >= 2 => {
+                        output_port = Some(atom_to_string(&d.args[0])?);
+                        output_path = Some(atom_to_string(&d.args[1])?);
+                    }
+                    _ => {}
+                }
+            }
+            BlockItem::Block(b) => {
+                if b.tag == "run" {
+                    runs.push(parse_run(b)?);
+                }
+            }
+        }
+    }
+
+    if runs.is_empty() {
+        return Err(RunError::Config {
+            msg: format!("bake `{name}` missing run block"),
+            help: Some("add: [run <tool>] ...".into()),
+        });
+    }
+    let output_port = output_port.ok_or_else(|| RunError::Config {
+        msg: format!("bake `{name}` missing output"),
+        help: Some("use: .output exe \"target/out/app\"".into()),
+    })?;
+    let output_path = output_path.ok_or_else(|| RunError::Config {
+        msg: format!("bake `{name}` missing output path"),
+        help: Some("use: .output exe \"target/out/app\"".into()),
+    })?;
+
+    cfg.bake_order.push(name.clone());
+    cfg.bakes.insert(
+        name,
+        Bake {
+            makes,
+            runs,
+            deps,
+            output_port,
+            output_path,
+        },
+    );
+    Ok(())
+}
+
+fn parse_run(blk: &Block) -> Result<RunBlock, RunError> {
+    let tool = blk
+        .name
+        .clone()
+        .ok_or_else(|| RunError::Config {
+            msg: "run block missing tool name".into(),
+            help: Some("use: [run gcc]".into()),
+        })?;
+
+    let mut takes = Vec::new();
+    let mut emits = Vec::new();
+    let mut sets = Vec::new();
+    let mut includes = Vec::new();
+    let mut defines = Vec::new();
+    let mut lib_dirs = Vec::new();
+    let mut libs = Vec::new();
+
+    for item in &blk.items {
+        if let BlockItem::Directive(d) = item {
+            match d.op.as_str() {
+                "takes" if d.args.len() >= 3 => {
+                    let flag = atom_to_string(&d.args[2])?;
+                    takes.push(TakeBinding { flag });
+                }
+                "emits" if d.args.len() >= 3 => {
+                    let port = atom_to_string(&d.args[0])?;
+                    let flag = atom_to_string(&d.args[2])?;
+                    emits.push(EmitBinding { port, flag });
+                }
+                "set" if d.args.len() >= 2 => {
+                    let flag = atom_to_string(&d.args[0])?;
+                    let value = atom_to_string(&d.args[1])?;
+                    sets.push(RunSet { flag, value });
+                }
+                "include" if d.args.len() >= 1 => {
+                    includes.push(atom_to_string(&d.args[0])?);
+                }
+                "define" if d.args.len() >= 1 => {
+                    let key = atom_to_string(&d.args[0])?;
+                    let val = if d.args.len() >= 2 {
+                        Some(atom_to_string(&d.args[1])?)
+                    } else {
+                        None
+                    };
+                    defines.push((key, val));
+                }
+                "libdir" if d.args.len() >= 1 => {
+                    lib_dirs.push(atom_to_string(&d.args[0])?);
+                }
+                "lib" if d.args.len() >= 1 => {
+                    libs.push(atom_to_string(&d.args[0])?);
+                }
+                _ => {}
+            }
+        }
+    }
+
+    Ok(RunBlock {
+        tool,
+        takes,
+        emits,
+        sets,
+        includes,
+        defines,
+        lib_dirs,
+        libs,
+    })
+}
+
+fn atom_to_string(a: &Atom) -> Result<String, RunError> {
+    match a {
+        Atom::Str(s) => Ok(s.clone()),
+        Atom::Name(s) => Ok(s.clone()),
+        Atom::Number(n) => Ok(match n {
+            Number::Int { raw, .. } => raw.clone(),
+            Number::Float { raw, .. } => raw.clone(),
+        }),
+        Atom::Ref(r) => Ok(r.segments.join("/")),
+    }
+}
+
+fn expand_sources(root: &Path, makes: &[Make]) -> Result<Vec<String>, RunError> {
+    let mut out = Vec::new();
+    for m in makes {
+        if m.kind != "cglob" && m.kind != "glob" {
+            continue;
+        }
+        let mut set = GlobSet::new();
+        set.add(m.pattern.clone()).map_err(|e| RunError::Config {
+            msg: format!("invalid glob `{}`: {e}", m.pattern),
+            help: Some("example: **/*.c".into()),
+        })?;
+        let files = set
+            .walk(root, WalkOptions::default())
+            .map_err(|e| RunError::Config {
+                msg: format!("glob scan failed: {e}"),
+                help: Some("check --root and filesystem permissions".into()),
+            })?;
+        for p in files {
+            let rel = p.strip_prefix(root).unwrap_or(&p);
+            out.push(rel.to_string_lossy().to_string());
+        }
+    }
+    Ok(out)
+}
+
+fn resolve_path_under_root(root: &Path, p: &str) -> PathBuf {
+    let path = PathBuf::from(p);
+    if path.is_absolute() {
+        path
+    } else {
+        root.join(path)
+    }
+}
+
+fn expand_vars(input: &str, vars: &BTreeMap<String, String>) -> String {
+    let mut out = String::with_capacity(input.len());
+    let mut chars = input.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c == '$' && matches!(chars.peek(), Some('{')) {
+            let _ = chars.next();
+            let mut key = String::new();
+            while let Some(ch) = chars.next() {
+                if ch == '}' {
+                    break;
+                }
+                key.push(ch);
+            }
+            if let Some(v) = vars.get(&key) {
+                out.push_str(v);
+            }
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
