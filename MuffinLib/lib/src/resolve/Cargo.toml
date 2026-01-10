@@ -1,0 +1,40 @@
+# C:\Users\gogin\Documents\GitHub\muffin\MuffinLib\lib\src\resolve\Cargo.toml
+
+[package]
+name = "muffin_resolve"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Muffin resolver: expand, implicit rules, variables, deterministic normalization"
+repository = "https://github.com/vitte-lang/muffin"
+publish = false
+
+[lib]
+name = "muffin_resolve"
+path = "src/lib.rs"
+
+[features]
+default = []
+strict = []
+
+[dependencies]
+# internal (workspace)
+muffin_model = { path = "../model" }
+muffin_error = { path = "../error" }
+
+# core utils
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# globbing + path normalization (deterministic expansion)
+globset = "0.4"
+
+# hashing for fingerprints (inputs/args/toolchain)
+sha2 = "0.10"
+
+# lightweight error helpers (optional but practical)
+thiserror = "1.0"
+
+[dev-dependencies]
+tempfile = "3.10"
+pretty_assertions = "1.4"
