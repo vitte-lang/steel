@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Troubleshooting</title>
+<link rel="stylesheet" href="/assets/css/site.css" />
+<link rel="stylesheet" href="/assets/css/code.css" />
+<link rel="stylesheet" href="/assets/css/theme-light.css" />
+<link rel="stylesheet" href="/assets/css/theme-dark.css" />
+
+  </head>
+  <body class="site">
+    <header class="site-header">
+  <div class="site-header__inner">
+    <div class="site-brand">
+      <a href="/">Muffin Docs</a>
+    </div>
+  </div>
+</header>
+
+    <div class="site-main">
+      <aside class="site-sidebar">
+  <nav class="nav">
+    
+      <div class="nav-section">
+        <div class="nav-title">Getting started</div>
+        <div class="nav-items">
+          
+            <a href="/install">Install</a>
+          
+            <a href="/quickstart">Quickstart</a>
+          
+            <a href="/cookbook">Cookbook</a>
+          
+            <a href="/migration">Migration</a>
+          
+            <a href="/examples">Examples</a>
+          
+        </div>
+      </div>
+    
+      <div class="nav-section">
+        <div class="nav-title">Guides</div>
+        <div class="nav-items">
+          
+            <a href="/observabilite">Observabilite</a>
+          
+            <a href="/faq">FAQ</a>
+          
+            <a href="/troubleshooting">Troubleshooting</a>
+          
+            <a href="/sitemap">Site Map</a>
+          
+        </div>
+      </div>
+    
+      <div class="nav-section">
+        <div class="nav-title">Reference</div>
+        <div class="nav-items">
+          
+            <a href="/reference/cli">CLI</a>
+          
+            <a href="/reference/muf">Muf</a>
+          
+            <a href="/reference/formats">Formats</a>
+          
+            <a href="/generated">Generated</a>
+          
+        </div>
+      </div>
+    
+  </nav>
+</aside>
+
+      <main class="site-content" data-doc-content>
+        <h1 id="troubleshooting">Troubleshooting</h1>
+<h2 id="1-muffin-introuvable">1) <code>muffin</code> introuvable</h2>
+<p>Diagnostic:</p>
+<ul>
+<li><code>which muffin</code> (macOS/Linux) ou <code>where muffin</code> (Windows)</li>
+</ul>
+<p>Fix:</p>
+<ul>
+<li>ajouter le dossier contenant <code>muffin</code> au <code>PATH</code></li>
+</ul>
+<h2 id="2-erroru001-commande-inconnue">2) <code>error[U001]</code> commande inconnue</h2>
+<p>Fix:</p>
+<ul>
+<li><code>muffin --help</code></li>
+</ul>
+<h2 id="3-errorc001-config-introuvableinvalide">3) <code>error[C001]</code> config introuvable/invalide</h2>
+<p>Fix:</p>
+<ul>
+<li>verifier <code>--root</code> et <code>--file</code></li>
+<li><code>muffin doctor --root &lt;dir&gt;</code></li>
+</ul>
+<h2 id="4-errorp001-parsing-muf">4) <code>error[P001]</code> parsing MUF</h2>
+<p>Fix:</p>
+<ul>
+<li>verifier <code>!muf 4</code> et les blocs <code>[tag] ..</code></li>
+</ul>
+<h2 id="5-errorx001-tool-execution-failed">5) <code>error[X001]</code> tool execution failed</h2>
+<p>Fix:</p>
+<ul>
+<li>verifier le <code>PATH</code> ou <code>--toolchain &lt;dir&gt;</code></li>
+</ul>
+<h2 id="6-errorio01-erreur-io">6) <code>error[IO01]</code> erreur I/O</h2>
+<p>Fix:</p>
+<ul>
+<li>verifier permissions et chemins</li>
+</ul>
+<h2 id="7-logs-vides">7) Logs vides</h2>
+<p>Fix:</p>
+<ul>
+<li>ne pas utiliser <code>--print</code></li>
+<li><code>--log-mode truncate</code></li>
+</ul>
+<h2 id="8-cache-non-invalide">8) Cache non invalide</h2>
+<p>Fix:</p>
+<ul>
+<li><code>--no-cache</code></li>
+<li>verifier les globs</li>
+</ul>
+<h2 id="9-windows-crash-sans-message">9) Windows crash sans message</h2>
+<p>Fix:</p>
+<ul>
+<li>lancer depuis un terminal</li>
+<li>consulter l&rsquo;Observateur d&rsquo;evenements</li>
+</ul>
+<h2 id="10-cargo-workspacemanifests">10) Cargo: workspace/manifests</h2>
+<p>Problemes frequents:</p>
+<ul>
+<li><code>current package believes it's in a workspace when it's not</code></li>
+<li><code>manifest is missing either a [package] or a [workspace]</code></li>
+</ul>
+<p>Fix:</p>
+<ul>
+<li>ajouter <code>workspace.members</code> ou <code>workspace.exclude</code></li>
+<li>ajouter un <code>[workspace]</code> vide si besoin</li>
+</ul>
+<h2 id="11-modules-rust-manquants">11) Modules Rust manquants</h2>
+<p>Fix:</p>
+<ul>
+<li>supprimer le <code>pub mod</code> ou recreer <code>mod.rs</code></li>
+</ul>
+<h2 id="12-diagnostics-rapides">12) Diagnostics rapides</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-sh" data-lang="sh"><span style="display:flex;"><span>muffin doctor --root .
+</span></span><span style="display:flex;"><span>muffin cache status --root .
+</span></span><span style="display:flex;"><span>muffin run --root . --file MuffinConfig.muf --print
+</span></span></code></pre></div>
+      </main>
+      <aside class="site-toc toc" data-toc>
+  <div class="toc-title">On this page</div>
+</aside>
+
+    </div>
+    <footer class="site-footer">
+  <div class="site-footer__inner">
+    <span>© Muffin</span>
+  </div>
+</footer>
+
+    <script src="/assets/js/site.js"></script>
+    <script src="/assets/js/toc.js"></script>
+  </body>
+</html>

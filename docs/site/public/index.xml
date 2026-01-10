@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Muffin Docs</title>
+    <link>http://localhost/</link>
+    <description>Recent content on Muffin Docs</description>
+    <generator>Hugo</generator>
+    <language>fr</language>
+    <atom:link href="http://localhost/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title></title>
+      <link>http://localhost/blog/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost/blog/</guid>
+      <description>&lt;h1 id=&#34;blog&#34;&gt;Blog&lt;/h1&gt;&#xA;&lt;hr&gt;&#xA;&lt;h2 id=&#34;description-notes-de-conception-annonces-et-deep-dives-sur-muffin-build-graph-muf-mff-cli-targets&#34;&gt;title: Blog&#xA;slug: /blog/&#xA;description: Notes de conception, annonces et deep-dives sur Muffin (build graph, .muf, .mff, CLI, targets).&lt;/h2&gt;&#xA;&lt;h1 id=&#34;blog-1&#34;&gt;Blog&lt;/h1&gt;&#xA;&lt;p&gt;Ici : des notes d’architecture, des annonces, et des retours d’implémentation sur &lt;strong&gt;Muffin&lt;/strong&gt;.&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;strong&gt;Buildfile&lt;/strong&gt; : &lt;code&gt;Muffinfile&lt;/code&gt; / &lt;code&gt;build.muf&lt;/code&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Binaire de build&lt;/strong&gt; : &lt;code&gt;*.mff&lt;/code&gt; (snapshot résolu : graph + config)&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Runtimes&lt;/strong&gt; : scheduling, store, capsules, targets&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;hr&gt;&#xA;&lt;h2 id=&#34;à-lire-en-priorité&#34;&gt;À lire en priorité&lt;/h2&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;strong&gt;CLI&lt;/strong&gt; : commandes, phases &lt;code&gt;configure&lt;/code&gt; / &lt;code&gt;build&lt;/code&gt;, graph, cache, sandbox.&#xA;&lt;ul&gt;&#xA;&lt;li&gt;Voir : &lt;code&gt;docs/site/generated/cli.md&lt;/code&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Config schema&lt;/strong&gt; : grammaire, règles de validation, représentation logique du &lt;code&gt;.mff&lt;/code&gt;.&#xA;&lt;ul&gt;&#xA;&lt;li&gt;Voir : &lt;code&gt;docs/site/generated/config-schema.md&lt;/code&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Manifest schema&lt;/strong&gt; : identité projet, deps, publication, workspace.&#xA;&lt;ul&gt;&#xA;&lt;li&gt;Voir : &lt;code&gt;docs/site/generated/manifest-schema.md&lt;/code&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;/li&gt;&#xA;&lt;li&gt;&lt;strong&gt;Target schema&lt;/strong&gt; : host/target, normalisation, formats, toolchains.&#xA;&lt;ul&gt;&#xA;&lt;li&gt;Voir : &lt;code&gt;docs/site/generated/target-schema.md&lt;/code&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;hr&gt;&#xA;&lt;h2 id=&#34;derniers-articles&#34;&gt;Derniers articles&lt;/h2&gt;&#xA;&lt;blockquote&gt;&#xA;&lt;p&gt;Index statique (à compléter avec des posts dans &lt;code&gt;docs/site/pages/blog/&lt;/code&gt;).&#xA;Convention recommandée : &lt;code&gt;YYYY-MM-DD-titre.md&lt;/code&gt;.&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title></title>
+      <link>http://localhost/changelog/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost/changelog/</guid>
+      <description>&lt;h1 id=&#34;changelog&#34;&gt;Changelog&lt;/h1&gt;</description>
+    </item>
+    <item>
+      <title></title>
+      <link>http://localhost/contributing/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost/contributing/</guid>
+      <description>&lt;h1 id=&#34;contributing&#34;&gt;Contributing&lt;/h1&gt;</description>
+    </item>
+    <item>
+      <title></title>
+      <link>http://localhost/getting-started/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost/getting-started/</guid>
+      <description>&lt;h1 id=&#34;getting-started&#34;&gt;Getting started&lt;/h1&gt;</description>
+    </item>
+    <item>
+      <title></title>
+      <link>http://localhost/glossary/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost/glossary/</guid>
+      <description>&lt;h1 id=&#34;glossary&#34;&gt;Glossary&lt;/h1&gt;</description>
+    </item>
+    <item>
+      <title></title>
+      <link>http://localhost/governance/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost/governance/</guid>
+      <description>&lt;h1 id=&#34;governance&#34;&gt;Governance&lt;/h1&gt;</description>
+    </item>
+    <item>
+      <title></title>
+      <link>http://localhost/install/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost/install/</guid>
+      <description>&lt;h1 id=&#34;install&#34;&gt;Install&lt;/h1&gt;</description>
+    </item>
+    <item>
+      <title></title>
+      <link>http://localhost/license/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost/license/</guid>
+      <description>&lt;h1 id=&#34;license&#34;&gt;License&lt;/h1&gt;</description>
+    </item>
+    <item>
+      <title></title>
+      <link>http://localhost/roadmap/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost/roadmap/</guid>
+      <description>&lt;h1 id=&#34;roadmap&#34;&gt;Roadmap&lt;/h1&gt;</description>
+    </item>
+    <item>
+      <title></title>
+      <link>http://localhost/security/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost/security/</guid>
+      <description>&lt;h1 id=&#34;security&#34;&gt;Security&lt;/h1&gt;</description>
+    </item>
+    <item>
+      <title>CLI</title>
+      <link>http://localhost/reference/reference/cli/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost/reference/reference/cli/</guid>
+      <description>&lt;h1 id=&#34;cli&#34;&gt;CLI&lt;/h1&gt;&#xA;&lt;p&gt;Reference CLI principale.&lt;/p&gt;&#xA;&lt;h2 id=&#34;documentation-generee&#34;&gt;Documentation generee&lt;/h2&gt;&#xA;&lt;p&gt;La reference complete est disponible ici :&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/generated/cli.md&#34;&gt;CLI (generated)&lt;/a&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;</description>
+    </item>
+    <item>
+      <title>Cookbook</title>
+      <link>http://localhost/cookbook/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost/cookbook/</guid>
+      <description>&lt;h1 id=&#34;cookbook&#34;&gt;Cookbook&lt;/h1&gt;&#xA;&lt;p&gt;Recettes pratiques basées sur les exemples du repo.&lt;/p&gt;&#xA;&lt;p&gt;&lt;img src=&#34;http://localhost/assets/img/cookbook.svg&#34; alt=&#34;Cookbook run&#34;&gt;&lt;/p&gt;&#xA;&lt;h2 id=&#34;c-app-single-bake&#34;&gt;C app (single bake)&lt;/h2&gt;&#xA;&lt;p&gt;Exemple :&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;config: &lt;code&gt;examples/gcc/MuffinConfig.muf&lt;/code&gt;&lt;/li&gt;&#xA;&lt;li&gt;source: &lt;code&gt;examples/gcc/app/main.c&lt;/code&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-sh&#34; data-lang=&#34;sh&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;muffin run --root examples/gcc --file MuffinConfig.muf --bake app&#xA;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Dry-run :&lt;/p&gt;&#xA;&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-sh&#34; data-lang=&#34;sh&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;muffin run --root examples/gcc --file MuffinConfig.muf --bake app --print&#xA;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Outputs :&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;code&gt;examples/gcc/target/out/app&lt;/code&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;code&gt;examples/gcc/target/muffin_run_*.mff&lt;/code&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;h2 id=&#34;library--app-deps&#34;&gt;Library + app (deps)&lt;/h2&gt;&#xA;&lt;p&gt;Exemple multi-bakes :&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;config: &lt;code&gt;examples/gcc/MuffinConfig_multi.muf&lt;/code&gt;&lt;/li&gt;&#xA;&lt;li&gt;lib: &lt;code&gt;examples/gcc/lib/lib.c&lt;/code&gt;&lt;/li&gt;&#xA;&lt;li&gt;app: &lt;code&gt;examples/gcc/app/main.c&lt;/code&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-sh&#34; data-lang=&#34;sh&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;muffin run --root examples/gcc --file MuffinConfig_multi.muf --bake app&#xA;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Build tout :&lt;/p&gt;&#xA;&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-sh&#34; data-lang=&#34;sh&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;muffin run --root examples/gcc --file MuffinConfig_multi.muf --all&#xA;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Outputs :&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Docs generees</title>
+      <link>http://localhost/generated/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost/generated/</guid>
+      <description>&lt;h1 id=&#34;docs-generees&#34;&gt;Docs generees&lt;/h1&gt;&#xA;&lt;p&gt;Index des fichiers generes (schemas et CLI).&lt;/p&gt;&#xA;&lt;h2 id=&#34;cli&#34;&gt;CLI&lt;/h2&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/generated/cli.md&#34;&gt;CLI&lt;/a&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;h2 id=&#34;schemas&#34;&gt;Schemas&lt;/h2&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/generated/config-schema.md&#34;&gt;Config schema&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/generated/manifest-schema.md&#34;&gt;Manifest schema&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/generated/target-schema.md&#34;&gt;Target schema&lt;/a&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;</description>
+    </item>
+    <item>
+      <title>Examples</title>
+      <link>http://localhost/examples/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost/examples/</guid>
+      <description>&lt;h1 id=&#34;examples&#34;&gt;Examples&lt;/h1&gt;&#xA;&lt;h2 id=&#34;gcc-c&#34;&gt;GCC (C)&lt;/h2&gt;&#xA;&lt;p&gt;Chemin : &lt;code&gt;examples/gcc&lt;/code&gt;&lt;/p&gt;&#xA;&lt;p&gt;Commandes :&lt;/p&gt;&#xA;&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-sh&#34; data-lang=&#34;sh&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;muffin run --root examples/gcc --file MuffinConfig.muf --bake app&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;muffin run --root examples/gcc --file MuffinConfig_multi.muf --bake app&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;muffin run --root examples/gcc --file MuffinConfig_multi.muf --all&#xA;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Outputs :&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;code&gt;examples/gcc/target/out/app&lt;/code&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;code&gt;examples/gcc/target/out/libmylib.a&lt;/code&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;</description>
+    </item>
+    <item>
+      <title>FAQ</title>
+      <link>http://localhost/faq/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost/faq/</guid>
+      <description>&lt;h1 id=&#34;faq&#34;&gt;FAQ&lt;/h1&gt;&#xA;&lt;h2 id=&#34;muffin-cest-quoi-exactement-&#34;&gt;Muffin, c’est quoi exactement ?&lt;/h2&gt;&#xA;&lt;p&gt;Muffin est un &lt;strong&gt;orchestrateur de compilation&lt;/strong&gt; basé sur un &lt;strong&gt;graphe d’actions typées&lt;/strong&gt;.&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;Un fichier &lt;code&gt;Muffinfile&lt;/code&gt; / &lt;code&gt;build.muf&lt;/code&gt; décrit &lt;strong&gt;quoi produire&lt;/strong&gt;, &lt;strong&gt;comment&lt;/strong&gt;, et sous quelles &lt;strong&gt;politiques&lt;/strong&gt; (sandbox/capsules, cache/store, plans).&lt;/li&gt;&#xA;&lt;li&gt;Muffin résout ce buildfile et produit un &lt;strong&gt;binaire de build&lt;/strong&gt; &lt;code&gt;*.mff&lt;/code&gt; qui fige la config + le graphe.&lt;/li&gt;&#xA;&lt;li&gt;Puis Muffin exécute ce &lt;code&gt;.mff&lt;/code&gt; pour produire les artefacts (bins, libs, bundles, outputs).&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;hr&gt;&#xA;&lt;h2 id=&#34;quelle-différence-entre-muf-muff-et-mff-&#34;&gt;Quelle différence entre &lt;code&gt;.muf&lt;/code&gt;, &lt;code&gt;.muff&lt;/code&gt; et &lt;code&gt;.mff&lt;/code&gt; ?&lt;/h2&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;code&gt;*.muf&lt;/code&gt; : le &lt;strong&gt;buildfile&lt;/strong&gt; (déclaratif). C’est la source de vérité de la configuration et du graphe.&lt;/li&gt;&#xA;&lt;li&gt;&lt;code&gt;*.muff&lt;/code&gt; : convention de projet pour des buildfiles “par répertoire” (optionnel). Un projet peut en avoir plusieurs, puis les agréger dans un buildfile master.&lt;/li&gt;&#xA;&lt;li&gt;&lt;code&gt;*.mff&lt;/code&gt; : le &lt;strong&gt;binaire de build&lt;/strong&gt; généré par Muffin après validation/résolution. Il contient un snapshot stable : graph, tables (tools/capsules/stores), exports, plans, résolutions.&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;p&gt;En pratique :&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Formats</title>
+      <link>http://localhost/reference/formats/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost/reference/formats/</guid>
+      <description>&lt;h1 id=&#34;formats&#34;&gt;Formats&lt;/h1&gt;&#xA;&lt;p&gt;&lt;strong&gt;MUF v4.1&lt;/strong&gt;&lt;/p&gt;&#xA;&lt;h2 id=&#34;versioning&#34;&gt;Versioning&lt;/h2&gt;&#xA;&lt;p&gt;Chaque format expose un en-tete versionne :&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;MUF: &lt;code&gt;!muf 4&lt;/code&gt;&lt;/li&gt;&#xA;&lt;li&gt;MFF: &lt;code&gt;mff 1&lt;/code&gt;&lt;/li&gt;&#xA;&lt;li&gt;Run log: &lt;code&gt;format &amp;quot;muffin-runlog-1&amp;quot;&lt;/code&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;h2 id=&#34;lexer-muf-hugo&#34;&gt;Lexer MUF (Hugo)&lt;/h2&gt;&#xA;&lt;p&gt;Pour activer la coloration MUF via Chroma :&lt;/p&gt;&#xA;&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-sh&#34; data-lang=&#34;sh&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;cd docs/site/tools/hugo-muf&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;go run . -s ../../&#xA;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;muf-buildfiles&#34;&gt;MUF (buildfiles)&lt;/h2&gt;&#xA;&lt;p&gt;Source declarative du build. Voir aussi la grammaire : &lt;code&gt;assets/grammar/muffin.ebnf&lt;/code&gt;.&lt;/p&gt;&#xA;&lt;h2 id=&#34;mff-config-resolue&#34;&gt;MFF (config resolue)&lt;/h2&gt;&#xA;&lt;p&gt;Artefact stable genere par &lt;code&gt;muffin build muffin&lt;/code&gt;.&lt;/p&gt;&#xA;&lt;h2 id=&#34;run-log&#34;&gt;Run log&lt;/h2&gt;&#xA;&lt;p&gt;Log machine/humain produit par &lt;code&gt;muffin run&lt;/code&gt;.&lt;/p&gt;&#xA;&lt;h2 id=&#34;changelog&#34;&gt;Changelog&lt;/h2&gt;&#xA;&lt;p&gt;Historique des versions : &lt;code&gt;docs/reference/formats/changelog.md&lt;/code&gt;.&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Migration MUF</title>
+      <link>http://localhost/migration/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost/migration/</guid>
+      <description>&lt;h1 id=&#34;migration-muf-v41&#34;&gt;Migration MUF v4.1&lt;/h1&gt;&#xA;&lt;h2 id=&#34;header&#34;&gt;Header&lt;/h2&gt;&#xA;&lt;p&gt;Ancien:&lt;/p&gt;&#xA;&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;muf 2&#xA;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Nouveau:&lt;/p&gt;&#xA;&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;!muf 4&#xA;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;blocs&#34;&gt;Blocs&lt;/h2&gt;&#xA;&lt;p&gt;Ancien:&lt;/p&gt;&#xA;&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;workspace&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  set name &amp;#34;app&amp;#34;&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;.end&#xA;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Nouveau:&lt;/p&gt;&#xA;&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;[workspace]&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;  .set name &amp;#34;app&amp;#34;&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;..&#xA;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;directives&#34;&gt;Directives&lt;/h2&gt;&#xA;&lt;p&gt;Ancien:&lt;/p&gt;&#xA;&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;set name &amp;#34;app&amp;#34;&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;make c_src cglob &amp;#34;**/*.c&amp;#34;&#xA;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Nouveau:&lt;/p&gt;&#xA;&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;.set name &amp;#34;app&amp;#34;&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;.make c_src cglob &amp;#34;**/*.c&amp;#34;&#xA;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;commentaires&#34;&gt;Commentaires&lt;/h2&gt;&#xA;&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;;; commentaire MUF v4.1&#xA;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;validation&#34;&gt;Validation&lt;/h2&gt;&#xA;&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-sh&#34; data-lang=&#34;sh&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;muffin run --root . --file MuffinConfig.muf --print&#xA;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;</description>
+    </item>
+    <item>
+      <title>MUF</title>
+      <link>http://localhost/reference/reference/muf/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost/reference/reference/muf/</guid>
+      <description>&lt;h1 id=&#34;muf&#34;&gt;MUF&lt;/h1&gt;&#xA;&lt;p&gt;Reference du langage MUF (buildfiles).&lt;/p&gt;&#xA;&lt;h2 id=&#34;versioning&#34;&gt;Versioning&lt;/h2&gt;&#xA;&lt;p&gt;Le header indique la version :&lt;/p&gt;&#xA;&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-text&#34; data-lang=&#34;text&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;!muf 4&#xA;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;voir-aussi&#34;&gt;Voir aussi&lt;/h2&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/reference/formats&#34;&gt;Formats&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/migration&#34;&gt;Migration MUF&lt;/a&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;</description>
+    </item>
+    <item>
+      <title>Observabilite</title>
+      <link>http://localhost/observabilite/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost/observabilite/</guid>
+      <description>&lt;h1 id=&#34;observabilite&#34;&gt;Observabilite&lt;/h1&gt;&#xA;&lt;h2 id=&#34;muffin-doctor&#34;&gt;muffin doctor&lt;/h2&gt;&#xA;&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-sh&#34; data-lang=&#34;sh&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;muffin doctor --root .&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;muffin doctor --root . --json&#xA;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;muffin-cache&#34;&gt;muffin cache&lt;/h2&gt;&#xA;&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-sh&#34; data-lang=&#34;sh&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;muffin cache status --root .&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;muffin cache clear --root .&#xA;&lt;/span&gt;&lt;/span&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;muffin cache status --root . --json&#xA;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;logs-de-run&#34;&gt;Logs de run&lt;/h2&gt;&#xA;&lt;p&gt;Par defaut :&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;code&gt;target/muffin_run_&amp;lt;timestamp&amp;gt;.mff&lt;/code&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;p&gt;Options :&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;code&gt;--log &amp;lt;path&amp;gt;&lt;/code&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;code&gt;--log-mode append|truncate&lt;/code&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;h2 id=&#34;voir-aussi&#34;&gt;Voir aussi&lt;/h2&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/reference/formats&#34;&gt;Formats&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/generated&#34;&gt;Docs generees&lt;/a&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;</description>
+    </item>
+    <item>
+      <title>Quickstart</title>
+      <link>http://localhost/quickstart/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost/quickstart/</guid>
+      <description>&lt;h1 id=&#34;quickstart&#34;&gt;Quickstart&lt;/h1&gt;&#xA;&lt;p&gt;Chemin minimal pour un projet C simple avec MUF v4.1.&lt;/p&gt;&#xA;&lt;p&gt;&lt;img src=&#34;http://localhost/assets/img/quickstart.svg&#34; alt=&#34;Quickstart run&#34;&gt;&lt;/p&gt;&#xA;&lt;p&gt;&lt;strong&gt;MUF v4.1&lt;/strong&gt;&lt;/p&gt;&#xA;&lt;h2 id=&#34;install&#34;&gt;Install&lt;/h2&gt;&#xA;&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-sh&#34; data-lang=&#34;sh&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;cargo install --path . --force&#xA;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;h2 id=&#34;build-config-muf-v41&#34;&gt;Build config (MUF v4.1)&lt;/h2&gt;&#xA;&lt;p&gt;Creer &lt;code&gt;MuffinConfig.muf&lt;/code&gt; a la racine :&lt;/p&gt;&#xA;&lt;pre tabindex=&#34;0&#34;&gt;&lt;code class=&#34;language-muf&#34; data-lang=&#34;muf&#34;&gt;!muf 4&#xA;&#xA;[workspace]&#xA;  .set name &amp;#34;app&amp;#34;&#xA;  .set target_dir &amp;#34;target&amp;#34;&#xA;  .set profile &amp;#34;debug&amp;#34;&#xA;..&#xA;&#xA;[profile debug]&#xA;  .set opt 0&#xA;  .set debug 1&#xA;  .set ndebug 0&#xA;..&#xA;&#xA;[tool gcc]&#xA;  .exec &amp;#34;gcc&amp;#34;&#xA;..&#xA;&#xA;[bake app]&#xA;  .make c_src cglob &amp;#34;**/*.c&amp;#34;&#xA;  [run gcc]&#xA;    .takes c_src as &amp;#34;@args&amp;#34;&#xA;    .set &amp;#34;-std=c17&amp;#34; 1&#xA;    .set &amp;#34;-O${opt}&amp;#34; 1&#xA;    .set &amp;#34;-g&amp;#34; &amp;#34;${debug}&amp;#34;&#xA;    .set &amp;#34;-DNDEBUG&amp;#34; &amp;#34;${ndebug}&amp;#34;&#xA;    .set &amp;#34;-Wall&amp;#34; 1&#xA;    .set &amp;#34;-Wextra&amp;#34; 1&#xA;    .emits exe as &amp;#34;-o&amp;#34;&#xA;  ..&#xA;  .output exe &amp;#34;target/out/app&amp;#34;&#xA;..&#xA;&#xA;[export]&#xA;  .ref app&#xA;..&#xA;&lt;/code&gt;&lt;/pre&gt;&lt;h2 id=&#34;run&#34;&gt;Run&lt;/h2&gt;&#xA;&lt;div class=&#34;highlight&#34;&gt;&lt;pre tabindex=&#34;0&#34; style=&#34;color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;&#34;&gt;&lt;code class=&#34;language-sh&#34; data-lang=&#34;sh&#34;&gt;&lt;span style=&#34;display:flex;&#34;&gt;&lt;span&gt;muffin run --root . --file MuffinConfig.muf&#xA;&lt;/span&gt;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;p&gt;Dry-run :&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Site Map</title>
+      <link>http://localhost/sitemap/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost/sitemap/</guid>
+      <description>&lt;h1 id=&#34;site-map&#34;&gt;Site Map&lt;/h1&gt;&#xA;&lt;h2 id=&#34;demarrer&#34;&gt;Demarrer&lt;/h2&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/install&#34;&gt;Install&lt;/a&gt; — Installer Muffin&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/quickstart&#34;&gt;Quickstart&lt;/a&gt; — Premier run MUF v4.1&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/cookbook&#34;&gt;Cookbook&lt;/a&gt; — Recettes reelles (C, lib+app, multi-tool)&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/migration&#34;&gt;Migration MUF&lt;/a&gt; — Passer a MUF v4.1&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;h2 id=&#34;guides&#34;&gt;Guides&lt;/h2&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/observabilite&#34;&gt;Observabilite&lt;/a&gt; — Doctor, cache, logs&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/faq&#34;&gt;FAQ&lt;/a&gt; — Questions frequentes&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/troubleshooting&#34;&gt;Troubleshooting&lt;/a&gt; — Diagnostic complet&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;h2 id=&#34;reference&#34;&gt;Reference&lt;/h2&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/reference/cli&#34;&gt;CLI&lt;/a&gt; — Reference commande&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/reference/muf&#34;&gt;MUF&lt;/a&gt; — Reference langage&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/reference/formats&#34;&gt;Formats&lt;/a&gt; — MUF/MFF/runlog + versioning&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/generated&#34;&gt;Docs generees&lt;/a&gt; — CLI + schemas generes&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;h2 id=&#34;projet&#34;&gt;Projet&lt;/h2&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/changelog&#34;&gt;Changelog&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/roadmap&#34;&gt;Roadmap&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/glossary&#34;&gt;Glossary&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/contributing&#34;&gt;Contributing&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/security&#34;&gt;Security&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;http://localhost/license&#34;&gt;License&lt;/a&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;</description>
+    </item>
+    <item>
+      <title>Troubleshooting</title>
+      <link>http://localhost/troubleshooting/</link>
+      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <guid>http://localhost/troubleshooting/</guid>
+      <description>&lt;h1 id=&#34;troubleshooting&#34;&gt;Troubleshooting&lt;/h1&gt;&#xA;&lt;h2 id=&#34;1-muffin-introuvable&#34;&gt;1) &lt;code&gt;muffin&lt;/code&gt; introuvable&lt;/h2&gt;&#xA;&lt;p&gt;Diagnostic:&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;code&gt;which muffin&lt;/code&gt; (macOS/Linux) ou &lt;code&gt;where muffin&lt;/code&gt; (Windows)&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;p&gt;Fix:&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;ajouter le dossier contenant &lt;code&gt;muffin&lt;/code&gt; au &lt;code&gt;PATH&lt;/code&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;h2 id=&#34;2-erroru001-commande-inconnue&#34;&gt;2) &lt;code&gt;error[U001]&lt;/code&gt; commande inconnue&lt;/h2&gt;&#xA;&lt;p&gt;Fix:&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;code&gt;muffin --help&lt;/code&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;h2 id=&#34;3-errorc001-config-introuvableinvalide&#34;&gt;3) &lt;code&gt;error[C001]&lt;/code&gt; config introuvable/invalide&lt;/h2&gt;&#xA;&lt;p&gt;Fix:&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;verifier &lt;code&gt;--root&lt;/code&gt; et &lt;code&gt;--file&lt;/code&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;code&gt;muffin doctor --root &amp;lt;dir&amp;gt;&lt;/code&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;h2 id=&#34;4-errorp001-parsing-muf&#34;&gt;4) &lt;code&gt;error[P001]&lt;/code&gt; parsing MUF&lt;/h2&gt;&#xA;&lt;p&gt;Fix:&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;verifier &lt;code&gt;!muf 4&lt;/code&gt; et les blocs &lt;code&gt;[tag] ..&lt;/code&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;h2 id=&#34;5-errorx001-tool-execution-failed&#34;&gt;5) &lt;code&gt;error[X001]&lt;/code&gt; tool execution failed&lt;/h2&gt;&#xA;&lt;p&gt;Fix:&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;verifier le &lt;code&gt;PATH&lt;/code&gt; ou &lt;code&gt;--toolchain &amp;lt;dir&amp;gt;&lt;/code&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;h2 id=&#34;6-errorio01-erreur-io&#34;&gt;6) &lt;code&gt;error[IO01]&lt;/code&gt; erreur I/O&lt;/h2&gt;&#xA;&lt;p&gt;Fix:&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

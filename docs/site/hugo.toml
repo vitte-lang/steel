@@ -1,0 +1,16 @@
+baseURL = "http://localhost/"
+title = "Muffin Docs"
+languageCode = "fr"
+
+contentDir = "pages"
+layoutsDir = "layouts"
+dataDir = "data"
+staticDir = ["../assets", "generated"]
+
+disableKinds = ["taxonomy", "term"]
+
+[markup]
+  [markup.highlight]
+    codeFences = true
+    noClasses = true
+    style = "monokai"

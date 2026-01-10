@@ -70,3 +70,17 @@ By default a log is written to `target/muffin_run_<timestamp>.mff`.
 ```sh
 muffin run --root . --file MuffinConfig.muf --log target/muffin_run.mff --log-mode truncate
 ```
+
+## Result check (real)
+
+After a successful run, you should see:
+
+- output binary at `target/out/app`
+- a run log like `target/muffin_run_*.mff`
+
+Example:
+
+```sh
+ls -l target/out/app
+ls -t target/muffin_run_*.mff | head -n 1
+```

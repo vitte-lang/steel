@@ -9,6 +9,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use crate::version::VersionInfo;
 use vittelib::muf_parser::{Atom, Block, BlockItem, MufFile, Number};
 use vittelib::path::{GlobSet, WalkOptions};
 
@@ -70,6 +71,7 @@ pub struct RunOptions {
     pub root_dir: PathBuf,
     pub muffin_file: Option<PathBuf>,
     pub profile: Option<String>,
+    pub toolchain_dir: Option<PathBuf>,
     pub dry_run: bool,
     pub bakes: Vec<String>,
     pub run_all: bool,
@@ -117,6 +119,7 @@ pub fn run(opts: &RunOptions) -> Result<(), RunError> {
         msg: e.to_string(),
     })?;
     let cfg = interpret_muf(&muf)?;
+    let tool_paths = resolve_tool_paths(&cfg.tools, opts.toolchain_dir.as_deref())?;
 
     let profile_name = opts
         .profile
@@ -144,6 +147,7 @@ pub fn run(opts: &RunOptions) -> Result<(), RunError> {
     if opts.log_mode == LogMode::Truncate {
         prepare_log(&log_path)?;
     }
+    ensure_log_header(&log_path)?;
 
     if opts.verbose {
         println!("run log: {}", log_path.display());
@@ -187,16 +191,20 @@ pub fn run(opts: &RunOptions) -> Result<(), RunError> {
                 msg: format!("missing tool `{}`", run.tool),
                 help: Some("add [tool <name>] with .exec".into()),
             })?;
+            let tool_exec = tool_paths
+                .get(&run.tool)
+                .map(String::as_str)
+                .unwrap_or(&tool.exec);
 
             let args = build_args(run, &sources, &bake.output_port, &output_rel, &vars)?;
             if opts.dry_run {
-                println!("{} {}", tool.exec, args.join(" "));
+                println!("{} {}", tool_exec, args.join(" "));
                 continue;
             }
 
-            let mut cmd = Command::new(&tool.exec);
+            let mut cmd = Command::new(tool_exec);
             cmd.args(&args).current_dir(&root);
-            let cmd_str = format!("{} {}", tool.exec, args.join(" "));
+            let cmd_str = format!("{} {}", tool_exec, args.join(" "));
             let start = std::time::Instant::now();
             let output = cmd.output().map_err(|e| RunError::Exec {
                 cmd: cmd_str.clone(),
@@ -446,6 +454,7 @@ fn prepare_log(path: &Path) -> Result<(), RunError> {
         path: path.to_path_buf(),
         err: e.to_string(),
     })?;
+    write_log_header(path)?;
     Ok(())
 }
 
@@ -461,6 +470,71 @@ fn run_log_stamp() -> String {
 fn run_log_stamp_iso() -> String {
     use chrono::{SecondsFormat, Utc};
     Utc::now().to_rfc3339_opts(SecondsFormat::Secs, true)
+}
+
+fn ensure_log_header(path: &Path) -> Result<(), RunError> {
+    let need = match fs::metadata(path) {
+        Ok(m) => m.len() == 0,
+        Err(_) => true,
+    };
+    if need {
+        write_log_header(path)?;
+    }
+    Ok(())
+}
+
+fn write_log_header(path: &Path) -> Result<(), RunError> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| RunError::Io {
+            op: "mkdir",
+            path: parent.to_path_buf(),
+            err: e.to_string(),
+        })?;
+    }
+    let mut f = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|e| RunError::Io {
+            op: "open",
+            path: path.to_path_buf(),
+            err: e.to_string(),
+        })?;
+
+    use std::io::Write;
+    let ts_iso = run_log_stamp_iso();
+    let ver = VersionInfo::current().format_short();
+    writeln!(f, "[log meta]").map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    writeln!(f, "format \"muffin-runlog-1\"").map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    writeln!(f, "tool \"muffin\"").map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    writeln!(f, "version \"{ver}\"").map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    writeln!(f, "ts_iso \"{ts_iso}\"").map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    writeln!(f, "..").map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    Ok(())
 }
 
 fn build_args(
@@ -1000,4 +1074,179 @@ fn expand_vars(input: &str, vars: &BTreeMap<String, String>) -> String {
         }
     }
     out
+}
+
+fn resolve_tool_paths(
+    tools: &BTreeMap<String, Tool>,
+    toolchain_dir: Option<&Path>,
+) -> Result<BTreeMap<String, String>, RunError> {
+    let mut out = BTreeMap::new();
+    for (name, tool) in tools {
+        let resolved = find_executable(&tool.exec, toolchain_dir).ok_or_else(|| RunError::Config {
+            msg: format!("tool `{name}` not found: {}", tool.exec),
+            help: Some("install the toolchain, set PATH, or pass --toolchain <dir>".into()),
+        })?;
+        out.insert(name.clone(), resolved.to_string_lossy().to_string());
+    }
+    Ok(out)
+}
+
+fn find_executable(exec: &str, toolchain_dir: Option<&Path>) -> Option<PathBuf> {
+    let exec_path = Path::new(exec);
+    if exec_path.is_absolute() || exec_path.components().count() > 1 {
+        if exec_path.exists() {
+            return Some(exec_path.to_path_buf());
+        }
+        return None;
+    }
+
+    if let Some(dir) = toolchain_dir {
+        if let Some(found) = find_in_dir(exec, dir) {
+            return Some(found);
+        }
+    }
+
+    let path_var = std::env::var_os("PATH")?;
+    for dir in std::env::split_paths(&path_var) {
+        if let Some(found) = find_in_dir(exec, &dir) {
+            return Some(found);
+        }
+    }
+    None
+}
+
+fn find_in_dir(exec: &str, dir: &Path) -> Option<PathBuf> {
+    let candidate = dir.join(exec);
+    if candidate.exists() {
+        return Some(candidate);
+    }
+    if cfg!(windows) && !exec.to_ascii_lowercase().ends_with(".exe") {
+        let candidate = dir.join(format!("{exec}.exe"));
+        if candidate.exists() {
+            return Some(candidate);
+        }
+    }
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use std::fs::File;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn temp_dir(prefix: &str) -> PathBuf {
+        let mut dir = std::env::temp_dir();
+        let stamp = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_nanos();
+        dir.push(format!("muffin_test_{prefix}_{stamp}"));
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn interpret_muf_basic() {
+        let src = r#"
+!muf 4
+
+[workspace]
+  .set name "app"
+  .set profile "debug"
+..
+
+[profile debug]
+  .set opt 0
+  .set debug 1
+  .set ndebug 0
+..
+
+[tool gcc]
+  .exec "gcc"
+..
+
+[bake app]
+  .make c_src cglob "src/**/*.c"
+  [run gcc]
+    .takes c_src as "@args"
+    .set "-O${opt}" 1
+    .emits exe as "-o"
+  ..
+  .output exe "target/out/app"
+..
+"#;
+        let muf = vittelib::muf_parser::parse_muf(src).unwrap();
+        let cfg = interpret_muf(&muf).unwrap();
+
+        assert_eq!(cfg.workspace.get("name").unwrap(), "app");
+        assert_eq!(cfg.workspace.get("profile").unwrap(), "debug");
+
+        let profile = cfg.profiles.get("debug").unwrap();
+        assert_eq!(profile.settings.get("opt").unwrap(), "0");
+        assert_eq!(profile.settings.get("debug").unwrap(), "1");
+
+        let tool = cfg.tools.get("gcc").unwrap();
+        assert_eq!(tool.exec, "gcc");
+
+        let bake = cfg.bakes.get("app").unwrap();
+        assert_eq!(bake.makes.len(), 1);
+        assert_eq!(bake.output_port, "exe");
+        assert_eq!(bake.output_path, "target/out/app");
+        assert_eq!(bake.runs.len(), 1);
+    }
+
+    #[test]
+    fn log_header_written_once() {
+        let dir = temp_dir("log");
+        let log = dir.join("run.mff");
+        ensure_log_header(&log).unwrap();
+        ensure_log_header(&log).unwrap();
+        let s = fs::read_to_string(&log).unwrap();
+        assert_eq!(s.matches("[log meta]").count(), 1);
+        assert!(s.contains("format \"muffin-runlog-1\""));
+        assert!(s.contains("tool \"muffin\""));
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn resolve_tool_paths_prefers_toolchain_dir() {
+        let dir = temp_dir("toolchain");
+        let tool_path = dir.join("gcc");
+        File::create(&tool_path).unwrap();
+
+        let mut tools = BTreeMap::new();
+        tools.insert(
+            "gcc".to_string(),
+            Tool {
+                exec: "gcc".to_string(),
+            },
+        );
+        let resolved = resolve_tool_paths(&tools, Some(&dir)).unwrap();
+        assert_eq!(resolved.get("gcc").unwrap(), tool_path.to_string_lossy().as_ref());
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn find_executable_adds_exe_on_windows() {
+        let dir = temp_dir("exe");
+        let exe = dir.join("tool.exe");
+        File::create(&exe).unwrap();
+        let found = find_executable("tool", Some(&dir)).unwrap();
+        assert_eq!(found, exe);
+        fs::remove_dir_all(&dir).ok();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn find_executable_unix_plain_name() {
+        let dir = temp_dir("exe");
+        let exe = dir.join("tool");
+        File::create(&exe).unwrap();
+        let found = find_executable("tool", Some(&dir)).unwrap();
+        assert_eq!(found, exe);
+        fs::remove_dir_all(&dir).ok();
+    }
 }

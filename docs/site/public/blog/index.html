@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title></title>
+<link rel="stylesheet" href="/assets/css/site.css" />
+<link rel="stylesheet" href="/assets/css/code.css" />
+<link rel="stylesheet" href="/assets/css/theme-light.css" />
+<link rel="stylesheet" href="/assets/css/theme-dark.css" />
+
+  </head>
+  <body class="site">
+    <header class="site-header">
+  <div class="site-header__inner">
+    <div class="site-brand">
+      <a href="/">Muffin Docs</a>
+    </div>
+  </div>
+</header>
+
+    <div class="site-main">
+      <aside class="site-sidebar">
+  <nav class="nav">
+    
+      <div class="nav-section">
+        <div class="nav-title">Getting started</div>
+        <div class="nav-items">
+          
+            <a href="/install">Install</a>
+          
+            <a href="/quickstart">Quickstart</a>
+          
+            <a href="/cookbook">Cookbook</a>
+          
+            <a href="/migration">Migration</a>
+          
+            <a href="/examples">Examples</a>
+          
+        </div>
+      </div>
+    
+      <div class="nav-section">
+        <div class="nav-title">Guides</div>
+        <div class="nav-items">
+          
+            <a href="/observabilite">Observabilite</a>
+          
+            <a href="/faq">FAQ</a>
+          
+            <a href="/troubleshooting">Troubleshooting</a>
+          
+            <a href="/sitemap">Site Map</a>
+          
+        </div>
+      </div>
+    
+      <div class="nav-section">
+        <div class="nav-title">Reference</div>
+        <div class="nav-items">
+          
+            <a href="/reference/cli">CLI</a>
+          
+            <a href="/reference/muf">Muf</a>
+          
+            <a href="/reference/formats">Formats</a>
+          
+            <a href="/generated">Generated</a>
+          
+        </div>
+      </div>
+    
+  </nav>
+</aside>
+
+      <main class="site-content" data-doc-content>
+        <h1 id="blog">Blog</h1>
+<hr>
+<h2 id="description-notes-de-conception-annonces-et-deep-dives-sur-muffin-build-graph-muf-mff-cli-targets">title: Blog
+slug: /blog/
+description: Notes de conception, annonces et deep-dives sur Muffin (build graph, .muf, .mff, CLI, targets).</h2>
+<h1 id="blog-1">Blog</h1>
+<p>Ici : des notes d’architecture, des annonces, et des retours d’implémentation sur <strong>Muffin</strong>.</p>
+<ul>
+<li><strong>Buildfile</strong> : <code>Muffinfile</code> / <code>build.muf</code></li>
+<li><strong>Binaire de build</strong> : <code>*.mff</code> (snapshot résolu : graph + config)</li>
+<li><strong>Runtimes</strong> : scheduling, store, capsules, targets</li>
+</ul>
+<hr>
+<h2 id="à-lire-en-priorité">À lire en priorité</h2>
+<ul>
+<li><strong>CLI</strong> : commandes, phases <code>configure</code> / <code>build</code>, graph, cache, sandbox.
+<ul>
+<li>Voir : <code>docs/site/generated/cli.md</code></li>
+</ul>
+</li>
+<li><strong>Config schema</strong> : grammaire, règles de validation, représentation logique du <code>.mff</code>.
+<ul>
+<li>Voir : <code>docs/site/generated/config-schema.md</code></li>
+</ul>
+</li>
+<li><strong>Manifest schema</strong> : identité projet, deps, publication, workspace.
+<ul>
+<li>Voir : <code>docs/site/generated/manifest-schema.md</code></li>
+</ul>
+</li>
+<li><strong>Target schema</strong> : host/target, normalisation, formats, toolchains.
+<ul>
+<li>Voir : <code>docs/site/generated/target-schema.md</code></li>
+</ul>
+</li>
+</ul>
+<hr>
+<h2 id="derniers-articles">Derniers articles</h2>
+<blockquote>
+<p>Index statique (à compléter avec des posts dans <code>docs/site/pages/blog/</code>).
+Convention recommandée : <code>YYYY-MM-DD-titre.md</code>.</p>
+</blockquote>
+<ul>
+<li><em>À venir</em> : “<code>.mff</code> comme unité reproductible : snapshot, intégrité, décompilation”</li>
+<li><em>À venir</em> : “Capsules : politiques env/fs/net/time et modèles de threat”</li>
+<li><em>À venir</em> : “Store : content-addressed, invalidations, GC et verifications”</li>
+<li><em>À venir</em> : “Targets : mapping multi-OS/arch + toolchains + sysroots”</li>
+</ul>
+<hr>
+<h2 id="tags">Tags</h2>
+<p>Proposition de taxonomie (pour organiser les posts) :</p>
+<ul>
+<li><code>design</code> : décisions de design (format, sémantique, invariants)</li>
+<li><code>cli</code> : interface et ergonomie</li>
+<li><code>schema</code> : grammaires, validateurs, sérialisation</li>
+<li><code>graph</code> : DAG, wiring, scheduler</li>
+<li><code>cache</code> : store, invalidation, perf</li>
+<li><code>sandbox</code> : capsules, isolation</li>
+<li><code>targets</code> : host/target, cross, toolchains</li>
+<li><code>interop</code> : intégration C/C++/C#/Rust/etc.</li>
+<li><code>release</code> : CI, packaging, publication</li>
+</ul>
+<hr>
+<h2 id="écrire-un-post">Écrire un post</h2>
+<h3 id="structure-minimale">Structure minimale</h3>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-md" data-lang="md"><span style="display:flex;"><span>---
+</span></span><span style="display:flex;"><span>title: &#34;Titre&#34;
+</span></span><span style="display:flex;"><span>date: 2026-01-08
+</span></span><span style="display:flex;"><span>description: &#34;Résumé&#34;
+</span></span><span style="display:flex;"><span>tags: [design, graph]
+</span></span><span style="display:flex;"><span>---
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span># Titre
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>Contenu.
+</span></span></code></pre></div><h3 id="contenu-attendu">Contenu attendu</h3>
+<ul>
+<li>Un <strong>problème</strong> clair (UX / build / reproductibilité / perf)</li>
+<li>Une <strong>décision</strong> (ou une proposition) avec invariants</li>
+<li>Un <strong>exemple</strong> concret (commandes + extrait <code>.muf</code>)</li>
+<li>Les <strong>trade-offs</strong> (ce qu’on gagne / ce qu’on refuse)</li>
+</ul>
+<hr>
+<h2 id="roadmap-éditoriale">Roadmap éditoriale</h2>
+<ul>
+<li>Décrire la séparation <strong>manifest vs buildfile</strong></li>
+<li>Spécifier le cycle complet <strong>configure → .mff → build</strong></li>
+<li>Formaliser les invariants :
+<ul>
+<li>determinism (tri stable, hashing stable)</li>
+<li>DAG sans cycles</li>
+<li>compat types ports</li>
+<li>sandbox policy explicite</li>
+</ul>
+</li>
+<li>Documenter la décompilation <code>.mff</code> (audit / debug / reproductibilité)</li>
+</ul>
+<hr>
+<h2 id="navigation">Navigation</h2>
+<ul>
+<li><strong>Docs</strong> : <code>/docs/</code></li>
+<li><strong>CLI</strong> : <code>/docs/generated/cli/</code> (selon routing du site)</li>
+<li><strong>Schemas</strong> : <code>/docs/generated/</code></li>
+</ul>
+
+      </main>
+      <aside class="site-toc toc" data-toc>
+  <div class="toc-title">On this page</div>
+</aside>
+
+    </div>
+    <footer class="site-footer">
+  <div class="site-footer__inner">
+    <span>© Muffin</span>
+  </div>
+</footer>
+
+    <script src="/assets/js/site.js"></script>
+    <script src="/assets/js/toc.js"></script>
+  </body>
+</html>

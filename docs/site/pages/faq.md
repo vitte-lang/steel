@@ -1,7 +1,7 @@
 ---
 title: FAQ
 slug: /faq/
-description: Questions fréquentes sur Muffin : buildfile (.muf), binaire de build (.mff), graph, cache, sandbox, targets et reproductibilité.
+description: "Questions fréquentes sur Muffin : buildfile (.muf), binaire de build (.mff), graph, cache, sandbox, targets et reproductibilité."
 ---
 
 # FAQ
@@ -100,6 +100,41 @@ Si tu peux décrire la chaîne de build en étapes (compiler, linker, packager, 
 La contrainte n’est pas “le langage”, mais la disponibilité des **outils** et la capacité à décrire les entrées/sorties.
 
 ---
+
+## Erreurs frequentes (CLI)
+
+### `error[U001]` commande inconnue
+
+Fix:
+- `muffin --help` pour la liste des commandes
+
+### `error[C001]` config introuvable/invalide
+
+Fix:
+- verifier `--root` et `--file`
+
+### `error[P001]` parsing MUF
+
+Fix:
+- verifier `!muf 4` et les blocs `[tag] ..`
+
+### `error[X001]` tool execution failed
+
+Fix:
+- verifier `PATH` ou utiliser `--toolchain <dir>`
+
+### `error[IO01]` erreur I/O
+
+Fix:
+- verifier permissions et chemins
+
+## Voir aussi
+
+- [Troubleshooting](/troubleshooting)
+
+## Docs generees
+
+- [Generated](/generated)
 
 ## Et pour les machines anciennes / récentes ?
 
@@ -314,4 +349,3 @@ Le watch reconfigure/rebuild de façon incrémentale sur événements FS (selon 
 - Config schema (buildfile) : `docs/site/generated/config-schema.md`
 - Manifest schema : `docs/site/generated/manifest-schema.md`
 - Target schema : `docs/site/generated/target-schema.md`
-

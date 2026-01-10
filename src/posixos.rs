@@ -249,7 +249,7 @@ mod tests {
 
     #[test]
     fn test_detect_os_version() {
-        let version = detect_os_version().unwrap();
+        let _version = detect_os_version().unwrap();
         // Version detection should return a valid structure
     }
 

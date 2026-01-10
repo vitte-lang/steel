@@ -26,6 +26,7 @@ Muffin manipule plusieurs familles de formats :
 ### Contrat
 
 - [MFF (`.mff`)](./mff.md)
+- [Run log (`.mff`)](./runlog.md)
 
 ### Exports
 
@@ -64,6 +65,20 @@ Recommandations :
 ### 4) Types logiques
 
 Préférer des types logiques (`bin.obj`, `lib.static`, `lib.shared`, `bin.exe`) et résoudre l’extension via `target`.
+
+---
+
+## Versioning
+
+Chaque format est **versionné** dans son en-tête :
+
+- MUF : `!muf 4` (format v4.x)
+- MFF : `mff 1` (format v1)
+- Run log : `format "muffin-runlog-1"`
+
+Les évolutions sont documentées dans le changelog des formats :
+
+- [Changelog formats](./changelog.md)
 
 ---
 

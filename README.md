@@ -518,6 +518,13 @@ profile "debug"
 
 ## Documentation
 
+- [docs/quickstart.md](docs/quickstart.md) — Quickstart MUF v4.1
+- [docs/cookbook.md](docs/cookbook.md) — Recettes (C, lib+app, multi-tool)
+- [docs/migration.md](docs/migration.md) — Migration vers MUF v4.1
+- [docs/faq-erreurs.md](docs/faq-erreurs.md) — FAQ erreurs (codes + fixes)
+- [docs/observabilite.md](docs/observabilite.md) — Observabilite (doctor, cache, logs)
+- [docs/troubleshooting.md](docs/troubleshooting.md) — Troubleshooting (guide long)
+- [docs/reference/formats/index.md](docs/reference/formats/index.md) — Formats + versioning
 - [ARCHITECTURE.md](ARCHITECTURE.md) — Détails internes, pipeline, modules
 - [src/MODULE_ORGANIZATION.md](src/MODULE_ORGANIZATION.md) — Organisation des fichiers source
 - Manpage: [doc/muffin.1](doc/muffin.1)

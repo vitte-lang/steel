@@ -55,6 +55,9 @@ pub enum Cmd {
     Print(build_muf::BuildMufOptions),
     Run(run_muf::RunOptions),
 
+    Doctor(DoctorOptions),
+    Cache(CacheOptions),
+
     Graph(GraphOptions),
     Fmt(FmtOptions),
 }
@@ -78,6 +81,27 @@ pub struct FmtOptions {
     pub file: Option<PathBuf>,
     pub check_only: bool,
     pub verbose: bool,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct DoctorOptions {
+    pub root_dir: Option<PathBuf>,
+    pub verbose: bool,
+    pub json: bool,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum CacheAction {
+    Status,
+    Clear,
+}
+
+#[derive(Debug, Clone)]
+pub struct CacheOptions {
+    pub root_dir: Option<PathBuf>,
+    pub action: CacheAction,
+    pub verbose: bool,
+    pub json: bool,
 }
 
 /// Entry point used by main binaries.
@@ -149,6 +173,8 @@ pub fn parse_command(args: &[String]) -> Result<Cmd> {
             let o = parse_run_args(&args[2..])?;
             Ok(Cmd::Run(o))
         }
+        "doctor" => parse_doctor(&args[2..]),
+        "cache" => parse_cache(&args[2..]),
         // stubs reserved for future
         "graph" => parse_graph(&args[2..]),
         "fmt" => parse_fmt(&args[2..]),
@@ -249,6 +275,92 @@ fn parse_fmt(rest: &[String]) -> Result<Cmd> {
     Ok(Cmd::Fmt(o))
 }
 
+fn parse_doctor(rest: &[String]) -> Result<Cmd> {
+    let mut o = DoctorOptions::default();
+
+    let mut it = rest.iter().peekable();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--root" => {
+                let v = it.next().ok_or_else(|| {
+                    CommandError::Usage("--root expects a path\n\n".to_string() + doctor_help())
+                })?;
+                o.root_dir = Some(PathBuf::from(v));
+            }
+            "--json" => o.json = true,
+            "-v" | "--verbose" => o.verbose = true,
+            "-h" | "--help" => return Err(CommandError::Usage(doctor_help().to_string())),
+            x if x.starts_with('-') => {
+                return Err(CommandError::Usage(format!(
+                    "unknown flag: {x}\n\n{}",
+                    doctor_help()
+                )))
+            }
+            other => {
+                return Err(CommandError::Usage(format!(
+                    "unexpected argument: {other}\n\n{}",
+                    doctor_help()
+                )))
+            }
+        }
+    }
+
+    Ok(Cmd::Doctor(o))
+}
+
+fn parse_cache(rest: &[String]) -> Result<Cmd> {
+    if rest.is_empty() || matches!(rest.first().map(String::as_str), Some("-h" | "--help" | "help")) {
+        return Err(CommandError::Usage(cache_help().to_string()));
+    }
+
+    let action = match rest[0].as_str() {
+        "status" => CacheAction::Status,
+        "clear" => CacheAction::Clear,
+        other => {
+            return Err(CommandError::Usage(format!(
+                "unknown cache action: {other}\n\n{}",
+                cache_help()
+            )))
+        }
+    };
+
+    let mut o = CacheOptions {
+        root_dir: None,
+        action,
+        verbose: false,
+        json: false,
+    };
+
+    let mut it = rest[1..].iter().peekable();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--root" => {
+                let v = it.next().ok_or_else(|| {
+                    CommandError::Usage("--root expects a path\n\n".to_string() + cache_help())
+                })?;
+                o.root_dir = Some(PathBuf::from(v));
+            }
+            "--json" => o.json = true,
+            "-v" | "--verbose" => o.verbose = true,
+            "-h" | "--help" => return Err(CommandError::Usage(cache_help().to_string())),
+            x if x.starts_with('-') => {
+                return Err(CommandError::Usage(format!(
+                    "unknown flag: {x}\n\n{}",
+                    cache_help()
+                )))
+            }
+            other => {
+                return Err(CommandError::Usage(format!(
+                    "unexpected argument: {other}\n\n{}",
+                    cache_help()
+                )))
+            }
+        }
+    }
+
+    Ok(Cmd::Cache(o))
+}
+
 fn parse_build_args(rest: &[String]) -> Result<build_muf::BuildMufOptions> {
     build_muf::parse_args(rest).map_err(map_build_error)
 }
@@ -278,6 +390,12 @@ fn parse_run_args(rest: &[String]) -> Result<run_muf::RunOptions> {
                     CommandError::Usage("--profile expects a name\n\n".to_string() + run_help())
                 })?;
                 o.profile = Some(v.to_string());
+            }
+            "--toolchain" => {
+                let v = it.next().ok_or_else(|| {
+                    CommandError::Usage("--toolchain expects a path\n\n".to_string() + run_help())
+                })?;
+                o.toolchain_dir = Some(PathBuf::from(v));
             }
             "--bake" => {
                 let v = it.next().ok_or_else(|| {
@@ -371,6 +489,8 @@ pub fn execute(cmd: Cmd) -> Result<()> {
             exec_build_muffin(o)
         }
         Cmd::Run(o) => exec_run_muf(o),
+        Cmd::Doctor(o) => exec_doctor(o),
+        Cmd::Cache(o) => exec_cache(o),
 
         Cmd::Check(mut o) => {
             // Best-effort semantics:
@@ -502,6 +622,8 @@ COMMANDS:
   check        Validate best-effort (emits then deletes Muffinconfig.mff under .muffin-cache/check/)
   print        Emit + print Muffinconfig.mff to stdout
   run          Execute tool steps from MuffinConfig.muf (runner)
+  doctor       Diagnostics for PATH, tools, and config
+  cache        Cache status/clear
 
   graph        (stub) Export graph (text|dot)
   fmt          (stub) Format Muffinfile
@@ -540,12 +662,13 @@ fn run_help() -> &'static str {
     "muffin run — Execute tool steps from MuffinConfig.muf
 
 USAGE:
-  muffin run [--root <path>] [--file <path>] [--profile <name>] [--bake <name>] [--all] [--print] [--no-cache] [--log <path>] [--log-mode <m>] [-v]
+  muffin run [--root <path>] [--file <path>] [--profile <name>] [--toolchain <path>] [--bake <name>] [--all] [--print] [--no-cache] [--log <path>] [--log-mode <m>] [-v]
 
 FLAGS:
   --root <path>     Workspace root (default: cwd)
   --file <path>     Explicit Muffinfile path (default: MuffinConfig.muf under root)
   --profile <name>  Select profile (default: workspace.profile or debug)
+  --toolchain <p>   Toolchain directory (overrides PATH lookup for tools)
   --bake <name>     Run a specific bake (repeatable)
   --all             Run all bakes in file order (with deps)
   --print           Dry-run: print commands only
@@ -553,6 +676,30 @@ FLAGS:
   --log <path>      Write run log to a specific .mff path
   --log-mode <m>    Log write mode: append (default) or truncate
   -v, --verbose     Verbose output"
+}
+
+fn doctor_help() -> &'static str {
+    "muffin doctor
+
+USAGE:
+  muffin doctor [--root <path>] [--json] [-v]
+
+FLAGS:
+  --root <path>   Workspace root (default: cwd)
+  --json          JSON output (machine-friendly)
+  -v, --verbose   Verbose output"
+}
+
+fn cache_help() -> &'static str {
+    "muffin cache
+
+USAGE:
+  muffin cache <status|clear> [--root <path>] [--json] [-v]
+
+FLAGS:
+  --root <path>   Workspace root (default: cwd)
+  --json          JSON output (machine-friendly)
+  -v, --verbose   Verbose output"
 }
 
 fn err_msg(code: &str, msg: impl Into<String>) -> String {
@@ -598,6 +745,200 @@ fn map_run_error(err: run_muf::RunError) -> CommandError {
 
 fn escape_dot(s: &str) -> String {
     // Minimal DOT string escape.
+    let mut out = String::with_capacity(s.len() + 8);
+    for ch in s.chars() {
+        match ch {
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\\""),
+            '\n' => out.push_str("\\n"),
+            '\r' => out.push_str("\\r"),
+            '\t' => out.push_str("\\t"),
+            c => out.push(c),
+        }
+    }
+    out
+}
+
+fn exec_doctor(o: DoctorOptions) -> Result<()> {
+    let root = o
+        .root_dir
+        .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+    let config_path = root.join("MuffinConfig.muf");
+
+    let tools = ["muffin", "gcc", "ar"];
+    if o.json {
+        let config_exists = config_path.exists();
+        let mut out = String::new();
+        out.push_str("{\"root\":\"");
+        out.push_str(&json_escape(&root.display().to_string()));
+        out.push_str("\",\"config\":{\"path\":\"");
+        out.push_str(&json_escape(&config_path.display().to_string()));
+        out.push_str("\",\"exists\":");
+        out.push_str(if config_exists { "true" } else { "false" });
+        out.push_str("},\"tools\":[");
+        let mut first = true;
+        for tool in tools {
+            if !first {
+                out.push(',');
+            }
+            first = false;
+            match find_in_path(tool) {
+                Some(path) => {
+                    out.push_str("{\"name\":\"");
+                    out.push_str(tool);
+                    out.push_str("\",\"ok\":true,\"path\":\"");
+                    out.push_str(&json_escape(&path.display().to_string()));
+                    out.push_str("\"}");
+                }
+                None => {
+                    out.push_str("{\"name\":\"");
+                    out.push_str(tool);
+                    out.push_str("\",\"ok\":false}");
+                }
+            }
+        }
+        out.push_str("]}");
+        println!("{out}");
+        return Ok(());
+    }
+
+    println!("muffin doctor");
+    println!("root: {}", root.display());
+    if config_path.exists() {
+        println!("config: ok ({})", config_path.display());
+    } else {
+        println!("config: missing ({})", config_path.display());
+    }
+
+    for tool in tools {
+        match find_in_path(tool) {
+            Some(path) => {
+                if o.verbose {
+                    println!("tool: {tool} => {}", path.display());
+                } else {
+                    println!("tool: {tool} ok");
+                }
+            }
+            None => println!("tool: {tool} missing"),
+        }
+    }
+
+    Ok(())
+}
+
+fn exec_cache(o: CacheOptions) -> Result<()> {
+    let root = o
+        .root_dir
+        .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+    let cache_dir = root.join(".muffin-cache");
+
+    match o.action {
+        CacheAction::Status => {
+            if o.json {
+                let exists = cache_dir.exists();
+                let (files, bytes) = if exists {
+                    dir_stats(&cache_dir)?
+                } else {
+                    (0, 0)
+                };
+                println!(
+                    "{{\"cache_dir\":\"{}\",\"exists\":{},\"files\":{},\"bytes\":{}}}",
+                    json_escape(&cache_dir.display().to_string()),
+                    if exists { "true" } else { "false" },
+                    files,
+                    bytes
+                );
+                return Ok(());
+            }
+            if !cache_dir.exists() {
+                println!("cache: empty ({})", cache_dir.display());
+                return Ok(());
+            }
+            let (files, bytes) = dir_stats(&cache_dir)?;
+            println!("cache: {}", cache_dir.display());
+            println!("files: {files}");
+            println!("bytes: {bytes}");
+        }
+        CacheAction::Clear => {
+            let existed = cache_dir.exists();
+            if !existed {
+                if o.json {
+                    println!(
+                        "{{\"cache_dir\":\"{}\",\"cleared\":false,\"exists\":false}}",
+                        json_escape(&cache_dir.display().to_string())
+                    );
+                } else {
+                    println!("cache: empty ({})", cache_dir.display());
+                }
+                return Ok(());
+            }
+            fs::remove_dir_all(&cache_dir).map_err(|e| CommandError::Failure {
+                code: 4,
+                msg: err_msg("IO01", format!("remove {}: {e}", cache_dir.display())),
+            })?;
+            if o.json {
+                println!(
+                    "{{\"cache_dir\":\"{}\",\"cleared\":true,\"exists\":true}}",
+                    json_escape(&cache_dir.display().to_string())
+                );
+            } else {
+                println!("cache cleared: {}", cache_dir.display());
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn dir_stats(path: &Path) -> Result<(u64, u64)> {
+    let mut files = 0u64;
+    let mut bytes = 0u64;
+    let mut stack = vec![path.to_path_buf()];
+
+    while let Some(p) = stack.pop() {
+        let entries = fs::read_dir(&p).map_err(|e| CommandError::Failure {
+            code: 4,
+            msg: err_msg("IO01", format!("read {}: {e}", p.display())),
+        })?;
+        for entry in entries {
+            let entry = entry.map_err(|e| CommandError::Failure {
+                code: 4,
+                msg: err_msg("IO01", format!("read {}: {e}", p.display())),
+            })?;
+            let meta = entry.metadata().map_err(|e| CommandError::Failure {
+                code: 4,
+                msg: err_msg("IO01", format!("stat {}: {e}", entry.path().display())),
+            })?;
+            if meta.is_dir() {
+                stack.push(entry.path());
+            } else {
+                files += 1;
+                bytes += meta.len();
+            }
+        }
+    }
+
+    Ok((files, bytes))
+}
+
+fn find_in_path(tool: &str) -> Option<PathBuf> {
+    let path_var = env::var_os("PATH")?;
+    for dir in env::split_paths(&path_var) {
+        let candidate = dir.join(tool);
+        if candidate.exists() {
+            return Some(candidate);
+        }
+        if cfg!(windows) && !tool.to_ascii_lowercase().ends_with(".exe") {
+            let candidate = dir.join(format!("{tool}.exe"));
+            if candidate.exists() {
+                return Some(candidate);
+            }
+        }
+    }
+    None
+}
+
+fn json_escape(s: &str) -> String {
     let mut out = String::with_capacity(s.len() + 8);
     for ch in s.chars() {
         match ch {

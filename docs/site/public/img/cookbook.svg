@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="360" viewBox="0 0 920 360">
+  <rect width="920" height="360" fill="#0b1324"/>
+  <rect x="24" y="24" width="872" height="312" rx="16" fill="#0f172a" stroke="#1f2937" stroke-width="2"/>
+  <text x="56" y="78" fill="#e2e8f0" font-family="Menlo, Monaco, Consolas, monospace" font-size="20">
+    $ muffin run --root examples/gcc --file MuffinConfig_multi.muf --bake app
+  </text>
+  <text x="56" y="122" fill="#94a3b8" font-family="Menlo, Monaco, Consolas, monospace" font-size="16">
+    [bake lib] gcc -c lib/lib.c -> target/out/lib.o
+  </text>
+  <text x="56" y="154" fill="#94a3b8" font-family="Menlo, Monaco, Consolas, monospace" font-size="16">
+    [bake lib] ar rcs target/out/libmylib.a target/out/lib.o
+  </text>
+  <text x="56" y="198" fill="#94a3b8" font-family="Menlo, Monaco, Consolas, monospace" font-size="16">
+    [bake app] gcc app/main.c -L target/out -l mylib -o target/out/app
+  </text>
+  <text x="56" y="242" fill="#a7f3d0" font-family="Menlo, Monaco, Consolas, monospace" font-size="16">
+    outputs: target/out/libmylib.a, target/out/app
+  </text>
+</svg>

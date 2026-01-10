@@ -9,7 +9,7 @@ muffin \- configuration de build déclarative (génère Muffinconfig.mff)
 .
 .SH SYNOPSIS
 .B muffin
-.RI <commande> " " <fichier> " " [ options ]
+.RI <commande> " " [ options ]
 .
 .PP
 Exemples rapides :
@@ -19,16 +19,17 @@ muffin help
 muffin --help
 muffin version
 
-muffin build MuffinConfig.muf
-muffin build ./MuffinConfig.muf
-muffin build ./workspace/MuffinConfig.muf
-muffin build MuffinConfig.muf --profile release --target x86_64-unknown-linux-gnu
+muffin build muffin --file MuffinConfig.muf
+muffin build muffin --file ./workspace/MuffinConfig.muf --profile release --target x86_64-unknown-linux-gnu
 
-muffin resolve MuffinConfig.muf --emit ./out/Muffinconfig.mff
-muffin check MuffinConfig.muf
-muffin print MuffinConfig.muf
-muffin graph MuffinConfig.muf --dot
-muffin fmt MuffinConfig.muf --check
+muffin resolve --file MuffinConfig.muf --emit ./out/Muffinconfig.mff
+muffin check --file MuffinConfig.muf
+muffin print --file MuffinConfig.muf
+muffin run --root . --file MuffinConfig.muf
+muffin run --root . --file MuffinConfig.muf --print
+muffin doctor --root .
+muffin cache status --root .
+muffin cache clear --root .
 .fi
 .
 .SH DESCRIPTION
@@ -62,7 +63,7 @@ sécurité d'exécution via politiques (capsule/store, selon impl).
 .
 
 .SH COMMANDES
-Muffin expose une surface CLI centrée sur la configuration (parse/validation/résolution) et l'introspection.
+Muffin expose une surface CLI centrée sur la configuration (parse/validation/résolution), l'exécution des tools et l'observabilité.
 
 .SS Aide et version
 .TP
@@ -75,63 +76,58 @@ Affiche la version de Muffin.
 
 .SS Configuration
 .TP
-.B build <file>
-Valide et résout la configuration décrite dans \fI<file>\fP puis émet \fBMuffinconfig.mff\fP.
+.B build muffin [options]
+Valide et résout la configuration décrite par \fB--file\fP puis émet \fBMuffinconfig.mff\fP.
 Le fichier attendu est typiquement \fBMuffinConfig.muf\fP à la racine du workspace.
-Aucune découverte implicite n'est effectuée : le fichier doit être fourni explicitement.
 Voir OPTIONS.
 
 .TP
-.B resolve <file>
-Alias de \fBbuild\fP (émission par défaut).
+.B resolve [options]
+Alias de \fBbuild muffin\fP (émission par défaut).
 
 .TP
-.B check <file>
+.B check [options]
 Validation best-effort : émet sous \fB.muffin-cache/check/\fP puis supprime si possible.
 En mode \fB--strict\fP, l'échec de nettoyage est une erreur.
 
 .TP
-.B print <file>
+.B print [options]
 Émet puis affiche \fBMuffinconfig.mff\fP sur stdout.
 
-.SS Génération
+.SS Execution
 .TP
-.B init
-Initialise un workspace minimal (racine, \fBMuffinConfig.muf\fP, dossiers suggérés).
-Accepte un \fI<path>\fP positionnel comme racine.
+.B run [options]
+Exécute les \fB[run <tool>]\fP de \fBMuffinConfig.muf\fP, avec support multi-bakes et deps.
+Voir OPTIONS RUN.
+
+.SS Observabilite
+.TP
+.B doctor [options]
+Diagnostics d'environnement (config, tools, PATH). Supporte \fB--json\fP.
 
 .TP
-.B new
-Génère des templates (ex : package, tool, bake) dans un workspace.
-Accepte un \fI<path>\fP positionnel comme racine.
+.B cache <status|clear> [options]
+Affiche l'etat du cache ou le supprime. Supporte \fB--json\fP.
 
 .SS Outils (stub)
 .TP
-.B graph <file>
+.B graph
 Export de graphe (stub). Options : \fB--root\fP, \fB--text\fP, \fB--dot\fP, \fB-v\fP.
 
 .TP
-.B explain <file>
-Affiche la résolution pas-à-pas d'un fichier : origines, overrides, defaults.
-
-.TP
-.B diagnose
-Regroupe des checks d'environnement (toolchains, PATH, permissions, versions).
-
-.TP
-.B env
-Affiche les valeurs effectives (profil, target, root, emit).
-
-.TP
-.B fmt <file>
+.B fmt
 Formatter Muffinfile (stub). Options : \fB--check\fP, \fB-v\fP.
 .
 .SH OPTIONS
-Options principales de \fBmuffin build <file>\fP :
+Options principales de \fBmuffin build muffin\fP :
 
 .TP
 .B --root <path>
 Racine du workspace (défaut : répertoire courant). Utilisée pour résoudre les chemins relatifs du fichier.
+
+.TP
+.B --file <path>
+Fichier \fBMuffinConfig.muf\fP explicite (défaut : \fBMuffinConfig.muf\fP sous \fB--root\fP).
 
 .TP
 .B --profile <name>
@@ -173,6 +169,53 @@ Suit les symlinks pendant la découverte.
 .TP
 .B --max-depth <n>
 Profondeur de découverte (défaut : 16).
+
+.TP
+.B -v, --verbose
+Diagnostics verbeux.
+
+.SH OPTIONS RUN
+Options principales de \fBmuffin run\fP :
+
+.TP
+.B --root <path>
+Racine du workspace (défaut : répertoire courant).
+
+.TP
+.B --file <path>
+Fichier \fBMuffinConfig.muf\fP explicite (défaut : \fBMuffinConfig.muf\fP sous \fB--root\fP).
+
+.TP
+.B --profile <name>
+Profil selectionne (defaut : workspace.profile ou \fBdebug\fP).
+
+.TP
+.B --toolchain <path>
+Repertoire de toolchain (prioritaire sur \fBPATH\fP pour la resolution des tools).
+
+.TP
+.B --bake <name>
+Selection d'un bake (option repeatable).
+
+.TP
+.B --all
+Execute tous les bakes (avec deps).
+
+.TP
+.B --print
+Dry-run : affiche les commandes sans les executer.
+
+.TP
+.B --no-cache
+Desactive le skip incrementale.
+
+.TP
+.B --log <path>
+Ecrit un log \fB.mff\fP a l'emplacement indique.
+
+.TP
+.B --log-mode <append|truncate>
+Mode d'ecriture du log (append par defaut).
 
 .TP
 .B -v, --verbose
@@ -222,45 +265,45 @@ Si défini, ajoute un marqueur temporel dans l'empreinte.
 .B PATH
 S'assurer que \fBmuffin\fP est accessible (ou utiliser \fB./muffin\fP depuis la racine).
 .
-.SH FORMAT DU FICHIER MUFFIN (APERÇU)
-Muffin est orienté blocs et se termine par \fB.end\fP.
-Commentaires : \fB# ...\fP.
+.SH FORMAT DU FICHIER MUF (APERÇU)
+Le format MUF v4.1 est oriente blocs \fB[bloc]\fP et se termine par \fB..\fP.
+Commentaires : \fB;; ...\fP. Header : \fB!muf 4\fP.
 
-Exemple minimal (Bakefile v2) :
+Exemple minimal (MUF v4.1) :
 
 .nf
-muffin bake 2
+!muf 4
 
-store main
-  path "./.muffin/store"
-  mode content
-.end
+[workspace]
+  .set name "app"
+  .set profile "debug"
+..
 
-profile debug
-  set opt 0
-  set debug true
-.end
+[profile debug]
+  .set opt 0
+  .set debug 1
+  .set ndebug 0
+..
 
-tool compiler
-  exec "compiler"
-  sandbox true
-.end
+[tool gcc]
+  .exec "gcc"
+..
 
-bake app
-  out exe: bin.exe
-  make src glob "src/**/*.vit"
-  run tool compiler
-    takes src as "--src"
-    emits exe as "--out"
-    set "--emit" "exe"
-  .end
-.end
+[bake app]
+  .make c_src cglob "src/**/*.c"
+  [run gcc]
+    .takes c_src as "@args"
+    .set "-O${opt}" 1
+    .set "-g" "${debug}"
+    .set "-DNDEBUG" "${ndebug}"
+    .emits exe as "-o"
+  ..
+  .output exe "target/out/app"
+..
 
-export app.exe
-
-plan default
-  run exports
-.end
+[export]
+  .ref app
+..
 .fi
 
 Champs typiques :
@@ -305,6 +348,37 @@ paths
 .end
 .fi
 .
+.SH LOGS D'EXECUTION (RUN)
+Le runner ecrit un log \fB.mff\fP lisible par machine et humain, par defaut dans
+\fBtarget/muffin_run_<timestamp>.mff\fP.
+
+Exemple (extrait) :
+
+.nf
+[log meta]
+format "muffin-runlog-1"
+tool "muffin"
+version "muffin 0.1.0"
+ts_iso "2026-01-10T04:16:37Z"
+..
+
+[bake log "app"]
+[run log]
+ts 1768018597
+ts_iso "2026-01-10T04:16:37Z"
+duration_ms 72
+cmd "gcc -std=c17 -O0 -g -Wall -Wextra app/main.c -o target/out/app"
+status 0
+ok true
+..
+runs 1
+duration_ms 72
+..
+[run summary]
+ts_iso "2026-01-10T04:16:37Z"
+..
+.fi
+.
 .SH RÉSOLUTION DE FICHIERS (glob)
 Les expansions filesystem doivent être \fBdéterministes\fP :
 .IP \[bu] 2
@@ -320,20 +394,34 @@ liste figée dans \fBMuffinconfig.mff\fP.
 .TP
 Valider/résoudre et générer \fBMuffinconfig.mff\fP :
 .nf
-muffin build MuffinConfig.muf
+muffin build muffin --file MuffinConfig.muf
 .fi
 
 .TP
 Générer dans un chemin spécifique :
 .nf
-muffin build MuffinConfig.muf --emit ./out/Muffinconfig.mff
+muffin build muffin --file MuffinConfig.muf --emit ./out/Muffinconfig.mff
 .fi
 
 .TP
 Afficher la config résolue :
 .nf
-muffin print MuffinConfig.muf
-muffin graph MuffinConfig.muf --dot
+muffin print --file MuffinConfig.muf
+muffin graph --root . --dot
+.fi
+
+.TP
+Executer un bake :
+.nf
+muffin run --root . --file MuffinConfig.muf --bake app
+.fi
+
+.TP
+Observabilite :
+.nf
+muffin doctor --root .
+muffin cache status --root .
+muffin cache clear --root .
 .fi
 
 .SH CODES DE SORTIE
@@ -343,20 +431,24 @@ Succès.
 
 .TP
 .B 1
-Erreur de configuration (parse/validation/résolution).
+Erreur de configuration (build/resolve).
 
 .TP
 .B 2
-Erreur d'exécution/outillage (I/O, permissions, outils manquants).
+Erreur d'usage ou de config (runner).
 
 .TP
 .B 3
-Erreur interne (bug).
+Erreur d'execution de tool.
+
+.TP
+.B 4
+Erreur I/O.
 .
 .SH NOTES D'IMPLÉMENTATION
 Une implémentation conforme doit :
 .IP \[bu] 2
-supporter les blocs \fB.end\fP,
+supporter les blocs \fB[...]\fP et fins \fB..\fP,
 .IP \[bu] 2
 fournir des diagnostics (fichier, ligne, colonne),
 .IP \[bu] 2

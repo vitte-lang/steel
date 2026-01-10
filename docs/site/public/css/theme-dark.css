@@ -1,0 +1,242 @@
+/* ============================================================================
+ * Muffin Docs — theme-dark.css (MAX)
+ * Path: /docs/assets/css/theme-dark.css
+ *
+ * Applies when:
+ * - <html data-theme="dark"> or <body data-theme="dark">
+ * - or (optional) auto mode via prefers-color-scheme: dark
+ *
+ * Strategy:
+ * - Define all color tokens as CSS variables
+ * - site.css + code.css consume these variables
+ * ========================================================================== */
+
+/* ---------------------------------------------------------------------------
+ * 0) Explicit dark theme via data-theme
+ * ------------------------------------------------------------------------- */
+
+:root[data-theme="dark"],
+body[data-theme="dark"] {
+  /* Base surfaces */
+  --bg: #0b0d10;
+  --bg-elev: rgba(255,255,255,0.06);
+  --bg-elev-2: rgba(255,255,255,0.10);
+
+  /* Foreground */
+  --fg: rgba(255,255,255,0.92);
+  --fg-muted: rgba(255,255,255,0.70);
+  --fg-dim: rgba(255,255,255,0.52);
+
+  /* Borders */
+  --border: rgba(255,255,255,0.14);
+  --border-2: rgba(255,255,255,0.20);
+
+  /* Accents */
+  --accent: rgb(110, 86, 207);
+  --accent-2: rgb(0, 122, 255);
+  --accent-contrast: #ffffff;
+
+  /* Links */
+  --link: rgba(180, 166, 255, 0.95);
+  --link-hover: rgba(200, 190, 255, 1.0);
+
+  /* Shadows */
+  --shadow-1: 0 18px 50px rgba(0,0,0,0.45);
+  --shadow-2: 0 22px 60px rgba(0,0,0,0.55);
+
+  /* Focus */
+  --focus-ring: 0 0 0 3px rgba(110, 86, 207, 0.35);
+
+  /* Code (bridges into code.css) */
+  --code-bg: rgba(255,255,255,0.06);
+  --code-fg: rgba(255,255,255,0.92);
+  --code-border: rgba(255,255,255,0.14);
+
+  --code-inline-bg: rgba(255,255,255,0.10);
+  --code-inline-border: rgba(255,255,255,0.14);
+
+  --code-selection-bg: rgba(140, 160, 255, 0.26);
+
+  --code-muted: rgba(255,255,255,0.64);
+  --code-dim: rgba(255,255,255,0.48);
+
+  --code-ui-bg: rgba(20,22,26,0.72);
+  --code-ui-bg-hover: rgba(20,22,26,0.95);
+  --code-ui-border: rgba(255,255,255,0.14);
+  --code-ui-fg: rgba(255,255,255,0.88);
+
+  --code-scrollbar-thumb: rgba(255,255,255,0.22);
+  --code-scrollbar-track: rgba(255,255,255,0.06);
+
+  --code-line-hl-bg: rgba(110, 86, 207, 0.12);
+  --code-line-hl-border: rgba(110, 86, 207, 0.42);
+
+  --code-diff-add-bg: rgba(46, 204, 113, 0.14);
+  --code-diff-add-border: rgba(46, 204, 113, 0.35);
+  --code-diff-del-bg: rgba(231, 76, 60, 0.14);
+  --code-diff-del-border: rgba(231, 76, 60, 0.35);
+  --code-diff-warn-bg: rgba(241, 196, 15, 0.16);
+  --code-diff-warn-border: rgba(241, 196, 15, 0.40);
+
+  /* Terminal */
+  --term-bg: #0b0d10;
+  --term-fg: rgba(255,255,255,0.92);
+  --term-muted: rgba(255,255,255,0.65);
+  --term-border: rgba(255,255,255,0.12);
+
+  /* Tables */
+  --table-head-bg: rgba(255,255,255,0.08);
+  --table-row-hover: rgba(255,255,255,0.06);
+
+  /* Callouts */
+  --callout-info-bg: rgba(0, 122, 255, 0.12);
+  --callout-info-border: rgba(0, 122, 255, 0.26);
+
+  --callout-tip-bg: rgba(46, 204, 113, 0.12);
+  --callout-tip-border: rgba(46, 204, 113, 0.26);
+
+  --callout-warn-bg: rgba(241, 196, 15, 0.14);
+  --callout-warn-border: rgba(241, 196, 15, 0.28);
+
+  --callout-danger-bg: rgba(231, 76, 60, 0.12);
+  --callout-danger-border: rgba(231, 76, 60, 0.26);
+}
+
+/* ---------------------------------------------------------------------------
+ * 1) Optional: auto-dark when no explicit theme is set
+ * ------------------------------------------------------------------------- */
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]),
+  body:not([data-theme]) {
+    --bg: #0b0d10;
+    --bg-elev: rgba(255,255,255,0.06);
+    --bg-elev-2: rgba(255,255,255,0.10);
+
+    --fg: rgba(255,255,255,0.92);
+    --fg-muted: rgba(255,255,255,0.70);
+    --fg-dim: rgba(255,255,255,0.52);
+
+    --border: rgba(255,255,255,0.14);
+    --border-2: rgba(255,255,255,0.20);
+
+    --accent: rgb(110, 86, 207);
+    --accent-2: rgb(0, 122, 255);
+    --accent-contrast: #ffffff;
+
+    --link: rgba(180, 166, 255, 0.95);
+    --link-hover: rgba(200, 190, 255, 1.0);
+
+    --shadow-1: 0 18px 50px rgba(0,0,0,0.45);
+    --shadow-2: 0 22px 60px rgba(0,0,0,0.55);
+
+    --focus-ring: 0 0 0 3px rgba(110, 86, 207, 0.35);
+
+    --code-bg: rgba(255,255,255,0.06);
+    --code-fg: rgba(255,255,255,0.92);
+    --code-border: rgba(255,255,255,0.14);
+
+    --code-inline-bg: rgba(255,255,255,0.10);
+    --code-inline-border: rgba(255,255,255,0.14);
+
+    --code-selection-bg: rgba(140, 160, 255, 0.26);
+
+    --code-muted: rgba(255,255,255,0.64);
+    --code-dim: rgba(255,255,255,0.48);
+
+    --code-ui-bg: rgba(20,22,26,0.72);
+    --code-ui-bg-hover: rgba(20,22,26,0.95);
+    --code-ui-border: rgba(255,255,255,0.14);
+    --code-ui-fg: rgba(255,255,255,0.88);
+
+    --code-scrollbar-thumb: rgba(255,255,255,0.22);
+    --code-scrollbar-track: rgba(255,255,255,0.06);
+
+    --code-line-hl-bg: rgba(110, 86, 207, 0.12);
+    --code-line-hl-border: rgba(110, 86, 207, 0.42);
+
+    --code-diff-add-bg: rgba(46, 204, 113, 0.14);
+    --code-diff-add-border: rgba(46, 204, 113, 0.35);
+    --code-diff-del-bg: rgba(231, 76, 60, 0.14);
+    --code-diff-del-border: rgba(231, 76, 60, 0.35);
+    --code-diff-warn-bg: rgba(241, 196, 15, 0.16);
+    --code-diff-warn-border: rgba(241, 196, 15, 0.40);
+
+    --term-bg: #0b0d10;
+    --term-fg: rgba(255,255,255,0.92);
+    --term-muted: rgba(255,255,255,0.65);
+    --term-border: rgba(255,255,255,0.12);
+
+    --table-head-bg: rgba(255,255,255,0.08);
+    --table-row-hover: rgba(255,255,255,0.06);
+
+    --callout-info-bg: rgba(0, 122, 255, 0.12);
+    --callout-info-border: rgba(0, 122, 255, 0.26);
+
+    --callout-tip-bg: rgba(46, 204, 113, 0.12);
+    --callout-tip-border: rgba(46, 204, 113, 0.26);
+
+    --callout-warn-bg: rgba(241, 196, 15, 0.14);
+    --callout-warn-border: rgba(241, 196, 15, 0.28);
+
+    --callout-danger-bg: rgba(231, 76, 60, 0.12);
+    --callout-danger-border: rgba(231, 76, 60, 0.26);
+  }
+}
+
+/* ---------------------------------------------------------------------------
+ * 2) Dark-specific refinements for shared components (optional)
+ * ------------------------------------------------------------------------- */
+
+/* Header glass */
+:root[data-theme="dark"] .site-header,
+body[data-theme="dark"] .site-header {
+  background: rgba(11,13,16,0.72);
+  border-bottom-color: rgba(255,255,255,0.12);
+}
+
+/* Cards and panels: slightly stronger borders on dark */
+:root[data-theme="dark"] .card,
+:root[data-theme="dark"] .nav,
+:root[data-theme="dark"] .toc,
+:root[data-theme="dark"] .table-wrap,
+body[data-theme="dark"] .card,
+body[data-theme="dark"] .nav,
+body[data-theme="dark"] .toc,
+body[data-theme="dark"] .table-wrap {
+  border-color: rgba(255,255,255,0.14);
+}
+
+/* Table head color hook (if site.css uses the token) */
+:root[data-theme="dark"] th,
+body[data-theme="dark"] th {
+  background: var(--table-head-bg);
+}
+
+/* Row hover hook */
+:root[data-theme="dark"] tr:hover td,
+body[data-theme="dark"] tr:hover td {
+  background: var(--table-row-hover);
+}
+
+/* Callout token hooks (if site.css uses these tokens) */
+:root[data-theme="dark"] .callout.info,
+body[data-theme="dark"] .callout.info {
+  background: var(--callout-info-bg);
+  border-color: var(--callout-info-border);
+}
+:root[data-theme="dark"] .callout.tip,
+body[data-theme="dark"] .callout.tip {
+  background: var(--callout-tip-bg);
+  border-color: var(--callout-tip-border);
+}
+:root[data-theme="dark"] .callout.warn,
+body[data-theme="dark"] .callout.warn {
+  background: var(--callout-warn-bg);
+  border-color: var(--callout-warn-border);
+}
+:root[data-theme="dark"] .callout.danger,
+body[data-theme="dark"] .callout.danger {
+  background: var(--callout-danger-bg);
+  border-color: var(--callout-danger-border);
+}
