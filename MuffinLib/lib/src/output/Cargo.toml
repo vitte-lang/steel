@@ -1,0 +1,43 @@
+# C:\Users\gogin\Documents\GitHub\muffin\MuffinLib\lib\src\output\Cargo.toml
+
+[package]
+name = "muffin_output"
+version = "0.1.0"
+edition = "2021"
+license = "MIT OR Apache-2.0"
+description = "Muffin outputs: emit config.mub and graph.json (deterministic, toolable)"
+repository = "https://github.com/vitte-lang/muffin"
+publish = false
+
+[lib]
+name = "muffin_output"
+path = "src/lib.rs"
+
+[features]
+default = []
+json = ["dep:serde", "dep:serde_json"]
+mub = ["dep:byteorder", "dep:crc32fast"]
+
+[dependencies]
+# internal (workspace)
+muffin_model = { path = "../model" }
+muffin_error = { path = "../error" }
+muffin_resolve = { path = "../resolve" }
+
+# shared serialization (graph.json)
+serde = { version = "1.0", features = ["derive"], optional = true }
+serde_json = { version = "1.0", optional = true }
+
+# binary encoding for config.mub (portable)
+byteorder = { version = "1.5", optional = true }
+crc32fast = { version = "1.4", optional = true }
+
+# hashing for stable ids / fingerprints
+sha2 = "0.10"
+
+# ergonomic errors
+thiserror = "1.0"
+
+[dev-dependencies]
+tempfile = "3.10"
+pretty_assertions = "1.4"

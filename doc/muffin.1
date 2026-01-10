@@ -9,8 +9,8 @@ muffin \- configuration de build déclarative (génère Muffinconfig.mff)
 .
 .SH SYNOPSIS
 .B muffin
-.RI <commande> " " [ args... ]
-
+.RI <commande> " " <fichier> " " [ options ]
+.
 .PP
 Exemples rapides :
 .PP
@@ -18,14 +18,17 @@ Exemples rapides :
 muffin help
 muffin --help
 muffin version
-muffin build muffin
-muffin build muffin ./workspace
-muffin build muffin --profile release --target x86_64-unknown-linux-gnu
-muffin resolve --emit ./out/Muffinconfig.mff
-muffin check
-muffin print
-muffin graph --dot
-muffin fmt --check
+
+muffin build MuffinConfig.muf
+muffin build ./MuffinConfig.muf
+muffin build ./workspace/MuffinConfig.muf
+muffin build MuffinConfig.muf --profile release --target x86_64-unknown-linux-gnu
+
+muffin resolve MuffinConfig.muf --emit ./out/Muffinconfig.mff
+muffin check MuffinConfig.muf
+muffin print MuffinConfig.muf
+muffin graph MuffinConfig.muf --dot
+muffin fmt MuffinConfig.muf --check
 .fi
 .
 .SH DESCRIPTION
@@ -72,28 +75,29 @@ Affiche la version de Muffin.
 
 .SS Configuration
 .TP
-.B build muffin
-Valide et résout le workspace puis émet \fBMuffinconfig.mff\fP.
-Accepte un \fI<path>\fP positionnel comme racine (équivalent à \fB--root\fP).
+.B build <file>
+Valide et résout la configuration décrite dans \fI<file>\fP puis émet \fBMuffinconfig.mff\fP.
+Le fichier attendu est typiquement \fBMuffinConfig.muf\fP à la racine du workspace.
+Aucune découverte implicite n'est effectuée : le fichier doit être fourni explicitement.
 Voir OPTIONS.
 
 .TP
-.B resolve
-Alias de \fBbuild muffin\fP (émission par défaut).
+.B resolve <file>
+Alias de \fBbuild\fP (émission par défaut).
 
 .TP
-.B check
+.B check <file>
 Validation best-effort : émet sous \fB.muffin-cache/check/\fP puis supprime si possible.
 En mode \fB--strict\fP, l'échec de nettoyage est une erreur.
 
 .TP
-.B print
+.B print <file>
 Émet puis affiche \fBMuffinconfig.mff\fP sur stdout.
 
 .SS Génération
 .TP
 .B init
-Initialise un workspace minimal (racine, Muffinfile, dossiers suggérés).
+Initialise un workspace minimal (racine, \fBMuffinConfig.muf\fP, dossiers suggérés).
 Accepte un \fI<path>\fP positionnel comme racine.
 
 .TP
@@ -103,14 +107,12 @@ Accepte un \fI<path>\fP positionnel comme racine.
 
 .SS Outils (stub)
 .TP
-.B graph
+.B graph <file>
 Export de graphe (stub). Options : \fB--root\fP, \fB--text\fP, \fB--dot\fP, \fB-v\fP.
-Un \fI<path>\fP positionnel est accepté comme racine.
 
 .TP
-.B explain
+.B explain <file>
 Affiche la résolution pas-à-pas d'un fichier : origines, overrides, defaults.
-Accepte un \fI<file>\fP positionnel.
 
 .TP
 .B diagnose
@@ -121,20 +123,15 @@ Regroupe des checks d'environnement (toolchains, PATH, permissions, versions).
 Affiche les valeurs effectives (profil, target, root, emit).
 
 .TP
-.B fmt
-Formatter Muffinfile (stub). Options : \fB--file\fP, \fB--check\fP, \fB-v\fP.
-Un \fI<path>\fP positionnel est accepté comme fichier.
+.B fmt <file>
+Formatter Muffinfile (stub). Options : \fB--check\fP, \fB-v\fP.
 .
 .SH OPTIONS
-Options principales de \fBmuffin build muffin\fP :
+Options principales de \fBmuffin build <file>\fP :
 
 .TP
 .B --root <path>
-Racine du workspace (défaut : répertoire courant).
-
-.TP
-.B --file <path>
-Muffinfile explicite (skip discovery).
+Racine du workspace (défaut : répertoire courant). Utilisée pour résoudre les chemins relatifs du fichier.
 
 .TP
 .B --profile <name>
@@ -183,13 +180,8 @@ Diagnostics verbeux.
 
 .SH FICHIERS
 .TP
-.I muffin
-Buildfile principal. Alternatives : \fIMuffinfile\fP, \fIbuild.muf\fP.
-
-.TP
-.I *.muf
-Buildfiles (si le projet segmente la configuration par dossier/workspace).
-
+.I MuffinConfig.muf
+Fichier de configuration Muffin (à fournir explicitement à \fBbuild\fP, \fBresolve\fP, \fBcheck\fP, \fBprint\fP).
 
 .TP
 .I Muffinconfig.mff
@@ -328,20 +320,20 @@ liste figée dans \fBMuffinconfig.mff\fP.
 .TP
 Valider/résoudre et générer \fBMuffinconfig.mff\fP :
 .nf
-muffin build muffin
+muffin build MuffinConfig.muf
 .fi
 
 .TP
 Générer dans un chemin spécifique :
 .nf
-muffin build muffin --emit ./out/Muffinconfig.mff
+muffin build MuffinConfig.muf --emit ./out/Muffinconfig.mff
 .fi
 
 .TP
 Afficher la config résolue :
 .nf
-muffin print
-muffin graph --dot
+muffin print MuffinConfig.muf
+muffin graph MuffinConfig.muf --dot
 .fi
 
 .SH CODES DE SORTIE
