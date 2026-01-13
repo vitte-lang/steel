@@ -1,9 +1,9 @@
 // src/output.rs
 //
-// Muffin — output / logging / console rendering
+// Flan — output / logging / console rendering
 //
 // Purpose:
-// - Provide a centralized output layer for Muffin:
+// - Provide a centralized output layer for Flan:
 //   - structured events (info/warn/error/debug/trace)
 //   - colored terminal rendering (ANSI), with auto-disable
 //   - progress + spinners (optional, minimal, no external deps)

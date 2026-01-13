@@ -1,9 +1,9 @@
 // src/remote-stub.rs
 //
-// Muffin — Remote Stub (network abstraction placeholder)
+// Flan — Remote Stub (network abstraction placeholder)
 //
 // Purpose:
-// - Provide a minimal, dependency-free "remote" abstraction for Muffin that can be
+// - Provide a minimal, dependency-free "remote" abstraction for Flan that can be
 //   compiled even when real networking/registry support is not enabled.
 // - Define the stable API surface that the rest of the codebase can depend on:
 //   - Remote client trait
@@ -284,7 +284,7 @@ impl Default for RemoteOptions {
     fn default() -> Self {
         Self {
             offline: true,
-            user_agent: Some("muffin-remote-stub/0".to_string()),
+            user_agent: Some("flan-remote-stub/0".to_string()),
             default_timeout: Duration::from_secs(30),
         }
     }

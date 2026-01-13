@@ -1,19 +1,19 @@
 [package]
-name = "muffin-ocaml"
+name = "flan-ocaml"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
 authors = ["vitte-lang"]
-description = "Muffin backend for OCaml (ocamlc / ocamlopt)"
-repository = "https://github.com/vitte-lang/muffin"
+description = "Flan backend for OCaml (ocamlc / ocamlopt)"
+repository = "https://github.com/vitte-lang/flan"
 
 [lib]
-name = "muffin_ocaml"
+name = "flan_ocaml"
 path = "src/lib.rs"
 
 [dependencies]
-# Core Muffin
-muffinlib = { path = "../..", package = "MuffinLib" }
+# Core Flan
+flanlib = { path = "../..", package = "FlanLib" }
 
 # Erreurs structurées
 thiserror = "1.0"

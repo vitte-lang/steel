@@ -57,7 +57,7 @@ impl<'a> Parser<'a> {
 
     fn parse_header_line(&mut self, line: Line) -> Result<Header, ParseError> {
         let mut ts = TokenStream::new(&line.tokens);
-        ts.expect_ident("muffin")?;
+        ts.expect_ident("flan")?;
         ts.expect_ident("bake")?;
         let version = match ts.next() {
             Some(LineToken { kind: LineTokenKind::Int(v), .. }) => v as u32,
@@ -348,7 +348,7 @@ fn is_header_line(line: &Line) -> bool {
     if line.tokens.len() != 3 {
         return false;
     }
-    matches!(&line.tokens[0].kind, LineTokenKind::Ident(s) if s == "muffin")
+    matches!(&line.tokens[0].kind, LineTokenKind::Ident(s) if s == "flan")
         && matches!(&line.tokens[1].kind, LineTokenKind::Ident(s) if s == "bake")
         && matches!(line.tokens[2].kind, LineTokenKind::Int(_))
 }
@@ -616,7 +616,7 @@ mod tests {
 
     #[test]
     fn parses_header_and_set() {
-        let src = "muffin bake 2\nset profile \"debug\"\n";
+        let src = "flan bake 2\nset profile \"debug\"\n";
         let file = parse_muf(src).unwrap();
         assert_eq!(file.header.as_ref().unwrap().version, 2);
         assert_eq!(file.stmts.len(), 1);

@@ -1,12 +1,12 @@
-//! Muffin CPython – Driver (MAX)
+//! Flan CPython – Driver (MAX)
 //!
-//! Driver d’exécution Python pour Muffin.
+//! Driver d’exécution Python pour Flan.
 //!
 //! Responsabilités :
 //! - détecter l’environnement Python
 //! - valider la compatibilité backend / action
 //! - appliquer l’environnement d’exécution
-//! - appeler le runner Muffin
+//! - appeler le runner Flan
 //!
 //! Hors périmètre :
 //! - graphe
@@ -16,7 +16,7 @@
 
 use std::path::PathBuf;
 
-use super::error::MuffinError;
+use super::error::FlanError;
 use super::runner::process::CommandRunner;
 
 use super::args::{PyArgs, PyAction, PyBackend};
@@ -34,7 +34,7 @@ impl<'a> PythonDriver<'a> {
     /* --------------------------------------------------------------------- */
 
     /// Initialise le driver (détection Python)
-    pub fn new(runner: &'a CommandRunner) -> Result<Self, MuffinError> {
+    pub fn new(runner: &'a CommandRunner) -> Result<Self, FlanError> {
         let python = detect_python()?;
         Ok(Self { runner, python })
     }
@@ -49,9 +49,9 @@ impl<'a> PythonDriver<'a> {
     /* --------------------------------------------------------------------- */
 
     /// Exécute une action Python décrite par `PyArgs`
-    pub fn run(&self, args: &PyArgs) -> Result<(), MuffinError> {
+    pub fn run(&self, args: &PyArgs) -> Result<(), FlanError> {
         // Validation sémantique locale
-        args.validate().map_err(MuffinError::ValidationFailed)?;
+        args.validate().map_err(FlanError::ValidationFailed)?;
 
         // Vérification backend vs implémentation
         self.check_backend_compatibility(args)?;
@@ -59,7 +59,7 @@ impl<'a> PythonDriver<'a> {
         // Construction argv final
         let argv = args.to_argv();
 
-        // Exécution via runner Muffin
+        // Exécution via runner Flan
         self.runner.run_with_env(
             args.python.as_os_str(),
             &argv,
@@ -79,7 +79,7 @@ impl<'a> PythonDriver<'a> {
         &self,
         sources: &[PathBuf],
         root: Option<PathBuf>,
-    ) -> Result<(), MuffinError> {
+    ) -> Result<(), FlanError> {
         let mut args = PyArgs::new();
         args.action = PyAction::CompileBytecode;
 
@@ -99,7 +99,7 @@ impl<'a> PythonDriver<'a> {
         &self,
         project_root: PathBuf,
         out: Option<PathBuf>,
-    ) -> Result<(), MuffinError> {
+    ) -> Result<(), FlanError> {
         let mut args = PyArgs::new();
         args.action = PyAction::BuildExtension;
         args.set_root(project_root);
@@ -117,7 +117,7 @@ impl<'a> PythonDriver<'a> {
         root: PathBuf,
         entry: PathBuf,
         out: PathBuf,
-    ) -> Result<(), MuffinError> {
+    ) -> Result<(), FlanError> {
         let mut args = PyArgs::new();
         args.action = PyAction::BundleZipapp;
         args.set_root(root);
@@ -132,7 +132,7 @@ impl<'a> PythonDriver<'a> {
         &self,
         entry: PathBuf,
         out_dir: PathBuf,
-    ) -> Result<(), MuffinError> {
+    ) -> Result<(), FlanError> {
         let mut args = PyArgs::new();
         args.backend = PyBackend::Nuitka;
         args.action = PyAction::BundleNuitka;
@@ -146,18 +146,18 @@ impl<'a> PythonDriver<'a> {
     /* Validation interne                                                     */
     /* --------------------------------------------------------------------- */
 
-    fn check_backend_compatibility(&self, args: &PyArgs) -> Result<(), MuffinError> {
+    fn check_backend_compatibility(&self, args: &PyArgs) -> Result<(), FlanError> {
         match args.backend {
             PyBackend::CPython => {
                 if self.python.implementation != PythonImpl::CPython {
-                    return Err(MuffinError::ValidationFailed(
+                    return Err(FlanError::ValidationFailed(
                         "CPython backend requested but interpreter is not CPython".into(),
                     ));
                 }
             }
             PyBackend::PyPy => {
                 if self.python.implementation != PythonImpl::PyPy {
-                    return Err(MuffinError::ValidationFailed(
+                    return Err(FlanError::ValidationFailed(
                         "PyPy backend requested but interpreter is not PyPy".into(),
                     ));
                 }
@@ -165,7 +165,7 @@ impl<'a> PythonDriver<'a> {
             PyBackend::Nuitka => {
                 // Nuitka nécessite CPython
                 if self.python.implementation != PythonImpl::CPython {
-                    return Err(MuffinError::ValidationFailed(
+                    return Err(FlanError::ValidationFailed(
                         "Nuitka backend requires CPython interpreter".into(),
                     ));
                 }

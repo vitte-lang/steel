@@ -1,4 +1,4 @@
-//! Muffin OCaml – Spec (MAX)
+//! Flan OCaml – Spec (MAX)
 //!
 //! Spécification déclarative d’une unité de build OCaml.
 //!

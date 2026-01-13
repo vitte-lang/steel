@@ -1,4 +1,4 @@
-//! Muffin CPython – Tests (MAX)
+//! Flan CPython – Tests (MAX)
 //!
 //! Tests unitaires et de cohérence pour le backend CPython.
 //!

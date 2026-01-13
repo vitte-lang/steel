@@ -1,6 +1,6 @@
 from typing import List
 
-from core.logic import checkout_default
+from coreic import checkout_default
 from core.model import Book, Catalog
 
 from .state import AppState

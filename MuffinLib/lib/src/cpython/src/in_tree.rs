@@ -1,4 +1,4 @@
-//! CPython backend integration for Muffin (in-tree module).
+//! CPython backend integration for Flan (in-tree module).
 
 pub mod args;
 pub mod detect;
@@ -9,7 +9,7 @@ pub mod spec;
 mod test;
 
 pub mod error {
-    pub use crate::error::{MuffinError, Result};
+    pub use crate::error::{FlanError, Result};
 }
 
 pub mod runner {
@@ -18,7 +18,7 @@ pub mod runner {
         use std::path::Path;
         use std::process::Command;
 
-        use crate::error::MuffinError;
+        use crate::error::FlanError;
 
         #[derive(Debug, Default)]
         pub struct CommandRunner;
@@ -33,18 +33,18 @@ pub mod runner {
                 program: &OsStr,
                 argv: &[String],
                 cwd: Option<&Path>,
-            ) -> Result<(), MuffinError> {
+            ) -> Result<(), FlanError> {
                 let mut cmd = Command::new(program);
                 cmd.args(argv);
                 if let Some(dir) = cwd {
                     cmd.current_dir(dir);
                 }
 
-                let status = cmd.status().map_err(MuffinError::Io)?;
+                let status = cmd.status().map_err(FlanError::Io)?;
                 if status.success() {
                     Ok(())
                 } else {
-                    Err(MuffinError::ExecutionFailed(format!(
+                    Err(FlanError::ExecutionFailed(format!(
                         "command failed: {} ({})",
                         program.to_string_lossy(),
                         status
@@ -58,7 +58,7 @@ pub mod runner {
                 argv: &[String],
                 env: &[(String, String)],
                 cwd: Option<&Path>,
-            ) -> Result<(), MuffinError> {
+            ) -> Result<(), FlanError> {
                 let mut cmd = Command::new(program);
                 cmd.args(argv);
                 for (k, v) in env {
@@ -68,11 +68,11 @@ pub mod runner {
                     cmd.current_dir(dir);
                 }
 
-                let status = cmd.status().map_err(MuffinError::Io)?;
+                let status = cmd.status().map_err(FlanError::Io)?;
                 if status.success() {
                     Ok(())
                 } else {
-                    Err(MuffinError::ExecutionFailed(format!(
+                    Err(FlanError::ExecutionFailed(format!(
                         "command failed: {} ({})",
                         program.to_string_lossy(),
                         status

@@ -9,11 +9,11 @@ Run the default checks before submitting:
 - build: `cargo build` (or your project build command)
 - tests: `cargo test`
 - formatting: `cargo fmt` (if Rust) and/or project formatters
-- docs/manpage: ensure `muffin.1` renders with `man ./doc/muffin.1`
+- docs/manpage: ensure `flan.1` renders with `man ./doc/flan.1`
 
-If the repository uses Muffin to build itself, also run:
-- `muffin build`
-- `muffin test`
+If the repository uses Flan to build itself, also run:
+- `flan build`
+- `flan test`
 
 ## License
 

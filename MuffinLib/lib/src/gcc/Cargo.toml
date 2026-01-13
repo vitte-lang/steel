@@ -1,16 +1,16 @@
-# C:\Users\gogin\Documents\GitHub\muffin\MuffinLib\lib\src\gcc\Cargo.toml
+# C:\Users\gogin\Documents\GitHub\flan\FlanLib\lib\src\gcc\Cargo.toml
 
 [package]
-name = "muffin_gcc"
+name = "flan_gcc"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-description = "GCC toolchain integration for Muffin (detection + spec + driver + args)."
-repository = "https://github.com/muffin-build/muffin"
+description = "GCC toolchain integration for Flan (detection + spec + driver + args)."
+repository = "https://github.com/flan-build/flan"
 readme = "README.md"
 
 [lib]
-name = "muffin_gcc"
+name = "flan_gcc"
 path = "src/lib.rs"
 
 [features]
@@ -19,8 +19,8 @@ default = []
 trace = []
 
 [dependencies]
-# Internal Muffin crate layout (adjust names/paths if your workspace differs)
-MuffinLib = { path = "../.." }
+# Internal Flan crate layout (adjust names/paths if your workspace differs)
+FlanLib = { path = "../.." }
 
 # Common utilities
 anyhow = "1"
@@ -39,5 +39,5 @@ tracing-subscriber = { version = "0.3", optional = true }
 tempfile = "3"
 
 [package.metadata]
-# Keep empty for now; reserved for Muffin tooling.
-muffin = { module = "gcc" }
+# Keep empty for now; reserved for Flan tooling.
+flan = { module = "gcc" }

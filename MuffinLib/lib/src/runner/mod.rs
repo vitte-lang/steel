@@ -1,4 +1,4 @@
-// C:\Users\gogin\Documents\GitHub\muffin\MuffinLib\lib\src\runner\mod.rs
+// C:\Users\gogin\Documents\GitHub\flan\FlanLib\lib\src\runner\mod.rs
 
 //! Execution layer (runner).
 //!
@@ -13,7 +13,7 @@
 pub mod cache;
 
 use crate::{
-    error::MuffinError,
+    error::FlanError,
     model::{
         artifact::{Artifact, ArtifactKind},
         graph::{Edge, Graph, Node, NodeKind, Port},
@@ -89,7 +89,7 @@ impl Runner {
     /// - topological order
     /// - sequential execution (jobs is reserved)
     /// - cache hooks are present but tool execution is stubbed here
-    pub fn run(&self, graph: &Graph) -> Result<RunReport, MuffinError> {
+    pub fn run(&self, graph: &Graph) -> Result<RunReport, FlanError> {
         let order = topo_sort(graph)?;
 
         let mut report = RunReport::new();
@@ -98,7 +98,7 @@ impl Runner {
             let node = graph
                 .nodes
                 .get(&node_id)
-                .ok_or_else(|| MuffinError::ExecutionFailed(format!("missing node {}", node_id)))?;
+                .ok_or_else(|| FlanError::ExecutionFailed(format!("missing node {}", node_id)))?;
 
             let status = self.exec_node(graph, node)?;
             report.nodes.insert(node_id, status);
@@ -107,7 +107,7 @@ impl Runner {
         Ok(report)
     }
 
-    fn exec_node(&self, graph: &Graph, node: &Node) -> Result<NodeStatus, MuffinError> {
+    fn exec_node(&self, graph: &Graph, node: &Node) -> Result<NodeStatus, FlanError> {
         // Only Tool nodes represent executable steps.
         if node.kind != NodeKind::Tool {
             return Ok(NodeStatus::Skipped("non-tool node".into()));
@@ -141,7 +141,7 @@ impl Runner {
         }
     }
 
-    fn compute_cache_key(&self, graph: &Graph, node: &Node) -> Result<Option<CacheKey>, MuffinError> {
+    fn compute_cache_key(&self, graph: &Graph, node: &Node) -> Result<Option<CacheKey>, FlanError> {
         if self.cache.is_none() {
             return Ok(None);
         }
@@ -185,11 +185,11 @@ impl Runner {
         Ok(Some(CacheKey::new(hash)))
     }
 
-    fn exec_tool_stub(&self, node: &Node) -> Result<(), MuffinError> {
+    fn exec_tool_stub(&self, node: &Node) -> Result<(), FlanError> {
         // This is intentionally a stub to keep runner layer buildable
         // before the actual process driver is implemented.
         if self.opts.verbose {
-            eprintln!("[muffin] exec tool={} node={}", node.tool, node.id);
+            eprintln!("[flan] exec tool={} node={}", node.tool, node.id);
         }
         Ok(())
     }
@@ -221,7 +221,7 @@ pub enum NodeStatus {
 
 // --- graph helpers ----------------------------------------------------------
 
-fn topo_sort(graph: &Graph) -> Result<Vec<String>, MuffinError> {
+fn topo_sort(graph: &Graph) -> Result<Vec<String>, FlanError> {
     // Kahn, deterministic with BTreeSet queueing
     let mut indeg: BTreeMap<String, usize> = BTreeMap::new();
     for id in graph.nodes.keys() {
@@ -230,7 +230,7 @@ fn topo_sort(graph: &Graph) -> Result<Vec<String>, MuffinError> {
     for e in graph.edges.iter() {
         *indeg
             .get_mut(&e.to)
-            .ok_or_else(|| MuffinError::ExecutionFailed(format!("edge to unknown node {}", e.to)))? +=
+            .ok_or_else(|| FlanError::ExecutionFailed(format!("edge to unknown node {}", e.to)))? +=
             1;
     }
 
@@ -258,7 +258,7 @@ fn topo_sort(graph: &Graph) -> Result<Vec<String>, MuffinError> {
     }
 
     if out.len() != graph.nodes.len() {
-        return Err(MuffinError::ExecutionFailed(
+        return Err(FlanError::ExecutionFailed(
             "cycle detected in graph".into(),
         ));
     }
@@ -266,7 +266,7 @@ fn topo_sort(graph: &Graph) -> Result<Vec<String>, MuffinError> {
     Ok(out)
 }
 
-fn incoming_input_paths(graph: &Graph, node_id: &str) -> Result<Vec<PathBuf>, MuffinError> {
+fn incoming_input_paths(graph: &Graph, node_id: &str) -> Result<Vec<PathBuf>, FlanError> {
     // MVP heuristic:
     // - if edges carry artifact paths in meta["path"], use it
     // - else ignore
@@ -279,9 +279,9 @@ fn incoming_input_paths(graph: &Graph, node_id: &str) -> Result<Vec<PathBuf>, Mu
     Ok(out.into_iter().collect())
 }
 
-fn mtime_tag(path: &Path) -> Result<String, MuffinError> {
+fn mtime_tag(path: &Path) -> Result<String, FlanError> {
     let md = std::fs::metadata(path)
-        .map_err(|_| MuffinError::ExecutionFailed(format!("missing input {}", path.display())))?;
+        .map_err(|_| FlanError::ExecutionFailed(format!("missing input {}", path.display())))?;
     let m = md.modified().unwrap_or(SystemTime::UNIX_EPOCH);
     Ok(format!("{:?}", m))
 }

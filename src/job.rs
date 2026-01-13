@@ -1,6 +1,6 @@
 // src/jobs.rs
 //
-// Muffin — jobs (scheduler, execution plan, worker pool)
+// Flan — jobs (scheduler, execution plan, worker pool)
 //
 // Purpose:
 // - Execute build "jobs" produced by the planner (remake/graph).

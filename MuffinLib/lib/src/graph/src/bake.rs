@@ -1,6 +1,6 @@
 //! Graph bake: build graph planning + execution model.
 //!
-//! This module models Muffin's build graph as nodes (artifacts / steps) and edges (deps).
+//! This module models Flan's build graph as nodes (artifacts / steps) and edges (deps).
 //!
 //! The focus here is on:
 //! - deterministic node IDs (stable hashing)
@@ -91,7 +91,7 @@ impl Artifact {
 /// A build action (command/tool invocation).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Action {
-    pub tool: String,              // e.g. "clang", "vittec", "muffin"
+    pub tool: String,              // e.g. "clang", "vittec", "flan"
     pub argv: Vec<String>,         // argv[0] is tool or subcommand
     pub env: BTreeMap<String, String>,
     pub cwd: Option<PathBuf>,

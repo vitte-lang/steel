@@ -1,6 +1,6 @@
 // src/rule.rs
 //
-// Muffin — build rules (planning primitives)
+// Flan — build rules (planning primitives)
 //
 // Purpose:
 // - Model a "Rule" (like Makefile rule) in a modern, typed way.

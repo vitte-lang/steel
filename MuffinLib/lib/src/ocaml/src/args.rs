@@ -1,7 +1,7 @@
-//! Muffin OCaml – Args (MAX)
+//! Flan OCaml – Args (MAX)
 //!
 //! Construction des lignes de commande OCaml (ocamlc / ocamlopt)
-//! utilisées par Muffin.
+//! utilisées par Flan.
 //!
 //! Couvre :
 //! - bytecode (.byte)
@@ -48,7 +48,7 @@ impl OcamlOptLevel {
     }
 }
 
-/// Arguments OCaml génériques Muffin
+/// Arguments OCaml génériques Flan
 #[derive(Debug, Clone)]
 pub struct OcamlArgs {
     /// Backend utilisé

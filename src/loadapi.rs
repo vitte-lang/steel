@@ -1,10 +1,10 @@
 // src/loadapi.rs
 //
-// Muffin — load API (dynamic provider layer)
+// Flan — load API (dynamic provider layer)
 //
 // Purpose:
-// - Centralize "loading" of external configuration / data sources into Muffin runtime:
-//   - MuffinConfig / build.muf parsing results (AST/IR) -> internal models
+// - Centralize "loading" of external configuration / data sources into Flan runtime:
+//   - FlanConfig / build.muf parsing results (AST/IR) -> internal models
 //   - plugin/registry metadata -> internal structures
 //   - workspace config (global + local) -> merged view
 //   - environment overlays
@@ -19,7 +19,7 @@
 // No external deps.
 //
 // Notes:
-// - The actual parsing of MuffinConfig is not implemented here; plug in your parser.
+// - The actual parsing of FlanConfig is not implemented here; plug in your parser.
 // - For "max", a small in-memory provider and a file provider stub are included.
 
 #![allow(dead_code)]
@@ -89,7 +89,7 @@ fn io_err(path: &Path, op: &'static str, e: std::io::Error) -> LoadError {
 #[derive(Debug, Clone)]
 pub struct WorkspaceModel {
     pub root: PathBuf,
-    pub muffinfile: Option<PathBuf>,
+    pub flanfile: Option<PathBuf>,
     pub profiles: BTreeMap<String, ProfileModel>,
     pub targets: BTreeMap<String, TargetModel>,
     pub vars: BTreeMap<String, String>,
@@ -102,7 +102,7 @@ impl WorkspaceModel {
     pub fn new(root: PathBuf) -> Self {
         Self {
             root,
-            muffinfile: None,
+            flanfile: None,
             profiles: BTreeMap::new(),
             targets: BTreeMap::new(),
             vars: BTreeMap::new(),
@@ -155,13 +155,13 @@ pub struct RuleModel {
 pub struct LoadContext {
     pub cwd: PathBuf,
     pub root_hint: Option<PathBuf>,
-    pub muffinfile_hint: Option<PathBuf>,
+    pub flanfile_hint: Option<PathBuf>,
 
     pub profile: Option<String>,
     pub target: Option<String>,
 
     /// Strictness knobs
-    pub allow_missing_muffinfile: bool,
+    pub allow_missing_flanfile: bool,
 }
 
 impl LoadContext {
@@ -169,10 +169,10 @@ impl LoadContext {
         Self {
             cwd,
             root_hint: None,
-            muffinfile_hint: None,
+            flanfile_hint: None,
             profile: None,
             target: None,
-            allow_missing_muffinfile: false,
+            allow_missing_flanfile: false,
         }
     }
 }
@@ -188,7 +188,7 @@ pub trait LoadProvider: Send + Sync {
 
 #[derive(Debug, Clone, Default)]
 pub struct WorkspaceFragment {
-    pub muffinfile: Option<PathBuf>,
+    pub flanfile: Option<PathBuf>,
     pub profiles: BTreeMap<String, ProfileModel>,
     pub targets: BTreeMap<String, TargetModel>,
     pub vars: BTreeMap<String, String>,
@@ -280,8 +280,8 @@ impl LoadApi {
 
         for p in &self.providers {
             let frag = p.load(ctx)?;
-            if ws.muffinfile.is_none() {
-                ws.muffinfile = frag.muffinfile.clone();
+            if ws.flanfile.is_none() {
+                ws.flanfile = frag.flanfile.clone();
             }
 
             merge_maps(&mut ws.profiles, frag.profiles, &self.merge, "profiles")?;
@@ -388,39 +388,39 @@ impl LoadProvider for EnvProvider {
     }
 }
 
-/// Provider: file loader stub (MuffinConfig/build.muf).
+/// Provider: file loader stub (FlanConfig/build.muf).
 /// This expects a single file path and returns a Parse error until you hook a parser.
-pub struct MuffinConfigProvider {
+pub struct FlanConfigProvider {
     pub path: PathBuf,
 }
 
-impl MuffinConfigProvider {
+impl FlanConfigProvider {
     pub fn new(path: PathBuf) -> Self {
         Self { path }
     }
 }
 
-impl LoadProvider for MuffinConfigProvider {
+impl LoadProvider for FlanConfigProvider {
     fn name(&self) -> &'static str {
-        "muffinfile"
+        "flanfile"
     }
 
     fn load(&self, ctx: &LoadContext) -> Result<WorkspaceFragment, LoadError> {
-        let path = if let Some(p) = &ctx.muffinfile_hint {
+        let path = if let Some(p) = &ctx.flanfile_hint {
             p.clone()
         } else {
             self.path.clone()
         };
 
         if !path.exists() {
-            if ctx.allow_missing_muffinfile {
+            if ctx.allow_missing_flanfile {
                 return Ok(WorkspaceFragment {
-                    muffinfile: None,
+                    flanfile: None,
                     ..Default::default()
                 });
             }
             return Err(LoadError::NotFound {
-                what: format!("muffinfile {}", path.display()),
+                what: format!("flanfile {}", path.display()),
             });
         }
 
@@ -441,7 +441,7 @@ impl LoadProvider for MuffinConfigProvider {
 
 fn lower_muf_ast(path: &Path, ast: &MufFile) -> Result<WorkspaceFragment, LoadError> {
     let mut frag = WorkspaceFragment::default();
-    frag.muffinfile = Some(path.to_path_buf());
+    frag.flanfile = Some(path.to_path_buf());
     for stmt in &ast.stmts {
         lower_stmt(stmt, &mut frag)?;
     }

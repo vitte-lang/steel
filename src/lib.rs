@@ -1,7 +1,7 @@
-//! Muffin: Declarative configuration layer for Vitte build system
+//! Flan: Declarative configuration layer for Vitte build system
 //!
-//! Muffin parses, validates, and resolves a workspace configuration (packages, profiles,
-//! toolchains, targets), then generates a stable configuration artifact `Muffinconfig.mff`.
+//! Flan parses, validates, and resolves a workspace configuration (packages, profiles,
+//! toolchains, targets), then generates a stable configuration artifact `Flanconfig.mff`.
 //!
 //! # Architecture
 //!
@@ -11,10 +11,10 @@
 //!
 //! # Modules
 //!
-//! - `parser` — Lexical and syntactic analysis of Muffin files
+//! - `parser` — Lexical and syntactic analysis of Flan files
 //! - `validator` — Coherence checking and constraint validation
 //! - `resolver` — Profile inheritance, variable interpolation, dependency resolution
-//! - `generator` — Serialization to Muffinconfig.mff and exports
+//! - `generator` — Serialization to Flanconfig.mff and exports
 //! - `model` — Core data structures (Workspace, Package, Profile, Target, Toolchain)
 //! - `interface` — Runtime abstraction and CLI interface
 //! - `commands` — CLI command implementations
@@ -23,7 +23,7 @@
 // PARSER MODULE
 // ============================================================================
 
-/// Lexical and syntactic analysis of Muffin files
+/// Lexical and syntactic analysis of Flan files
 pub mod parser;
 
 // ============================================================================
@@ -44,7 +44,7 @@ pub mod resolver {
 
 /// Core data structures: Workspace, Package, Profile, Target, Toolchain
 pub mod model {
-    pub use crate::muffinint;        // Muffin internal API
+    pub use crate::flanint;        // Flan internal API
     pub use crate::def_target_file;  // Target file definitions
     pub use crate::rule;             // Rule model
 }
@@ -71,7 +71,7 @@ pub mod cli {
     pub use crate::interface;        // CLI interface
 }
 
-// Minimal MUF runner (exec tools from MuffinConfig.muf)
+// Minimal MUF runner (exec tools from FlanConfig.muf)
 pub mod run_muf;
 
 // ============================================================================
@@ -120,7 +120,7 @@ pub mod platform {
 // ============================================================================
 
 pub use crate::loadapi::*;     // Main public API (parse, resolve, emit)
-pub use crate::build_muf::*;   // Build muffin command
+pub use crate::build_muf::*;   // Build flan command
 
 // Leaf modules.
 pub mod arscan;
@@ -146,8 +146,8 @@ pub mod job;
 pub mod load;
 pub mod loadapi;
 pub mod misc;
-pub mod muffincustom;
-pub mod muffinint;
+pub mod flancustom;
+pub mod flanint;
 pub mod os;
 pub mod output;
 pub mod posixos;
@@ -180,4 +180,4 @@ pub use compiler::Compiler;
 pub use validator::Validator;
 pub use builder::Builder;
 pub use generator::Generator;
-pub use error::MuffinError;
+pub use error::FlanError;

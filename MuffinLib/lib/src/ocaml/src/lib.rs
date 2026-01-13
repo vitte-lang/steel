@@ -1,4 +1,4 @@
-//! OCaml backend integration for Muffin.
+//! OCaml backend integration for Flan.
 
 pub mod args;
 pub mod detect;
@@ -9,7 +9,7 @@ pub mod spec;
 mod test;
 
 pub mod error {
-    pub use muffinlib::error::{MuffinError, Result};
+    pub use flanlib::error::{FlanError, Result};
 }
 
 pub mod runner {
@@ -18,7 +18,7 @@ pub mod runner {
         use std::path::Path;
         use std::process::Command;
 
-        use muffinlib::error::MuffinError;
+        use flanlib::error::FlanError;
 
         #[derive(Debug, Default)]
         pub struct CommandRunner;
@@ -33,18 +33,18 @@ pub mod runner {
                 program: &OsStr,
                 argv: &[String],
                 cwd: Option<&Path>,
-            ) -> Result<(), MuffinError> {
+            ) -> Result<(), FlanError> {
                 let mut cmd = Command::new(program);
                 cmd.args(argv);
                 if let Some(dir) = cwd {
                     cmd.current_dir(dir);
                 }
 
-                let status = cmd.status().map_err(MuffinError::Io)?;
+                let status = cmd.status().map_err(FlanError::Io)?;
                 if status.success() {
                     Ok(())
                 } else {
-                    Err(MuffinError::ExecutionFailed(format!(
+                    Err(FlanError::ExecutionFailed(format!(
                         "command failed: {} ({})",
                         program.to_string_lossy(),
                         status

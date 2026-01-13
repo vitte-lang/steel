@@ -1,4 +1,4 @@
-//! Muffin CPython – Detect
+//! Flan CPython – Detect
 //!
 //! Détection de l’environnement Python :
 //! - interpréteur disponible
@@ -13,7 +13,7 @@
 use std::path::PathBuf;
 use std::process::Command;
 
-use super::error::MuffinError;
+use super::error::FlanError;
 
 /// Implémentation Python détectée
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -43,7 +43,7 @@ pub struct PythonInfo {
 }
 
 /// Détection principale (python / python3 fallback)
-pub fn detect_python() -> Result<PythonInfo, MuffinError> {
+pub fn detect_python() -> Result<PythonInfo, FlanError> {
     // Ordre volontaire : python3 → python
     let candidates = ["python3", "python"];
 
@@ -53,13 +53,13 @@ pub fn detect_python() -> Result<PythonInfo, MuffinError> {
         }
     }
 
-    Err(MuffinError::ValidationFailed(
+    Err(FlanError::ValidationFailed(
         "no compatible python interpreter found in PATH".into(),
     ))
 }
 
 /// Détection avec un exécutable donné
-fn detect_with<S: Into<String>>(exe: S) -> Result<PythonInfo, MuffinError> {
+fn detect_with<S: Into<String>>(exe: S) -> Result<PythonInfo, FlanError> {
     let exe = exe.into();
 
     // Script inline pour introspection fiable
@@ -75,13 +75,13 @@ print(f"{impl};{ver.major}.{ver.minor}.{ver.micro};{ver.major};{ver.minor}")
         .arg(script)
         .output()
         .map_err(|_| {
-            MuffinError::ValidationFailed(format!(
+            FlanError::ValidationFailed(format!(
                 "failed to execute python interpreter: {exe}"
             ))
         })?;
 
     if !out.status.success() {
-        return Err(MuffinError::ValidationFailed(format!(
+        return Err(FlanError::ValidationFailed(format!(
             "python interpreter {exe} returned error"
         )));
     }
@@ -90,7 +90,7 @@ print(f"{impl};{ver.major}.{ver.minor}.{ver.micro};{ver.major};{ver.minor}")
     let parts: Vec<&str> = stdout.trim().split(';').collect();
 
     if parts.len() != 4 {
-        return Err(MuffinError::ValidationFailed(
+        return Err(FlanError::ValidationFailed(
             "unexpected python detect output".into(),
         ));
     }

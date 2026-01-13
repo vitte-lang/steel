@@ -134,7 +134,7 @@ fn spec_apply_overrides() {
 
 /// Test d’intégration optionnel: requiert un compilateur dans PATH.
 /// Lance-le explicitement:
-///   cargo test -p MuffinLib gcc_detect_real_tool -- --ignored --nocapture
+///   cargo test -p FlanLib gcc_detect_real_tool -- --ignored --nocapture
 #[test]
 #[ignore]
 fn gcc_detect_real_tool() {

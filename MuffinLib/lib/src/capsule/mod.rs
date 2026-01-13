@@ -1,6 +1,6 @@
 //! Capsule module entry.
 //!
-//! A “capsule” is Muffin’s sandbox contract: a policy + runtime enforcement surface.
+//! A “capsule” is Flan’s sandbox contract: a policy + runtime enforcement surface.
 //!
 //! Public surface:
 //! - `policy`: data model + compilation/normalization helpers

@@ -1,6 +1,6 @@
 //! Path canonicalization utilities (canon.rs) — MAX.
 //!
-//! Goals for Muffin path handling:
+//! Goals for Flan path handling:
 //! - deterministic, cross-platform canonical representation for manifests and indices
 //! - safe joining (no traversal outside base)
 //! - normalization (slashes, '.' segments, '..' segments)

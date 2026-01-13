@@ -1,4 +1,4 @@
-// C:\Users\gogin\Documents\GitHub\muffin\MuffinLib\lib\src\resolve\mod.rs
+// C:\Users\gogin\Documents\GitHub\flan\FlanLib\lib\src\resolve\mod.rs
 
 //! Resolution pipeline.
 //!
@@ -8,7 +8,7 @@
 //! - implicits: inject minimal implicit defaults/rules
 //!
 //! Output of this layer is a fully explicit, stable model (Graph + metadata)
-//! ready to be emitted as `target/muffin/config.mub`.
+//! ready to be emitted as `target/flan/config.mub`.
 //!
 //! Notes:
 //! - No `.mff` outputs: the frozen contract artifact is `config.mub`.
@@ -18,7 +18,7 @@ pub mod implicit;
 pub mod variable;
 
 use crate::{
-    error::MuffinError,
+    error::FlanError,
     model::{
         graph::Graph,
         target::{Target, TargetKind},
@@ -31,7 +31,7 @@ pub use implicit::{apply_graph_implicits, apply_implicit_meta, apply_target_impl
 pub use variable::{resolve_vars, VarSet};
 
 /// Inputs for the resolve phase.
-/// Typically built from parsing `MuffinConfig.muf` + CLI flags.
+/// Typically built from parsing `FlanConfig.muf` + CLI flags.
 #[derive(Debug, Clone, Default)]
 pub struct ResolveInput {
     /// Workspace root (absolute or repo-relative; callers decide).
@@ -43,7 +43,7 @@ pub struct ResolveInput {
     /// Selected profile name (optional).
     pub profile: Option<String>,
 
-    /// Variables explicitly declared in MuffinConfig.muf (KEY -> VALUE).
+    /// Variables explicitly declared in FlanConfig.muf (KEY -> VALUE).
     pub config_vars: BTreeMap<String, String>,
 
     /// CLI overrides `-D KEY=VALUE` (highest priority).
@@ -61,10 +61,10 @@ pub struct ResolveOutput {
 /// Main entry point: resolve a graph with deterministic configuration.
 ///
 /// Expected call order:
-/// 1) build/parse an initial Graph (nodes/edges/tags) from MuffinConfig.muf
+/// 1) build/parse an initial Graph (nodes/edges/tags) from FlanConfig.muf
 /// 2) call `resolve_graph(...)`
 /// 3) emit via `output::mub::write_mub_file(...)`
-pub fn resolve_graph(mut graph: Graph, input: &ResolveInput) -> Result<ResolveOutput, MuffinError> {
+pub fn resolve_graph(mut graph: Graph, input: &ResolveInput) -> Result<ResolveOutput, FlanError> {
     // 1) Variables
     let vars = resolve_vars(&input.config_vars, &input.cli_vars)?;
 
@@ -99,7 +99,7 @@ pub fn resolve_graph(mut graph: Graph, input: &ResolveInput) -> Result<ResolveOu
     apply_implicit_meta(
         &mut graph.meta,
         &[
-            ("schema", "muffin.graph/1"),
+            ("schema", "flan.graph/1"),
             ("target_dir", "target"),
         ],
     );
@@ -123,7 +123,7 @@ pub fn resolve_graph(mut graph: Graph, input: &ResolveInput) -> Result<ResolveOu
 }
 
 /// Resolve a Target record (if you model targets separately).
-pub fn resolve_target(mut target: Target, input: &ResolveInput) -> Result<Target, MuffinError> {
+pub fn resolve_target(mut target: Target, input: &ResolveInput) -> Result<Target, FlanError> {
     // Variables exist mostly for path interpolation; apply implicits here.
     apply_target_implicits(&mut target)?;
 
@@ -140,7 +140,7 @@ pub fn resolve_target(mut target: Target, input: &ResolveInput) -> Result<Target
 
 // --- internal helpers -------------------------------------------------------
 
-fn expand_graph_in_place(graph: &mut Graph, ctx: &ExpandCtx) -> Result<(), MuffinError> {
+fn expand_graph_in_place(graph: &mut Graph, ctx: &ExpandCtx) -> Result<(), FlanError> {
     // Expand graph-level metadata values
     let new_meta = expand_map(&graph.meta, ctx)?;
     graph.meta = new_meta;

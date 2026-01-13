@@ -1,4 +1,4 @@
-//! Common graph types (IDs, artifacts, actions, nodes) for Muffin build graphs.
+//! Common graph types (IDs, artifacts, actions, nodes) for Flan build graphs.
 //!
 //! This module is a stable “types” layer that other graph modules can depend on
 //! without pulling planning/serialization code.
@@ -96,7 +96,7 @@ impl Artifact {
 /// A build action (command/tool invocation).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Action {
-    pub tool: String,              // e.g. "clang", "vittec", "muffin"
+    pub tool: String,              // e.g. "clang", "vittec", "flan"
     pub argv: Vec<String>,         // argv[0] is tool or subcommand
     pub env: BTreeMap<String, String>,
     pub cwd: Option<PathBuf>,

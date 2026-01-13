@@ -1,7 +1,7 @@
 //! Path normalization helpers (normal.rs) — MAX.
 //!
 //! This module provides small, focused normalization routines used throughout
-//! Muffin. It complements `canon.rs`:
+//! Flan. It complements `canon.rs`:
 //! - `canon.rs` focuses on canonical representations + safe join logic.
 //! - `normal.rs` focuses on pure normalization transforms and tiny utilities.
 //!

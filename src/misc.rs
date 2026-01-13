@@ -1,6 +1,6 @@
 // src/misc.rs
 //
-// Muffin — misc (shared small utilities)
+// Flan — misc (shared small utilities)
 //
 // Purpose:
 // - Centralize tiny, dependency-free helpers used across the codebase.

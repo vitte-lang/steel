@@ -1,6 +1,6 @@
 // Module Organization Map
 //
-// This file provides a visual map of the Muffin source tree and how modules
+// This file provides a visual map of the Flan source tree and how modules
 // are organized according to the architecture.
 
 /*
@@ -12,7 +12,7 @@ src/
 ├── lib.rs                          # Module declarations and re-exports
 ├── main.vit                        # Vitte DSL CLI skeleton
 ├── bin/
-│   └── muffin.rs                   # Rust CLI entrypoint
+│   └── flan.rs                   # Rust CLI entrypoint
 │
 ├── PARSER (lexical & syntactic analysis)
 │   ├── arscan.rs                   # Lexer/tokenizer
@@ -30,12 +30,12 @@ src/
 │   ├── implicit.rs                 # Implicit rule resolution
 │   └── default.rs                  # Default values
 │
-├── GENERATOR (Muffinconfig.mcfg serialization)
+├── GENERATOR (Flanconfig.mcfg serialization)
 │   ├── interface.rs                # Runtime abstraction (I/O)
 │   └── output.rs                   # Serialization & exports
 │
 ├── MODEL (core data structures)
-│   ├── muffinint.rs                # Workspace, Package, Profile, Target, Toolchain
+│   ├── flanint.rs                # Workspace, Package, Profile, Target, Toolchain
 │   ├── def_target_file.rs          # Target file definitions
 │   └── rule.rs                     # Rule model
 │
@@ -61,7 +61,7 @@ src/
 │   └── warning.rs                  # Warning utilities
 │
 ├── BUILD (build orchestration)
-│   └── build_muf.rs                # "build muffin" command
+│   └── build_muf.rs                # "build flan" command
 │
 └── PLATFORM (platform-specific)
     ├── vms_exit.rs
@@ -78,7 +78,7 @@ src/
 PIPELINE VIEW
 =============
 
-MuffinConfig (input)
+FlanConfig (input)
     ↓
 [PARSER: arscan + read]
     → Tokens & AST
@@ -90,7 +90,7 @@ MuffinConfig (input)
     → Configuration resolved
     ↓
 [GENERATOR: output + interface]
-    → Muffinconfig.mcfg (frozen config artifact)
+    → Flanconfig.mcfg (frozen config artifact)
     ↓
 Execution runner (consumes build artifact)
 
@@ -105,7 +105,7 @@ Commands
   │     ├─→ validator (config, dependancies, target_file)
   │     ├─→ resolver (variable, expand, implicit, default)
   │     └─→ generator (output, interface)
-  └─→ model (muffinint, def_target_file, rule)
+  └─→ model (flanint, def_target_file, rule)
 
 Interface (runtime abstraction)
   ├─→ os (OS-specific)
@@ -130,10 +130,10 @@ ADDING NEW FUNCTIONALITY
 New Command?
   1. Implement in commands.rs
   2. Add variant to CLI enum
-  3. Router in src/bin/muffin.rs
+  3. Router in src/bin/flan.rs
 
 New Target Type?
-  1. Extend model::Target in muffinint.rs
+  1. Extend model::Target in flanint.rs
   2. Add implicit rules in implicit.rs
   3. Validate in validator::target_file
 

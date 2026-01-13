@@ -101,20 +101,20 @@ pub fn temp_dir() -> PathBuf {
     env::temp_dir()
 }
 
-pub fn muffin_config_dir() -> PathBuf {
-    roaming_appdata_dir().join("Muffin")
+pub fn flan_config_dir() -> PathBuf {
+    roaming_appdata_dir().join("Flan")
 }
 
-pub fn muffin_cache_dir() -> PathBuf {
-    local_appdata_dir().join("Muffin").join("Cache")
+pub fn flan_cache_dir() -> PathBuf {
+    local_appdata_dir().join("Flan").join("Cache")
 }
 
-pub fn muffin_data_dir() -> PathBuf {
-    local_appdata_dir().join("Muffin").join("Data")
+pub fn flan_data_dir() -> PathBuf {
+    local_appdata_dir().join("Flan").join("Data")
 }
 
-pub fn muffin_state_dir() -> PathBuf {
-    local_appdata_dir().join("Muffin").join("State")
+pub fn flan_state_dir() -> PathBuf {
+    local_appdata_dir().join("Flan").join("State")
 }
 
 /* ---------------------------- Process helpers ---------------------------- */

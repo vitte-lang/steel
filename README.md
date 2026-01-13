@@ -1,8 +1,8 @@
-# Muffin
+# Flan
 
-![Muffin](https://img.shields.io/badge/Muffin-config-orange)
+![Flan](https://img.shields.io/badge/Flan-config-orange)
 
-Muffin est la couche de configuration **déclarative** du build Vitte. Il **parse**, **valide** et **résout** un workspace (packages, profils, toolchains, targets), puis **génère un artefact de configuration stable** `Muffinconfig.mff` (Muffinconfig). Cet artefact est ensuite **consommé par Vitte** pour appliquer les règles de construction et exécuter les étapes de compilation de manière déterministe.
+Flan est la couche de configuration **déclarative** du build Vitte. Il **parse**, **valide** et **résout** un workspace (packages, profils, toolchains, targets), puis **génère un artefact de configuration stable** `Flanconfig.mff` (Flanconfig). Cet artefact est ensuite **consommé par Vitte** pour appliquer les règles de construction et exécuter les étapes de compilation de manière déterministe.
 
 
 ## Points forts
@@ -11,13 +11,13 @@ Muffin est la couche de configuration **déclarative** du build Vitte. Il **pars
 - Résolution déterministe et sorties facilement outillables.
 - Portabilité multi-OS/arch et profils explicites.
 - Introspection via commandes `print` et export de graphes.
-- Mode dev via `build muffin -watch` et diagnostics `-why` / `-graph`.
+- Mode dev via `build flan -watch` et diagnostics `-why` / `-graph`.
 - Overrides non-invasifs via `-D KEY=VALUE` (sans modifier le buildfile).
 
 ## CLI (raccourci)
 
 Commandes (details dans `doc/manifest.md`, liste rapide: `doc/manifest.md#liste-rapide-commandes`, flags: `doc/manifest.md#flags-frequents`):
-- [`build muffin`](doc/manifest.md#cmd-build-muffin)
+- [`build flan`](doc/manifest.md#cmd-build-flan)
 - [`run`](doc/manifest.md#cmd-run)
 - [`doctor`](doc/manifest.md#cmd-doctor)
 - [`cache`](doc/manifest.md#cmd-cache)
@@ -29,23 +29,23 @@ Commandes (details dans `doc/manifest.md`, liste rapide: `doc/manifest.md#liste-
 
 - `--profile <name>`: selection du profil (ex: `debug`, `release`).
 - `--target <triple>`: selection du target (ex: `x86_64-unknown-linux-gnu`).
-- `--emit <path>`: sortie de `Muffinconfig.mff`.
+- `--emit <path>`: sortie de `Flanconfig.mff`.
 - `--log <path>`: log d execution `run` (avec `--log-mode`).
 
 Exemples:
 ```text
-muffin build muffin --profile release
-muffin build muffin --target x86_64-apple-darwin
-muffin build muffin --emit dist/Muffinconfig.mff
-muffin run --log target/run.mff --log-mode truncate --all
+flan build flan --profile release
+flan build flan --target x86_64-apple-darwin
+flan build flan --emit dist/Flanconfig.mff
+flan run --log target/run.mff --log-mode truncate --all
 ```
 
-## MuffinLib: import OCaml
+## FlanLib: import OCaml
 
-Le backend OCaml est exposé via MuffinLib. Exemple d'import:
+Le backend OCaml est exposé via FlanLib. Exemple d'import:
 
 ```rust
-use MuffinLib::ocaml::{OcamlArgs, OcamlDriver, OcamlSpec};
+use FlanLib::ocaml::{OcamlArgs, OcamlDriver, OcamlSpec};
 ```
 
 ## Voir aussi
@@ -56,11 +56,11 @@ use MuffinLib::ocaml::{OcamlArgs, OcamlDriver, OcamlSpec};
 
 ## Uniformisation totale (langages + machines)
 
-Muffin vise une **uniformisation totale** du build : même modèle, mêmes commandes et mêmes sorties logiques, quel que soit le langage (Vitte, C/C++, C#, Rust, …) et quel que soit l’environnement (machines anciennes ou récentes, OS/arch hétérogènes).
+Flan vise une **uniformisation totale** du build : même modèle, mêmes commandes et mêmes sorties logiques, quel que soit le langage (Vitte, C/C++, C#, Rust, …) et quel que soit l’environnement (machines anciennes ou récentes, OS/arch hétérogènes).
 
 - **Langage-agnostique** : l’intégration se fait via des **tools déclaratifs** (compile/link/archive/test/package), connectés dans un graphe typé.
 - **Machine-agnostique** : l’exécution est pilotée par des **targets** (triples OS/arch) et des politiques stables (paths normalisés, cache, sandbox).
-- **Contrat unique** : la configuration est gelée dans `Muffinconfig.mff` et consommée ensuite de manière déterministe.
+- **Contrat unique** : la configuration est gelée dans `Flanconfig.mff` et consommée ensuite de manière déterministe.
 - **Reproductibilité** : cache content-addressed + empreinte toolchain + policy capsule.
 - **Observabilité** : diagnostics et introspection (`print`, `-why`, `-graph`) pour outiller CI, IDE et scripts.
 
@@ -70,24 +70,24 @@ L’objectif est de pouvoir orchestrer des projets **mono-langage** comme des pr
 
 Le pipeline est volontairement scindé en deux phases : **Configuration** puis **Construction**.
 
-   **Configuration** — `build muffin`
+   **Configuration** — `build flan`
    - Charge la config (workspace/packages/profils/targets/toolchains)
    - Valide la cohérence (contraintes, chemins, compatibilités)
    - Résout les valeurs (defaults, héritages, overrides)
-   - **Émet** `Muffinconfig.mff` (artefact canonique)
+   - **Émet** `Flanconfig.mff` (artefact canonique)
 
 
 ## Architecture
 
 ### Principe : « Freeze then Build »
 
-- `build muffin` = **configure** : validation + résolution + **gel** de la configuration.
+- `build flan` = **configure** : validation + résolution + **gel** de la configuration.
 - `build vitte` = **build** : orchestration des étapes + production des artefacts.
 
 
 ### Détection de reconstruction (incrémental)
 
-Au cœur du pipeline, **Muffin** calcule automatiquement **ce qui doit être reconstruit**.
+Au cœur du pipeline, **Flan** calcule automatiquement **ce qui doit être reconstruit**.
 
 
 
@@ -102,7 +102,7 @@ Chaque répertoire du projet peut contenir, à la racine du dossier, un fichier 
 
 Voir aussi : `doc/toolchain_detection.md`.
 
-Muffin fournit les binaires `muffin` / `Muffin` utilisés pour orchestrer ce flux.
+Flan fournit les binaires `flan` / `Flan` utilisés pour orchestrer ce flux.
 
 #### Agrégation (fichier maître)
 
@@ -110,7 +110,7 @@ Par défaut, l’ensemble des fichiers `main.muff` présents dans les sous-répe
 
 #### Configuration gelée et artefacts
 
-Lors de la phase de configuration, `muffin` / `Muffin` peut **générer un fichier `.mff`** (configuration gelée) destiné à une compilation globale. Cette configuration est ensuite utilisée pour produire des artefacts binaires Vitte :
+Lors de la phase de configuration, `flan` / `Flan` peut **générer un fichier `.mff`** (configuration gelée) destiné à une compilation globale. Cette configuration est ensuite utilisée pour produire des artefacts binaires Vitte :
 
 - **`.va`** : sortie de bibliothèque statique (si le dossier ou la target déclare une librairie),
 - **`.vo`** : sortie de compilation standard (artefact de compilation),
@@ -123,25 +123,25 @@ Les fichiers de compilation produisent typiquement des binaires **`.vo`**.
 La construction d’un dossier (ou du workspace via `master.muff`) s’effectue en exécutant le plan principal, par exemple :
 
 ```text
-Muffin build main.muff
+Flan build main.muff
 ```
 
-Le build génère les sorties dans un répertoire d’artefacts **par dossier** (par convention `./.muffin/` ou `./.muff/` selon la configuration), tant qu’aucune erreur n’est détectée pendant la compilation.
+Le build génère les sorties dans un répertoire d’artefacts **par dossier** (par convention `./.flan/` ou `./.muff/` selon la configuration), tant qu’aucune erreur n’est détectée pendant la compilation.
 
 #### Projets multi-outils
 
-Le buildfile reste générique : Muffin est capable d’orchestrer des projets Vitte et des projets mixtes via des **tools** déclaratifs (par exemple pour C/C++/C#/Rust), tant que les toolchains et les étapes (compile/link/archive/package) sont décrites de manière explicite.
+Le buildfile reste générique : Flan est capable d’orchestrer des projets Vitte et des projets mixtes via des **tools** déclaratifs (par exemple pour C/C++/C#/Rust), tant que les toolchains et les étapes (compile/link/archive/package) sont décrites de manière explicite.
 
 ### Flux de traitement
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    PHASE CONFIGURATION                      │
-│                      (build muffin)                         │
+│                      (build flan)                         │
 └─────────────────────────────────────────────────────────────┘
 
 1. CHARGEMENT
-   ├── MuffinConfig (workspace + packages + profils)
+   ├── FlanConfig (workspace + packages + profils)
    ├── Toolchains (compilateurs, linkers, outils)
    └── Targets (spécifications de build)
 
@@ -159,14 +159,14 @@ Le buildfile reste générique : Muffin est capable d’orchestrer des projets V
    └── Résolution des dépendances transitives
 
 4. ÉMISSION
-   └── Muffinconfig.mff (configuration gelée et normalisée)
+   └── Flanconfig.mff (configuration gelée et normalisée)
 
 ┌─────────────────────────────────────────────────────────────┐
 │                    PHASE CONSTRUCTION                       │
 │                      (build vitte)                          │
 └─────────────────────────────────────────────────────────────┘
 
-Vitte lit Muffinconfig.mff et :
+Vitte lit Flanconfig.mff et :
   ├── Construit le DAG des étapes
   ├── Résout les dépendances de fichiers
   ├── Exécute l'ordre topologique
@@ -176,7 +176,7 @@ Vitte lit Muffinconfig.mff et :
 ### Composants principaux
 
 #### Parser (`arscan.rs`, `read.rs`)
-- Analyse lexicale et syntaxique des fichiers Muffin
+- Analyse lexicale et syntaxique des fichiers Flan
 - Constructs de blocs (workspace, package, profile, target, etc.)
 - Gestion des commentaires et du formatage
 
@@ -218,7 +218,7 @@ Vitte lit Muffinconfig.mff et :
 
 ### Responsabilités de chaque couche
 
-**Muffin** (Déclaratif)
+**Flan** (Déclaratif)
 - *Ce qu'on veut construire*, *comment* (profils), *pour qui* (targets)
 - Séparation claire entre configuration et exécution
 - Validation et cohérence
@@ -228,7 +228,7 @@ Vitte lit Muffinconfig.mff et :
 - Isolation des détails d'exécution (compilateur, flags réels)
 - Diagnostics de performance et débogage
 
-**Muffinconfig.mff** (Contrat)
+**Flanconfig.mff** (Contrat)
 - Configuration **gelée** et **normalisée**
 - Contient tout ce que Vitte doit savoir pour construire
 - Invalidation automatique du cache en cas de changement
@@ -242,9 +242,9 @@ Vitte orchestre la phase **construction** à partir de la configuration gelée :
 - Exécution **déterministe** (ordre topologique) avec **incrémental** et **cache**
 - Diagnostics outillables : « pourquoi ça rebuild ? », « qui dépend de quoi ? »
 
-### Contrat `Muffinconfig.muf`
+### Contrat `Flanconfig.muf`
 
-`Muffinconfig.muf` contient une configuration **normalisée** et **explicite** (plus d’implicite côté build). Exemples de champs attendus :
+`Flanconfig.muf` contient une configuration **normalisée** et **explicite** (plus d’implicite côté build). Exemples de champs attendus :
 
 - version de schéma (`mcfg 1`),
 - host/target (OS/arch/triple),
@@ -260,11 +260,11 @@ Vitte orchestre la phase **construction** à partir de la configuration gelée :
 ### Build
 
 ```text
-build muffin [<plan>] [flags] [-- <args>]
+build flan [<plan>] [flags] [-- <args>]
 ```
 
-- `build muffin` : exécute le **plan par défaut** (ex: `default`).
-- `build muffin <plan>` : exécute un **plan nommé** (ex: `release`, `ci`, `package`).
+- `build flan` : exécute le **plan par défaut** (ex: `default`).
+- `build flan <plan>` : exécute un **plan nommé** (ex: `release`, `ci`, `package`).
 
 #### Flags de build
 
@@ -281,22 +281,22 @@ build muffin [<plan>] [flags] [-- <args>]
 Exemples :
 
 ```text
-build muffin
-build muffin release
-build muffin -all
-build muffin -debug
-build muffin -release -j 16
-build muffin -D profile=release -D target=x86_64-apple-darwin
-build muffin -why app.exe
-build muffin -graph=dot
-build muffin -watch
+build flan
+build flan release
+build flan -all
+build flan -debug
+build flan -release -j 16
+build flan -D profile=release -D target=x86_64-apple-darwin
+build flan -why app.exe
+build flan -graph=dot
+build flan -watch
 ```
 
 ### Validation / émission
 
 - `check` : valide la configuration sans exécuter la construction.
   - options usuelles : `--profile <name>`, `--target <name>`, `--emit <path>`
-- `resolve` : résout et **génère** `Muffinconfig.mff` (équivalent fonctionnel à `build muffin` côté configuration).
+- `resolve` : résout et **génère** `Flanconfig.mff` (équivalent fonctionnel à `build flan` côté configuration).
   - options usuelles : `--emit <path>`, `--profile <name>`, `--target <name>`
 
 Exemples :
@@ -304,7 +304,7 @@ Exemples :
 ```text
 check
 check --profile debug
-resolve --emit ./Muffinconfig.mff
+resolve --emit ./Flanconfig.mff
 ```
 
 ### Introspection
@@ -312,7 +312,7 @@ resolve --emit ./Muffinconfig.mff
 - `print <scope>` : affiche une vue résolue (format texte/JSON selon implémentation).
   - scopes typiques : `workspace`, `packages`, `targets`, `profiles`, `toolchains`, `vars`, `plans`, `exports`
 - `graph [--format <text|dot|json>]` : export du graphe (sans build).
-- `why <artifact|ref>` : diagnostic « pourquoi ça rebuild ? » (alias possible de `build muffin -why`).
+- `why <artifact|ref>` : diagnostic « pourquoi ça rebuild ? » (alias possible de `build flan -why`).
 
 Exemples :
 
@@ -325,7 +325,7 @@ why vittec_driver::vittec
 
 ### Décompilation (audit de build)
 
-Muffin expose une commande de **décompilation** orientée audit : elle permet de relire un artefact de configuration gelée **`.mff`** (ou un buildfile **`.muff`**) et de reconstituer une vue complète du projet : architecture, graphe, inputs/outputs, outils utilisés et paramètres.
+Flan expose une commande de **décompilation** orientée audit : elle permet de relire un artefact de configuration gelée **`.mff`** (ou un buildfile **`.muff`**) et de reconstituer une vue complète du projet : architecture, graphe, inputs/outputs, outils utilisés et paramètres.
 
 - `decompile <project.mff>` : affiche l’architecture du build (DAG), la liste des fichiers, les ports, les toolchains et l’ensemble des valeurs résolues.
 - `decompile <main.muff>` : affiche la configuration et les règles telles qu’elles seront gelées (vue normalisée), sans exécuter la construction.
@@ -333,10 +333,10 @@ Muffin expose une commande de **décompilation** orientée audit : elle permet d
 Exemples :
 
 ```text
-muffin decompile projet.mff
-muffin decompile src/module/main.muff
-muffin decompile projet.mff --format json
-muffin decompile projet.mff --graph dot
+flan decompile projet.mff
+flan decompile src/module/main.muff
+flan decompile projet.mff --format json
+flan decompile projet.mff --graph dot
 ```
 
 Un fichier **`.mff`** enregistre la configuration **normalisée** et la **trace de compilation** (inputs, globs développés, règles, outils, arguments, empreintes). Il garantit une configuration uniforme sur toutes les machines.
@@ -348,12 +348,12 @@ Un buildfile **`.muff`** (ou un ensemble de `main.muff`) peut également être d
 - les bibliothèques/plugins référencés,
 - les sorties attendues.
 
-Limite : la reconstruction effective des binaires dépend de la **disponibilité** et de la **compatibilité** des toolchains (langages compilés, versions, targets). Muffin fournit la description complète ; la machine doit disposer des compilateurs/outils compatibles pour reproduire les artefacts.
+Limite : la reconstruction effective des binaires dépend de la **disponibilité** et de la **compatibilité** des toolchains (langages compilés, versions, targets). Flan fournit la description complète ; la machine doit disposer des compilateurs/outils compatibles pour reproduire les artefacts.
 
 ### Maintenance
 
-- `fmt [<file>]` : formate un fichier Muffin.
-- `clean` : purge cache + artefacts (alias possible de `build muffin -clean`).
+- `fmt [<file>]` : formate un fichier Flan.
+- `clean` : purge cache + artefacts (alias possible de `build flan -clean`).
 - `cache <cmd>` : gestion du store/cache.
   - `cache stats` : statistiques.
   - `cache gc` : nettoyage.
@@ -372,7 +372,7 @@ doctor
 ### Divers
 
 - `help [<cmd>]` : aide globale ou par sous-commande.
-- `version` : version de Muffin.
+- `version` : version de Flan.
 
 ### Options globales (toutes commandes)
 
@@ -381,7 +381,7 @@ doctor
 
 ### Exemples multi-OS (Linux / macOS / Windows / BSD / Solaris)
 
-> Objectif : exécuter les commandes `build muffin ...` de façon identique sur toutes les plateformes. Les étapes ci-dessous installent uniquement les utilitaires de base et supposent que `muffin` et `vitte` sont disponibles dans le projet (ou dans le `PATH`).
+> Objectif : exécuter les commandes `build flan ...` de façon identique sur toutes les plateformes. Les étapes ci-dessous installent uniquement les utilitaires de base et supposent que `flan` et `vitte` sont disponibles dans le projet (ou dans le `PATH`).
 
 #### Linux (Debian/Ubuntu)
 
@@ -390,9 +390,9 @@ sudo apt update
 sudo apt install -y git ca-certificates curl
 
 # build
-build muffin
-build muffin -all
-build muffin -debug
+build flan
+build flan -all
+build flan -debug
 ```
 
 #### Linux (Fedora/RHEL)
@@ -400,8 +400,8 @@ build muffin -debug
 ```bash
 sudo dnf install -y git ca-certificates curl
 
-build muffin
-build muffin -release -j 16
+build flan
+build flan -release -j 16
 ```
 
 #### Linux (Arch)
@@ -409,7 +409,7 @@ build muffin -release -j 16
 ```bash
 sudo pacman -S --needed git ca-certificates curl
 
-build muffin -all
+build flan -all
 ```
 
 #### macOS (Homebrew)
@@ -417,8 +417,8 @@ build muffin -all
 ```bash
 brew install git
 
-build muffin
-build muffin -watch
+build flan
+build flan -watch
 ```
 
 #### Windows (PowerShell)
@@ -429,13 +429,13 @@ build muffin -watch
 # winget install --id OpenJS.NodeJS.LTS -e   # si ton projet en a besoin
 
 # Exécution
-build muffin
-build muffin -all
-build muffin -why app.exe
+build flan
+build flan -all
+build flan -why app.exe
 ```
 
 Notes Windows :
-- Si `build` n’est pas une commande globale, exécuter depuis la racine du projet via `./muffin` (si présent) ou ajouter le binaire au `PATH`.
+- Si `build` n’est pas une commande globale, exécuter depuis la racine du projet via `./flan` (si présent) ou ajouter le binaire au `PATH`.
 - En CI Windows, privilégier `--color never` et `--json` pour l’outillage.
 
 #### FreeBSD
@@ -443,8 +443,8 @@ Notes Windows :
 ```sh
 sudo pkg install -y git ca_root_nss
 
-build muffin
-build muffin -graph=dot
+build flan
+build flan -graph=dot
 ```
 
 #### OpenBSD
@@ -452,7 +452,7 @@ build muffin -graph=dot
 ```sh
 doas pkg_add git
 
-build muffin
+build flan
 ```
 
 #### NetBSD
@@ -461,7 +461,7 @@ build muffin
 # pkgin (si configuré)
 # sudo pkgin install git ca-certificates
 
-build muffin
+build flan
 ```
 
 #### Solaris / illumos (OpenIndiana)
@@ -469,14 +469,14 @@ build muffin
 ```sh
 pfexec pkg install developer/versioning/git
 
-build muffin
-build muffin -release
+build flan
+build flan -release
 ```
 
 Conseils cross-OS :
-- Utiliser des chemins relatifs dans les buildfiles (`./dist`, `./.muffin/cache`) pour limiter les divergences.
-- Si un fichier `muffin` est un script, vérifier le bit exécutable (`chmod +x muffin`) et utiliser des fins de lignes LF.
-- Pour l’outillage, préférer `muffin print ... --json`, `muffin graph --format ...`, `muffin why ...`.
+- Utiliser des chemins relatifs dans les buildfiles (`./dist`, `./.flan/cache`) pour limiter les divergences.
+- Si un fichier `flan` est un script, vérifier le bit exécutable (`chmod +x flan`) et utiliser des fins de lignes LF.
+- Pour l’outillage, préférer `flan print ... --json`, `flan graph --format ...`, `flan why ...`.
 
 ## Langage MUF (v4.1)
 
@@ -486,9 +486,9 @@ Le format MUF est versionné. La version actuelle est **v4.1**.
 - Blocs : `[tag name?] ... ..`
 - Directives : `.op arg1 arg2 ...`
 - Commentaires : `;; ...`
-- Grammaire EBNF : `assets/grammar/muffin.ebnf`
+- Grammaire EBNF : `assets/grammar/flan.ebnf`
 
-## Format du fichier Muffin (aperçu)
+## Format du fichier Flan (aperçu)
 
 Exemple MUF v4.1 (blocs + `..`) :
 
@@ -516,7 +516,7 @@ Exemple MUF v4.1 (blocs + `..`) :
 ..
 ```
 
-## Format `Muffinconfig.mff` (apercu)
+## Format `Flanconfig.mff` (apercu)
 
 ```text
 mff 1
@@ -541,21 +541,21 @@ profile "debug"
 
 ## Variables d'environnement
 
-- `MUFFIN_FILE` : chemin du fichier Muffin.
+- `MUFFIN_FILE` : chemin du fichier Flan.
 - `MUFFIN_PROFILE` : profil par défaut.
-- `MUFFIN_EMIT` : chemin par défaut de `Muffinconfig.mff`.
+- `MUFFIN_EMIT` : chemin par défaut de `Flanconfig.mff`.
 - `MUFFIN_OFFLINE` : active le mode offline.
 - `VITTE_BUILD` : chemin explicite vers le driver `build`.
-- `PATH` : s’assurer que `muffin` et `vitte` sont accessibles (ou utiliser `./muffin` depuis la racine).
+- `PATH` : s’assurer que `flan` et `vitte` sont accessibles (ou utiliser `./flan` depuis la racine).
 
 ## Fichiers
 
-- `muffin` ou `MuffinConfig` : configuration principale.
+- `flan` ou `FlanConfig` : configuration principale.
 - `*.vitte` : sources du projet.
-- `Muffinconfig.mff` : configuration gelée et normalisée (artefact canonique) + trace outillable (graph, inputs, outils, empreintes), consommée par Vitte.
+- `Flanconfig.mff` : configuration gelée et normalisée (artefact canonique) + trace outillable (graph, inputs, outils, empreintes), consommée par Vitte.
 - `*.muf` : buildfiles (si le projet segmente la configuration par dossier/workspace).
 - `*.muff` : configurations segmentées par répertoire (optionnel, générées ou maintenues selon le mode).
-- `muffin/main.muff` : point d’ancrage de configuration/build (nom configurable, optionnel).
+- `flan/main.muff` : point d’ancrage de configuration/build (nom configurable, optionnel).
 - Artefacts de build (selon targets/plateformes) : `*.vo` (Vitte compilation), `*.va` (Vitte librairie statique), `*.o` / `*.obj` (C/C++ objets), `*.a` / `*.lib` (archives statiques), `*.so` / `*.dylib` / `*.dll` (librairies partagées), `*.exe` (exécutables Windows).
 
 ## Documentation
@@ -569,21 +569,21 @@ profile "debug"
 - [docs/reference/formats/index.md](docs/reference/formats/index.md) — Formats + versioning
 - [ARCHITECTURE.md](ARCHITECTURE.md) — Détails internes, pipeline, modules
 - [src/MODULE_ORGANIZATION.md](src/MODULE_ORGANIZATION.md) — Organisation des fichiers source
-- Manpage: [doc/muffin.1](doc/muffin.1)
+- Manpage: [doc/flan.1](doc/flan.1)
 
 ## Licence
 
 Voir `COPYING`.
 
-# Muffin
+# Flan
 
-![Muffin](https://img.shields.io/badge/Muffin-config-orange)
+![Flan](https://img.shields.io/badge/Flan-config-orange)
 
-Muffin est le **compilateur de configuration** du build Vitte.
+Flan est le **compilateur de configuration** du build Vitte.
 
-- **Entrée** : un seul fichier à la racine du dépôt : **`MuffinConfig.muff`**.
-- **Sortie** : un **binaire universel** de configuration **`MuffinConfig.mub`** (Universal Binary Config), identique d’une machine à l’autre.
-- **Consommateur** : **Vitte** lit `MuffinConfig.mub` pour exécuter le build (DAG, cache, incrémental) de manière déterministe.
+- **Entrée** : un seul fichier à la racine du dépôt : **`FlanConfig.muff`**.
+- **Sortie** : un **binaire universel** de configuration **`FlanConfig.mub`** (Universal Binary Config), identique d’une machine à l’autre.
+- **Consommateur** : **Vitte** lit `FlanConfig.mub` pour exécuter le build (DAG, cache, incrémental) de manière déterministe.
 
 L’objectif : **un modèle unique**, **un workflow unique**, **un artefact unique**.
 
@@ -598,9 +598,9 @@ Le build a besoin d’une configuration **gelée** (plus d’implicites) :
 - l’empreinte toolchain/policy pour l’invalidation cache,
 - un graphe exécutable (ports `inputs → outputs`).
 
-`MuffinConfig.mub` est cette barrière contractuelle entre :
+`FlanConfig.mub` est cette barrière contractuelle entre :
 
-- **déclaratif** (Muffin) : ce qu’on veut construire,
+- **déclaratif** (Flan) : ce qu’on veut construire,
 - **exécutable** (Vitte) : comment on le construit.
 
 ---
@@ -610,12 +610,12 @@ Le build a besoin d’une configuration **gelée** (plus d’implicites) :
 1) **Configurer (freeze)**
 
 ```text
-build muffin
+build flan
 ```
 
-- lit `MuffinConfig.muff`
+- lit `FlanConfig.muff`
 - valide + résout
-- émet `MuffinConfig.mub`
+- émet `FlanConfig.mub`
 
 2) **Construire (build)**
 
@@ -623,7 +623,7 @@ build muffin
 build vitte
 ```
 
-- lit `MuffinConfig.mub`
+- lit `FlanConfig.mub`
 - exécute le DAG (compile/link/test/package)
 - gère incrémental + cache
 
@@ -634,14 +634,14 @@ build vitte
 ### Configuration
 
 ```text
-build muffin [flags]
+build flan [flags]
 ```
 
 Flags usuels :
 
 - `-debug` / `-release`
 - `-j <n>` : parallélisme
-- `-D KEY=VALUE` : override sans modifier `MuffinConfig.muff`
+- `-D KEY=VALUE` : override sans modifier `FlanConfig.muff`
 - `-why <ref>` : diagnostic d’invalidation
 - `-graph[=text|dot|json]` : export graphe
 - `-watch` : mode dev
@@ -649,14 +649,14 @@ Flags usuels :
 ### Introspection
 
 ```text
-muffin print <scope>
-muffin graph [--format <text|dot|json>]
-muffin why <ref>
+flan print <scope>
+flan graph [--format <text|dot|json>]
+flan why <ref>
 ```
 
 ---
 
-## Format du fichier `MuffinConfig.muff` (aperçu)
+## Format du fichier `FlanConfig.muff` (aperçu)
 
 Le fichier est orienté blocs, lisible, et conçu pour être **résolu** puis **gelé**.
 
@@ -700,29 +700,29 @@ Le fichier est orienté blocs, lisible, et conçu pour être **résolu** puis **
 
 ## Fichiers
 
-- **`MuffinConfig.muff`** : source de configuration (unique, à la racine).
-- **`MuffinConfig.mub`** : binaire universel de configuration gelée (artefact canonique).
+- **`FlanConfig.muff`** : source de configuration (unique, à la racine).
+- **`FlanConfig.mub`** : binaire universel de configuration gelée (artefact canonique).
 - Artefacts Vitte (selon targets) : `*.vo`, `*.va`, exécutables, etc.
 
 ---
 
 ## Notes de compatibilité
 
-- Le binaire `MuffinConfig.mub` est conçu pour être **portable** (endianness/versions gérées par en-tête + schéma).
-- Pour outiller CI/IDE, Muffin peut exposer en plus des exports `--json`/`--dot`, mais **Vitte ne dépend que de `MuffinConfig.mub`**.
+- Le binaire `FlanConfig.mub` est conçu pour être **portable** (endianness/versions gérées par en-tête + schéma).
+- Pour outiller CI/IDE, Flan peut exposer en plus des exports `--json`/`--dot`, mais **Vitte ne dépend que de `FlanConfig.mub`**.
 
 ---
 
 ## Licence
 
 Voir `COPYING`.
-# Muffin
+# Flan
 
-![Muffin](https://img.shields.io/badge/Muffin-config-orange)
+![Flan](https://img.shields.io/badge/Flan-config-orange)
 
-Muffin est la **configuration déclarative** du build Vitte.
+Flan est la **configuration déclarative** du build Vitte.
 
-- **Entrée** : un seul fichier à la racine du dépôt : **`MuffinConfig.muff`**.
+- **Entrée** : un seul fichier à la racine du dépôt : **`FlanConfig.muff`**.
 - **Sortie** : un dossier **`target/`** créé à la racine (artefacts + configuration résolue).
 - **Consommateur** : **Vitte** lit la configuration résolue depuis `target/` et exécute le build de manière déterministe.
 
@@ -735,10 +735,10 @@ Le workflow est volontairement en 2 phases :
 1) **Configurer (freeze)**
 
 ```text
-build muffin
+build flan
 ```
 
-- parse + valide `MuffinConfig.muff`
+- parse + valide `FlanConfig.muff`
 - résout profiles/targets/toolchains/variables
 - **matérialise** une configuration stable dans `target/`
 
@@ -756,11 +756,11 @@ build vitte
 
 ## Layout généré dans `target/`
 
-Par défaut, Muffin crée (ou met à jour) une arborescence standard :
+Par défaut, Flan crée (ou met à jour) une arborescence standard :
 
 ```text
 target/
-  muffin/
+  flan/
     config.mub
     graph.json
     fingerprints.json
@@ -781,9 +781,9 @@ target/
 
 Notes :
 
-- `target/muffin/config.mub` : **binaire universel** de configuration résolue (portable, versionné).
-- `target/muffin/graph.json` : export outillable du DAG (CI/IDE).
-- `target/muffin/fingerprints.json` : empreintes toolchain/policy pour l’invalidation.
+- `target/flan/config.mub` : **binaire universel** de configuration résolue (portable, versionné).
+- `target/flan/graph.json` : export outillable du DAG (CI/IDE).
+- `target/flan/fingerprints.json` : empreintes toolchain/policy pour l’invalidation.
 
 ---
 
@@ -792,14 +792,14 @@ Notes :
 ### Configuration
 
 ```text
-build muffin [flags]
+build flan [flags]
 ```
 
 Flags usuels :
 
 - `-debug` / `-release`
 - `-j <n>` : parallélisme
-- `-D KEY=VALUE` : override sans modifier `MuffinConfig.muff`
+- `-D KEY=VALUE` : override sans modifier `FlanConfig.muff`
 - `-why <ref>` : diagnostic d’invalidation
 - `-graph[=text|dot|json]` : export graphe
 - `-watch` : mode dev
@@ -807,14 +807,14 @@ Flags usuels :
 ### Introspection
 
 ```text
-muffin print <scope>
-muffin graph [--format <text|dot|json>]
-muffin why <ref>
+flan print <scope>
+flan graph [--format <text|dot|json>]
+flan why <ref>
 ```
 
 ---
 
-## Format minimal de `MuffinConfig.muff` (aperçu)
+## Format minimal de `FlanConfig.muff` (aperçu)
 
 ```text
 !muf 4
@@ -856,7 +856,7 @@ muffin why <ref>
 
 ## Fichiers
 
-- **`MuffinConfig.muff`** : source de configuration (unique).
+- **`FlanConfig.muff`** : source de configuration (unique).
 - **`target/`** : **racine canonique** de toutes les sorties (config résolue + build + cache + outputs).
 
 ---
@@ -864,16 +864,16 @@ muffin why <ref>
 ## Licence
 
 Voir `COPYING`.
-# Muffin
+# Flan
 
-![Muffin](https://img.shields.io/badge/Muffin-config-orange)
+![Flan](https://img.shields.io/badge/Flan-config-orange)
 
-Muffin est la couche de configuration **déclarative** du build Vitte.
+Flan est la couche de configuration **déclarative** du build Vitte.
 
-- **Entrée** : un seul fichier à la racine du dépôt : **`MuffinConfig.muff`**.
+- **Entrée** : un seul fichier à la racine du dépôt : **`FlanConfig.muff`**.
 - **Sortie** : un dossier **`target/`** créé à la racine (config résolue + build + cache + outputs).
-- **Contrat universel** : `target/muffin/config.mub` (**binaire universel** de configuration résolue).
-- **Consommateur** : **Vitte** lit `target/muffin/config.mub` et exécute le build de manière déterministe.
+- **Contrat universel** : `target/flan/config.mub` (**binaire universel** de configuration résolue).
+- **Consommateur** : **Vitte** lit `target/flan/config.mub` et exécute le build de manière déterministe.
 
 ---
 
@@ -882,12 +882,12 @@ Muffin est la couche de configuration **déclarative** du build Vitte.
 1) **Configurer (freeze)**
 
 ```text
-build muffin
+build flan
 ```
 
-- parse + valide `MuffinConfig.muff`
+- parse + valide `FlanConfig.muff`
 - résout profiles/targets/toolchains/variables
-- matérialise la configuration stable dans `target/muffin/config.mub`
+- matérialise la configuration stable dans `target/flan/config.mub`
 
 2) **Construire (build)**
 
@@ -895,7 +895,7 @@ build muffin
 build vitte
 ```
 
-- lit `target/muffin/config.mub`
+- lit `target/flan/config.mub`
 - exécute le DAG (compile/link/test/package)
 - gère incrémental + cache
 
@@ -905,7 +905,7 @@ build vitte
 
 ```text
 target/
-  muffin/
+  flan/
     config.mub
     graph.json
     fingerprints.json
@@ -937,14 +937,14 @@ Notes :
 ### Configuration
 
 ```text
-build muffin [flags]
+build flan [flags]
 ```
 
 Flags usuels :
 
 - `-debug` / `-release`
 - `-j <n>` : parallélisme
-- `-D KEY=VALUE` : override sans modifier `MuffinConfig.muff`
+- `-D KEY=VALUE` : override sans modifier `FlanConfig.muff`
 - `-why <ref>` : diagnostic d’invalidation
 - `-graph[=text|dot|json]` : export graphe
 - `-watch` : mode dev
@@ -952,14 +952,14 @@ Flags usuels :
 ### Introspection
 
 ```text
-muffin print <scope>
-muffin graph [--format <text|dot|json>]
-muffin why <ref>
+flan print <scope>
+flan graph [--format <text|dot|json>]
+flan why <ref>
 ```
 
 ---
 
-## Format minimal de `MuffinConfig.muff` (aperçu)
+## Format minimal de `FlanConfig.muff` (aperçu)
 
 ```text
 !muf 4
@@ -1001,9 +1001,9 @@ muffin why <ref>
 
 ## Fichiers
 
-- **`MuffinConfig.muff`** : source de configuration (unique).
+- **`FlanConfig.muff`** : source de configuration (unique).
 - **`target/`** : racine canonique de toutes les sorties.
-- **`target/muffin/config.mub`** : contrat universel consommé par Vitte.
+- **`target/flan/config.mub`** : contrat universel consommé par Vitte.
 
 ---
 

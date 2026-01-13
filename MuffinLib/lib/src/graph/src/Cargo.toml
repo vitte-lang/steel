@@ -1,27 +1,27 @@
-# C:\Users\gogin\Documents\GitHub\muffin\MuffinLib\lib\src\graph\src\Cargo.toml
+# C:\Users\gogin\Documents\GitHub\flan\FlanLib\lib\src\graph\src\Cargo.toml
 # (crate graph — si tu sépares l’algorithme de graphe du modèle)
 
 [package]
-name = "muffin_graph"
+name = "flan_graph"
 version = "0.1.0"
 edition = "2021"
 license = "MIT OR Apache-2.0"
-description = "Muffin graph algorithms: topo sort, scheduling utilities, DAG validation"
-repository = "https://github.com/vitte-lang/muffin"
+description = "Flan graph algorithms: topo sort, scheduling utilities, DAG validation"
+repository = "https://github.com/vitte-lang/flan"
 publish = false
 
 [lib]
-name = "muffin_graph"
+name = "flan_graph"
 path = "lib.rs"
 
 [features]
 default = []
 
 [dependencies]
-muffin_error = { path = "../../error" }
+flan_error = { path = "../../error" }
 
 # Si ce crate travaille directement sur le modèle partagé:
-muffin_model = { path = "../../model" }
+flan_model = { path = "../../model" }
 
 # deterministic containers / helpers
 thiserror = "1.0"

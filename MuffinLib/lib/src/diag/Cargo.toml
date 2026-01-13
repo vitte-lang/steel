@@ -1,17 +1,17 @@
 [package]
-name = "muffin_diag"
+name = "flan_diag"
 version = "0.1.0"
 edition = "2021"
 license = "MIT"
-description = "MuffinLib diagnostics: codes, structured diagnostics, renderers, sinks (std-only)."
-repository = "https://github.com/muffin-lang/muffin"
+description = "FlanLib diagnostics: codes, structured diagnostics, renderers, sinks (std-only)."
+repository = "https://github.com/flan-lang/flan"
 readme = "README.md"
-keywords = ["diagnostics", "error-reporting", "compiler", "lsp", "muffin"]
+keywords = ["diagnostics", "error-reporting", "compiler", "lsp", "flan"]
 categories = ["development-tools", "command-line-utilities"]
 rust-version = "1.74"
 
 [lib]
-name = "muffin_diag"
+name = "flan_diag"
 path = "src/lib.rs"
 
 [features]

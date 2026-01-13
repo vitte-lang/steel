@@ -60,7 +60,7 @@ use std::path::PathBuf;
 
 let pattern = GlobPattern::new("src/**/*.rs").unwrap();
 
-assert!(pattern.matches(&PathBuf::from("src/bin/muffin.rs")));
+assert!(pattern.matches(&PathBuf::from("src/bin/flan.rs")));
 assert!(pattern.matches(&PathBuf::from("src/utils/helpers.rs")));
 assert!(!pattern.matches(&PathBuf::from("src/main.txt")));
 ```
@@ -69,9 +69,9 @@ assert!(!pattern.matches(&PathBuf::from("src/main.txt")));
 - `nocase` — Case-insensitive matching (default: false)
 - `no_hidden` — Skip files starting with `.` (default: false)
 
-## Usage in Muffin
+## Usage in Flan
 
-### In src/bin/muffin.rs
+### In src/bin/flan.rs
 
 ```rust
 use vittelib::glob::GlobPattern;
@@ -187,19 +187,19 @@ Example test:
 #[test]
 fn test_glob_recursive() {
     let pattern = GlobPattern::new("src/**/*.rs").unwrap();
-    assert!(pattern.matches(&PathBuf::from("src/bin/muffin.rs")));
+    assert!(pattern.matches(&PathBuf::from("src/bin/flan.rs")));
     assert!(pattern.matches(&PathBuf::from("src/a/b/c.rs")));
 }
 ```
 
-## Integration with Muffin modules
+## Integration with Flan modules
 
 ### In parser/reader
 
 ```rust
 use vittelib::glob::GlobPattern;
 
-// Parse glob patterns from MuffinConfig
+// Parse glob patterns from FlanConfig
 pub fn expand_target_sources(pattern: &str) -> Result<Vec<PathBuf>> {
     let glob = GlobPattern::new(pattern)?;
     // Scan filesystem with glob
@@ -247,4 +247,4 @@ Possible additions:
 - `regex` — Pattern compilation and matching
 - `anyhow` — Error handling
 
-Both are already used by Muffin core, so no additional bloat.
+Both are already used by Flan core, so no additional bloat.

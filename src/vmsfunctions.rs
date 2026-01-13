@@ -2,7 +2,7 @@
 //!
 //! “VMS Functions” — registre de fonctions/ops utilisables par le moteur VMS (jobs).
 //!
-//! Contexte Muffin:
+//! Contexte Flan:
 //! - vmsjobs.rs exécute des JobStep::Command et JobStep::Inline(closure).
 //! - vmsify.rs convertit manifests/config en JobGraph, mais a besoin d’une couche
 //!   de fonctions standard pour:
@@ -22,7 +22,7 @@
 //!
 //! Intégration:
 //! - vmsify.rs: pour TargetStepIR::Inline { message }, remplace par FunctionCall.
-//! - commands.rs: peut exposer `muffin fn <name> ...` ou usage interne.
+//! - commands.rs: peut exposer `flan fn <name> ...` ou usage interne.
 //!
 //! Sécurité:
 //! - Ce module ne “sandbox” pas. Si vous avez des capsules/sandbox, appliquez les politiques

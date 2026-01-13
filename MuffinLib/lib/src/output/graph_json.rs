@@ -1,4 +1,4 @@
-// C:\Users\gogin\Documents\GitHub\muffin\MuffinLib\lib\src\output\graph_json.rs
+// C:\Users\gogin\Documents\GitHub\flan\FlanLib\lib\src\output\graph_json.rs
 
 use crate::model::graph::{Graph, GraphError};
 use serde_json::Value;
@@ -9,7 +9,7 @@ use std::{
 };
 
 /// JSON schema tag for graph exports (tooling/CI/IDE consumption).
-pub const MUFFIN_GRAPH_JSON_SCHEMA: &str = "muffin.graph.json/1";
+pub const MUFFIN_GRAPH_JSON_SCHEMA: &str = "flan.graph.json/1";
 
 /// Options for exporting a Graph to JSON.
 #[derive(Debug, Clone)]
@@ -34,7 +34,7 @@ impl Default for GraphJsonOptions {
 
 /// Export the graph to a JSON string.
 ///
-/// This is stable, deterministic, and suitable for `target/muffin/graph.json`.
+/// This is stable, deterministic, and suitable for `target/flan/graph.json`.
 pub fn graph_to_json_string(graph: &Graph, opts: &GraphJsonOptions) -> Result<String, GraphJsonError> {
     if opts.validate {
         graph.validate().map_err(GraphJsonError::Validate)?;

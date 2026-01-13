@@ -1,6 +1,6 @@
 //! Linux platform helpers (linux.rs) — MAX (std-only).
 //!
-//! This module provides Linux-specific platform utilities used by Muffin.
+//! This module provides Linux-specific platform utilities used by Flan.
 //! Scope:
 //! - OS identification (compile-time + runtime best-effort)
 //! - default paths (XDG + common Linux conventions)
@@ -161,20 +161,20 @@ pub fn temp_dir() -> PathBuf {
     env::temp_dir()
 }
 
-pub fn muffin_config_dir() -> PathBuf {
-    config_dir().join("muffin")
+pub fn flan_config_dir() -> PathBuf {
+    config_dir().join("flan")
 }
 
-pub fn muffin_cache_dir() -> PathBuf {
-    cache_dir().join("muffin")
+pub fn flan_cache_dir() -> PathBuf {
+    cache_dir().join("flan")
 }
 
-pub fn muffin_data_dir() -> PathBuf {
-    data_dir().join("muffin")
+pub fn flan_data_dir() -> PathBuf {
+    data_dir().join("flan")
 }
 
-pub fn muffin_state_dir() -> PathBuf {
-    state_dir().join("muffin")
+pub fn flan_state_dir() -> PathBuf {
+    state_dir().join("flan")
 }
 
 /* ---------------------------- Process helpers ---------------------------- */

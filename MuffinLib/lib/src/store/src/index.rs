@@ -1,6 +1,6 @@
 //! Store index (index.rs) — MAX (std-only).
 //!
-//! This module provides a lightweight, deterministic index for Muffin Store.
+//! This module provides a lightweight, deterministic index for Flan Store.
 //! It is designed to:
 //! - map logical keys (artifact path / label) -> CAS digest
 //! - provide a stable on-disk serialization (line-based, merge-friendly)
@@ -12,7 +12,7 @@
 //! - GC uses index roots to mark reachable digests
 //!
 //! Format (v1, UTF-8 text):
-//!   # muffin-store-index v1
+//!   # flan-store-index v1
 //!   algo=<fnv1a64|sha256>
 //!   <key>\t<algo:hex>\t<size>\t<kind>\t<note>
 //!
@@ -135,7 +135,7 @@ pub struct StoreIndex {
 impl StoreIndex {
     pub fn new(algo: DigestAlgo) -> Self {
         let mut meta = BTreeMap::new();
-        meta.insert("format".into(), "muffin-store-index v1".into());
+        meta.insert("format".into(), "flan-store-index v1".into());
         Self {
             algo,
             entries: BTreeMap::new(),
@@ -245,8 +245,8 @@ impl StoreIndex {
             }
             if line.starts_with('#') {
                 // allow "header" comment to be stored
-                if line.contains("muffin-store-index") {
-                    meta.insert("format".into(), "muffin-store-index v1".into());
+                if line.contains("flan-store-index") {
+                    meta.insert("format".into(), "flan-store-index v1".into());
                 }
                 continue;
             }
@@ -326,7 +326,7 @@ impl StoreIndex {
 
         let algo = algo.unwrap_or(DigestAlgo::Fnv1a64);
         if meta.get("format").is_none() {
-            meta.insert("format".into(), "muffin-store-index v1".into());
+            meta.insert("format".into(), "flan-store-index v1".into());
         }
 
         Ok(Self { algo, entries, meta })
@@ -334,7 +334,7 @@ impl StoreIndex {
 
     pub fn serialize(&self) -> String {
         let mut out = String::new();
-        out.push_str("# muffin-store-index v1\n");
+        out.push_str("# flan-store-index v1\n");
         out.push_str(&format!("algo={}\n", self.algo.as_str()));
 
         // meta (excluding reserved)
@@ -438,7 +438,7 @@ mod tests {
     #[test]
     fn parse_tolerant_columns() {
         let s = "\
-# muffin-store-index v1
+# flan-store-index v1
 algo=fnv1a64
 a\tfnv1a64:0011223344556677
 ";

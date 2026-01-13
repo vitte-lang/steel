@@ -1,6 +1,6 @@
 from app.state import AppState
 from core.data import seed_catalog
-from core.logic import checkout_default
+from coreic import checkout_default
 
 
 def test_checkout_cycle() -> None:

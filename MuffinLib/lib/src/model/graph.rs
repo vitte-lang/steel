@@ -1,4 +1,4 @@
-// C:\Users\gogin\Documents\GitHub\muffin\MuffinLib\lib\src\model\graph.rs
+// C:\Users\gogin\Documents\GitHub\flan\FlanLib\lib\src\model\graph.rs
 
 #![allow(clippy::type_complexity)]
 
@@ -223,7 +223,7 @@ impl Edge {
     }
 }
 
-/// A deterministic directed graph for Muffin / build planning.
+/// A deterministic directed graph for Flan / build planning.
 ///
 /// - Nodes and edges are stored in stable orders (BTreeMap/BTreeSet patterns)
 /// - Suitable for dot/json export

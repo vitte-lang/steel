@@ -1,4 +1,4 @@
-// /Users/vincent/Documents/Github/muffin/src/default.rs
+// /Users/vincent/Documents/Github/flan/src/default.rs
 //! default — apply defaults to workspace / resolved config (std-only)
 //!
 //! This module centralizes *defaulting logic* so it stays deterministic and auditable.
@@ -13,7 +13,7 @@
 //! - low-level helpers: profile, target triple, paths, toolchain, variables
 //!
 //! Non-goals:
-//! - parsing MuffinConfig syntax
+//! - parsing FlanConfig syntax
 //! - dependency resolution
 
 use std::collections::BTreeMap;
@@ -49,7 +49,7 @@ impl Default for DefaultPolicy {
             default_target: env::var("MUFFIN_TARGET").unwrap_or_else(|_| host_triple_best_effort()),
             build_dir_name: "build".to_string(),
             dist_dir_name: "dist".to_string(),
-            cache_dir_name: ".muffin-cache".to_string(),
+            cache_dir_name: ".flan-cache".to_string(),
             fill_toolchain_from_env: true,
             fill_common_vars: true,
         }
@@ -98,7 +98,7 @@ pub fn apply_defaults_to_resolved(cfg: &mut build_muf::ResolvedConfig, policy: &
 
     // Vars: ensure common vars exist.
     if policy.fill_common_vars {
-        ensure_common_vars(&cfg.project_root, &cfg.muffinfile_path, &cfg.profile, &cfg.target, &mut cfg.vars);
+        ensure_common_vars(&cfg.project_root, &cfg.flanfile_path, &cfg.profile, &cfg.target, &mut cfg.vars);
     }
 
     // Map toolchain overrides into env-style vars for downstream execution.
@@ -106,21 +106,21 @@ pub fn apply_defaults_to_resolved(cfg: &mut build_muf::ResolvedConfig, policy: &
 }
 
 /// Ensure a config has at least these keys:
-/// - muffin.root, muffin.file, muffin.profile, muffin.target
+/// - flan.root, flan.file, flan.profile, flan.target
 pub fn ensure_common_vars(
     root: &Path,
-    muffinfile: &Path,
+    flanfile: &Path,
     profile: &str,
     target: &str,
     vars: &mut BTreeMap<String, String>,
 ) {
-    vars.entry("muffin.root".to_string())
+    vars.entry("flan.root".to_string())
         .or_insert_with(|| root.to_string_lossy().to_string());
-    vars.entry("muffin.file".to_string())
-        .or_insert_with(|| muffinfile.to_string_lossy().to_string());
-    vars.entry("muffin.profile".to_string())
+    vars.entry("flan.file".to_string())
+        .or_insert_with(|| flanfile.to_string_lossy().to_string());
+    vars.entry("flan.profile".to_string())
         .or_insert_with(|| profile.to_string());
-    vars.entry("muffin.target".to_string())
+    vars.entry("flan.target".to_string())
         .or_insert_with(|| target.to_string());
 }
 
@@ -215,8 +215,8 @@ mod tests {
 
         assert!(!cfg.profile.trim().is_empty());
         assert!(!cfg.target.trim().is_empty());
-        assert!(cfg.vars.contains_key("muffin.root"));
-        assert!(cfg.vars.contains_key("muffin.file"));
+        assert!(cfg.vars.contains_key("flan.root"));
+        assert!(cfg.vars.contains_key("flan.file"));
         assert!(cfg.paths.build_dir.to_string_lossy().contains("build"));
     }
 }

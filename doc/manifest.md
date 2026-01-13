@@ -1,20 +1,20 @@
-<a id="muffin-manifest-documentation-complete"></a>
-# Muffin Manifest (documentation complete)
+<a id="flan-manifest-documentation-complete"></a>
+# Flan Manifest (documentation complete)
 
-Ce document est une reference exhaustive sur Muffin dans ce depot. Il couvre la CLI, les formats, la syntaxe MUF, les regles de resolution, les logs et les conventions effectives dans le code source.
+Ce document est une reference exhaustive sur Flan dans ce depot. Il couvre la CLI, les formats, la syntaxe MUF, les regles de resolution, les logs et les conventions effectives dans le code source.
 
 <a id="1-vision-et-modele-mental"></a>
 ## 1. Vision et modele mental
 
-Muffin est la couche **de configuration declarative** du build. Il:
+Flan est la couche **de configuration declarative** du build. Il:
 - parse et valide des fichiers MUF,
 - resolve les selections (profil/target) et les valeurs derivees,
-- emet un artefact canonique **Muffinconfig.mff**,
+- emet un artefact canonique **Flanconfig.mff**,
 - fournit un runner minimal pour executer des bakes declaratifs.
 
 Le pipeline est scinde en deux phases:
-1) **Configuration** (build muffin) -> produit Muffinconfig.mff.
-2) **Execution** (run) -> interprete MuffinConfig.muf pour executer des outils.
+1) **Configuration** (build flan) -> produit Flanconfig.mff.
+2) **Execution** (run) -> interprete FlanConfig.muf pour executer des outils.
 
 Cette separation garantit la reproductibilite: la configuration figee peut etre relue, versionnee et comparee.
 
@@ -27,15 +27,15 @@ Cette separation garantit la reproductibilite: la configuration figee peut etre 
 - **Bake**: unite de travail dans un DAG, definie par des sources, des runs et un output.
 - **Run**: etape d execution d un tool, qui transforme des inputs en outputs.
 - **MUF**: format declaratif (fichier texte) base sur blocs et directives.
-- **MFF**: format resolu (fichier texte stable) emis par `build muffin`.
+- **MFF**: format resolu (fichier texte stable) emis par `build flan`.
 
-<a id="muffinlib-backends"></a>
-## 2.1 MuffinLib (backends)
+<a id="flanlib-backends"></a>
+## 2.1 FlanLib (backends)
 
-Muffin expose des backends via la crate MuffinLib. Exemple d import OCaml:
+Flan expose des backends via la crate FlanLib. Exemple d import OCaml:
 
 ```rust
-use MuffinLib::ocaml::{OcamlArgs, OcamlDriver, OcamlSpec};
+use FlanLib::ocaml::{OcamlArgs, OcamlDriver, OcamlSpec};
 ```
 
 Backends disponibles (liste rapide):
@@ -50,16 +50,16 @@ Backends disponibles (liste rapide):
 <a id="3-1-entrees"></a>
 ### 3.1 Entrees
 
-- `MuffinConfig` ou `muffin`: fichier de configuration cherche par `build muffin`.
-- `MuffinConfig.muf`: fichier MUF attendu par `muffin run` si `--file` n est pas fourni (alias: `MuffinConfg`).
-- Note migration: `Muffinfile` a ete renomme en `MuffinConfig`. Renommer vos fichiers existants si besoin.
+- `FlanConfig` ou `flan`: fichier de configuration cherche par `build flan`.
+- `FlanConfig.muf`: fichier MUF attendu par `flan run` si `--file` n est pas fourni (alias: `FlanConfg`).
+- Note migration: `Flanfile` a ete renomme en `FlanConfig`. Renommer vos fichiers existants si besoin.
 
 <a id="3-2-sorties"></a>
 ### 3.2 Sorties
 
-- `Muffinconfig.mff`: artefact resolu emis par `build muffin` (nom par defaut).
-- `.muffin-cache/`: cache de configuration (check, stats, etc.).
-- `target/muffin_run_<timestamp>.mff`: log d execution du runner (par defaut).
+- `Flanconfig.mff`: artefact resolu emis par `build flan` (nom par defaut).
+- `.flan-cache/`: cache de configuration (check, stats, etc.).
+- `target/flan_run_<timestamp>.mff`: log d execution du runner (par defaut).
 
 <a id="3-3-dossiers-conventionnels"></a>
 ### 3.3 Dossiers conventionnels
@@ -73,14 +73,14 @@ Backends disponibles (liste rapide):
 
 <a id="liste-rapide-commandes"></a>
 Liste rapide (toutes les commandes):
-- [`build muffin`](#42-build-muffin-configuration) (alias: `resolve`, `check`, `print`) — ex: `muffin build muffin --profile debug --target x86_64-unknown-linux-gnu`
-- [`run`](#43-run-execution) — ex: `muffin run --file MinConfig.muf --all`
-- [`doctor`](#44-doctor) — ex: `muffin doctor --json`
-- [`cache`](#45-cache) — ex: `muffin cache status`
-- [`graph`](#46-graph-stub) — ex: `muffin graph --dot`
-- [`fmt`](#47-fmt-stub) — ex: `muffin fmt --file MuffinConfig --check`
-- [`version`](#41-aide-et-version) — ex: `muffin --version`
-- [`help`](#41-aide-et-version) — ex: `muffin help`
+- [`build flan`](#42-build-flan-configuration) (alias: `resolve`, `check`, `print`) — ex: `flan build flan --profile debug --target x86_64-unknown-linux-gnu`
+- [`run`](#43-run-execution) — ex: `flan run --file MinConfig.muf --all`
+- [`doctor`](#44-doctor) — ex: `flan doctor --json`
+- [`cache`](#45-cache) — ex: `flan cache status`
+- [`graph`](#46-graph-stub) — ex: `flan graph --dot`
+- [`fmt`](#47-fmt-stub) — ex: `flan fmt --file FlanConfig --check`
+- [`version`](#41-aide-et-version) — ex: `flan --version`
+- [`help`](#41-aide-et-version) — ex: `flan help`
 
 <a id="flags-frequents"></a>
 ### Flags frequents (profil/target/emit/log)
@@ -92,12 +92,12 @@ Ces flags apparaissent dans plusieurs commandes; ils sont censes rester stables.
 
 - Selection du profil de configuration (ex: `debug`, `release`).
 - Defaut: `debug` (ou `MUFFIN_PROFILE` si defini).
-- Utilise par: `build muffin`, `run`.
+- Utilise par: `build flan`, `run`.
 
 Exemples:
 ```
-muffin build muffin --profile release
-muffin run --profile debug --all
+flan build flan --profile release
+flan run --profile debug --all
 ```
 
 <a id="target-triple"></a>
@@ -105,50 +105,50 @@ muffin run --profile debug --all
 
 - Selection du target de build (ex: `x86_64-unknown-linux-gnu`).
 - Defaut: host best-effort (ou `MUFFIN_TARGET` si defini).
-- Utilise par: `build muffin`.
+- Utilise par: `build flan`.
 
 Exemples:
 ```
-muffin build muffin --target x86_64-apple-darwin
+flan build flan --target x86_64-apple-darwin
 ```
 
 <a id="emit-path"></a>
 #### `--emit <path>`
 
-- Chemin de sortie pour `Muffinconfig.mff`.
-- Defaut: `Muffinconfig.mff` a la racine (ou `MUFFIN_EMIT` si defini).
-- Utilise par: `build muffin`.
+- Chemin de sortie pour `Flanconfig.mff`.
+- Defaut: `Flanconfig.mff` a la racine (ou `MUFFIN_EMIT` si defini).
+- Utilise par: `build flan`.
 
 Exemples:
 ```
-muffin build muffin --emit dist/Muffinconfig.mff
+flan build flan --emit dist/Flanconfig.mff
 ```
 
 <a id="log-path-et-log-mode"></a>
 #### `--log <path>` (et `--log-mode`)
 
 - Chemin de log pour l execution `run`.
-- Defaut: `target/muffin_run_<timestamp>.mff`.
+- Defaut: `target/flan_run_<timestamp>.mff`.
 - `--log-mode` accepte `append` ou `truncate`.
 - Utilise par: `run`.
 
 Exemples:
 ```
-muffin run --log target/run.mff --log-mode truncate --all
+flan run --log target/run.mff --log-mode truncate --all
 ```
 
 <a id="cmd-aide-version"></a>
 ### 4.1 Aide et version
 
-- `muffin help` / `muffin -h` / `muffin --help`
-- `muffin version` / `muffin -V` / `muffin --version`
+- `flan help` / `flan -h` / `flan --help`
+- `flan version` / `flan -V` / `flan --version`
 
-<a id="cmd-build-muffin"></a>
-### 4.2 build muffin (configuration)
+<a id="cmd-build-flan"></a>
+### 4.2 build flan (configuration)
 
 Commande principale:
 ```
-muffin build muffin [--root <path>] [--file <path>] [--profile <name>] [--target <triple>]
+flan build flan [--root <path>] [--file <path>] [--profile <name>] [--target <triple>]
                    [--emit <path>] [--offline] [--strict] [--no-tool-fingerprint]
                    [--include-hidden] [--follow-symlinks] [--max-depth <n>]
                    [--print] [-v]
@@ -156,26 +156,26 @@ muffin build muffin [--root <path>] [--file <path>] [--profile <name>] [--target
 
 Semantique:
 - parse / valide / resolve la configuration,
-- emet `Muffinconfig.mff` (ou `--emit` / `MUFFIN_EMIT`),
+- emet `Flanconfig.mff` (ou `--emit` / `MUFFIN_EMIT`),
 - `--print` affiche le fichier resolu sur stdout.
 
 Aliases:
-- `muffin resolve` : alias de `build muffin`.
-- `muffin check`   : emit dans `.muffin-cache/check/` puis supprime (best effort).
-- `muffin print`   : emit + print.
+- `flan resolve` : alias de `build flan`.
+- `flan check`   : emit dans `.flan-cache/check/` puis supprime (best effort).
+- `flan print`   : emit + print.
 
 <a id="cmd-run"></a>
 ### 4.3 run (execution)
 
 ```
-muffin run [--root <path>] [--file <path>] [--profile <name>]
+flan run [--root <path>] [--file <path>] [--profile <name>]
            [--toolchain <path>] [--bake <name>] [--all]
            [--print] [--no-cache]
            [--log <path>] [--log-mode <append|truncate>] [-v]
 ```
 
 Semantique:
-- lit un fichier MUF (par defaut `MuffinConfig.muf`),
+- lit un fichier MUF (par defaut `FlanConfig.muf`),
 - selectionne les bakes a executer,
 - construit les commandes et execute les tools.
 
@@ -183,7 +183,7 @@ Semantique:
 ### 4.4 doctor
 
 ```
-muffin doctor [--root <path>] [--json] [-v]
+flan doctor [--root <path>] [--json] [-v]
 ```
 
 - diagnostics de presence du fichier de config et des tools.
@@ -192,17 +192,17 @@ muffin doctor [--root <path>] [--json] [-v]
 ### 4.5 cache
 
 ```
-muffin cache <status|clear> [--root <path>] [--json] [-v]
+flan cache <status|clear> [--root <path>] [--json] [-v]
 ```
 
-- `status`: taille/nb fichiers de `.muffin-cache`.
+- `status`: taille/nb fichiers de `.flan-cache`.
 - `clear`: suppression du cache.
 
 <a id="cmd-graph"></a>
 ### 4.6 graph (stub)
 
 ```
-muffin graph [--root <path>] [--text|--dot] [-v]
+flan graph [--root <path>] [--text|--dot] [-v]
 ```
 
 - comportement stub: sortie deterministe et placeholder.
@@ -211,7 +211,7 @@ muffin graph [--root <path>] [--text|--dot] [-v]
 ### 4.7 fmt (stub)
 
 ```
-muffin fmt [--file <path>] [--check] [-v]
+flan fmt [--file <path>] [--check] [-v]
 ```
 
 - comportement stub: placeholder.
@@ -225,25 +225,25 @@ muffin fmt [--file <path>] [--check] [-v]
 - `3`: erreur d execution d outil.
 - `4`: erreur I/O.
 
-<a id="5-resolution-et-discovery-build-muffin"></a>
-## 5. Resolution et discovery (build muffin)
+<a id="5-resolution-et-discovery-build-flan"></a>
+## 5. Resolution et discovery (build flan)
 
 <a id="5-1-racine-du-workspace"></a>
 ### 5.1 Racine du workspace
 
 - par defaut: repertoire courant.
-- `--root <path>` ou argument positionnel apres `build muffin`.
+- `--root <path>` ou argument positionnel apres `build flan`.
 
-<a id="5-2-recherche-de-muffinfile"></a>
-### 5.2 Recherche de MuffinConfig
+<a id="5-2-recherche-de-flanfile"></a>
+### 5.2 Recherche de FlanConfig
 
 Ordre:
-1) `MuffinConfig` ou `muffin` dans la racine.
+1) `FlanConfig` ou `flan` dans la racine.
 2) scan DFS deterministe sous la racine, avec tri lexicographique.
 
 Regles de scan:
 - profondeur max: `--max-depth` (defaut 16).
-- dossiers ignores: `.git`, `.hg`, `.svn`, `target`, `node_modules`, `dist`, `build`, `.muffin`, `.muffin-cache`.
+- dossiers ignores: `.git`, `.hg`, `.svn`, `target`, `node_modules`, `dist`, `build`, `.flan`, `.flan-cache`.
 - si `--include-hidden` n est pas fourni, les fichiers/dirs caches sont ignores.
 - si `--follow-symlinks` est actif, on suit les symlinks.
 - `--strict` fait echouer si un acces FS echoue ou si le fichier est hors root.
@@ -266,13 +266,13 @@ Regles de scan:
   - `MUFFIN_TOOLCHAIN_PYTHON`, `MUFFIN_TOOLCHAIN_OCAML`, `MUFFIN_TOOLCHAIN_GHC`
 - `--no-tool-fingerprint` desactive `tool --version`.
 - fingerprint deterministe (FNV-1a 64-bit) sur:
-  - bytes du MuffinConfig,
+  - bytes du FlanConfig,
   - profile + target,
   - outils et versions.
 - `MUFFIN_FINGERPRINT_TIME=1` ajoute un sel temporel (non deterministe).
 
-<a id="6-format-muffinconfig-mff-mff-v1"></a>
-## 6. Format Muffinconfig.mff (mff v1)
+<a id="6-format-flanconfig-mff-mff-v1"></a>
+## 6. Format Flanconfig.mff (mff v1)
 
 <a id="6-1-header"></a>
 ### 6.1 Header
@@ -287,7 +287,7 @@ mff 1
 ```
 project
   root "/path/to/root"
-  muffinfile "/path/to/MuffinConfig"
+  flanfile "/path/to/FlanConfig"
 .end
 
 select
@@ -298,7 +298,7 @@ select
 paths
   build "/path/to/root/build"
   dist "/path/to/root/dist"
-  cache "/path/to/root/.muffin-cache"
+  cache "/path/to/root/.flan-cache"
 .end
 
 toolchain
@@ -317,11 +317,11 @@ toolchain
 .end
 
 vars
-  set "muffin.profile" "debug"
-  set "muffin.target" "x86_64-unknown-linux-gnu"
-  set "muffin.offline" "false"
-  set "muffin.root" "/path/to/root"
-  set "muffin.file" "/path/to/MuffinConfig"
+  set "flan.profile" "debug"
+  set "flan.target" "x86_64-unknown-linux-gnu"
+  set "flan.offline" "false"
+  set "flan.root" "/path/to/root"
+  set "flan.file" "/path/to/FlanConfig"
 .end
 
 fingerprint
@@ -336,10 +336,10 @@ Notes:
 <a id="6-3-schemas-machine-readables-ide-ci"></a>
 ### 6.3 Schemas machine-readables (IDE/CI)
 
-- `muffin.graph.json/1` (export DAG) : `schemas/muffin.graph.json.schema.json`
-- `muffin.decompile.report` (mff report JSON) : `schemas/muffin.decompile.report.schema.json`
-- `muffin.fingerprints.json/1` (sidecar fingerprints) : `schemas/muffin.fingerprints.json.schema.json`
-- Grammaire MUF : `assets/grammar/muffin.ebnf`
+- `flan.graph.json/1` (export DAG) : `schemas/flan.graph.json.schema.json`
+- `flan.decompile.report` (mff report JSON) : `schemas/flan.decompile.report.schema.json`
+- `flan.fingerprints.json/1` (sidecar fingerprints) : `schemas/flan.fingerprints.json.schema.json`
+- Grammaire MUF : `assets/grammar/flan.ebnf`
 
 <a id="7-format-muf-v4-1"></a>
 ## 7. Format MUF (v4.1)
@@ -465,7 +465,7 @@ Priorite:
 <a id="10-1-emplacement"></a>
 ### 10.1 Emplacement
 
-- par defaut: `target/muffin_run_<timestamp>.mff`.
+- par defaut: `target/flan_run_<timestamp>.mff`.
 - `--log <path>` surcharge l emplacement.
 - `--log-mode truncate` recree le fichier avant execution.
 
@@ -474,9 +474,9 @@ Priorite:
 
 ```
 [log meta]
-format "muffin-runlog-1"
-tool "muffin"
-version "muffin <version>"
+format "flan-runlog-1"
+tool "flan"
+version "flan <version>"
 ts_iso "<RFC3339>"
 ..
 
@@ -516,7 +516,7 @@ ts_iso "<RFC3339>"
 !muf 4
 
 [workspace]
-  .set name "muffin-example-c"
+  .set name "flan-example-c"
   .set root "."
   .set target_dir "target"
   .set profile "debug"
@@ -553,16 +553,16 @@ ts_iso "<RFC3339>"
 
 ```
 # configuration
-muffin build muffin --root . --file MuffinConfig --profile debug --target x86_64-unknown-linux-gnu
-muffin print --root .
+flan build flan --root . --file FlanConfig --profile debug --target x86_64-unknown-linux-gnu
+flan print --root .
 
 # execution
-muffin run --root . --file MuffinConfig.muf --bake app
-muffin run --root . --all --print
+flan run --root . --file FlanConfig.muf --bake app
+flan run --root . --all --print
 ```
 
-<a id="12-3-exemples-muffinconfig-muff-c-c-et-ocaml"></a>
-### 12.3 Exemples MuffinConfig.muff (C/C++/OCaml)
+<a id="12-3-exemples-flanconfig-muff-c-c-et-ocaml"></a>
+### 12.3 Exemples FlanConfig.muff (C/C++/OCaml)
 
 #### C (binaire simple)
 
@@ -1430,16 +1430,16 @@ int main() {
 - `error[IO01]`: erreur I/O.
 
 Conseils:
-- verifier `--root` et l existence de `MuffinConfig` ou `MuffinConfig.muf`.
+- verifier `--root` et l existence de `FlanConfig` ou `FlanConfig.muf`.
 - utiliser `--profile` ou `workspace.profile`.
 - activer `-v` pour des diagnostics.
 
 <a id="14-roadmap-cibles-plausibles"></a>
 ## 14. Roadmap (cibles plausibles)
 
-- Implementer `muffin graph` avec export `text|dot|json` depuis le DAG resolu.
-- Implementer `muffin fmt` (normalisation des blocs/directives).
-- Remplacer la resolution minimale de `build muffin` par un parser MUF complet.
+- Implementer `flan graph` avec export `text|dot|json` depuis le DAG resolu.
+- Implementer `flan fmt` (normalisation des blocs/directives).
+- Remplacer la resolution minimale de `build flan` par un parser MUF complet.
 - Etendre le runner a d autres blocs (targets, toolchains, exports, plans).
 - Exposer un format `.mff` de run log stable et versionne.
 
@@ -1451,8 +1451,8 @@ M1 - CLI et outputs:
 - fmt --check + format deterministe
 
 M2 - Configuration complete:
-- parse MUF complet dans `build muffin`
-- emission `Muffinconfig.mff` basee sur le modele resolu
+- parse MUF complet dans `build flan`
+- emission `Flanconfig.mff` basee sur le modele resolu
 
 M3 - Runner et outillage:
 - support targets/toolchains/exports/plans
@@ -1462,14 +1462,14 @@ M3 - Runner et outillage:
 ## 15. Limitations et etat actuel
 
 - `graph` et `fmt` sont des stubs (placeholder deterministe).
-- le resolver de `build muffin` est minimal (pas de parse MUF complet).
+- le resolver de `build flan` est minimal (pas de parse MUF complet).
 - le runner supporte un sous-ensemble de MUF (workspace/profile/tool/bake/run).
 
 <a id="16-glossaire-rapide"></a>
 ## 16. Glossaire rapide
 
 - **MUF**: format declaratif source.
-- **MFF**: format resolu, stable, emet par `build muffin`.
+- **MFF**: format resolu, stable, emet par `build flan`.
 - **Bake**: noeud du graphe d execution.
 - **Run**: etape d execution d un tool.
 - **Toolchain**: ensemble des executables (cc/ld/ar/rustc).
@@ -1479,7 +1479,7 @@ M3 - Runner et outillage:
 
 Cette section est un guide long format qui suit un projet fictif de A a Z.
 Elle reutilise les concepts de la reference et les illustre avec un chemin
-concret: ecrire un MuffinConfig, generer un MFF, puis executer.
+concret: ecrire un FlanConfig, generer un MFF, puis executer.
 
 <a id="17-1-objectif-et-plan-du-tuto"></a>
 ### 17.1 Objectif et plan du tuto
@@ -1494,7 +1494,7 @@ Plan:
 2) declarer les tools
 3) declarer les bakes
 4) declarer les profiles
-5) executer avec `muffin run`
+5) executer avec `flan run`
 6) utiliser la configuration resolue `.mff`
 
 <a id="17-2-arborescence-initiale"></a>
@@ -1502,7 +1502,7 @@ Plan:
 
 ```
 myproj/
-  MuffinConfig
+  FlanConfig
   src/
     lib/
       lib.c
@@ -1588,7 +1588,7 @@ Le nom `cc` est logique, il n est pas lie a la commande systeme.
 ### 17.7 Execution
 
 ```
-muffin run --root . --file MuffinConfig --bake app
+flan run --root . --file FlanConfig --bake app
 ```
 
 Le runner va:
@@ -1600,10 +1600,10 @@ Le runner va:
 ### 17.8 Premiere configuration resolue
 
 ```
-muffin build muffin --root . --file MuffinConfig --profile debug
+flan build flan --root . --file FlanConfig --profile debug
 ```
 
-Cela produit `Muffinconfig.mff`. C est une photo stable de votre config.
+Cela produit `Flanconfig.mff`. C est une photo stable de votre config.
 
 <a id="18-tutoriel-profiles-et-variantes"></a>
 ## 18. Tutoriel: profiles et variantes
@@ -1630,7 +1630,7 @@ Et adapter le run:
 ### 18.2 Selection du profile
 
 ```
-muffin run --profile release --bake app
+flan run --profile release --bake app
 ```
 
 La selection `--profile` surcharge `workspace.profile`.
@@ -1721,8 +1721,8 @@ Une strategie simple:
 <a id="20-3-version-et-fingerprint"></a>
 ### 20.3 Version et fingerprint
 
-Le build `muffin build` calcule un fingerprint stable:
-- contenu du MuffinConfig
+Le build `flan build` calcule un fingerprint stable:
+- contenu du FlanConfig
 - profil/target
 - versions des tools
 
@@ -1802,7 +1802,7 @@ Ce log sert a diagnostiquer les commandes et la duree.
 ### 23.2 Forcer un log fixe
 
 ```
-muffin run --log target/runlog.mff --log-mode truncate
+flan run --log target/runlog.mff --log-mode truncate
 ```
 
 <a id="23-3-lecture-rapide-du-log"></a>
@@ -1829,7 +1829,7 @@ Si output est plus recent, il skip.
 ### 24.2 Desactiver le cache
 
 ```
-muffin run --no-cache
+flan run --no-cache
 ```
 
 <a id="24-3-regles-pour-un-build-fiable"></a>
@@ -1846,7 +1846,7 @@ muffin run --no-cache
 ### 25.1 Graph text
 
 ```
-muffin graph --text
+flan graph --text
 ```
 
 Dans le futur, cette commande montrera les bakes et dependances.
@@ -1855,13 +1855,13 @@ Dans le futur, cette commande montrera les bakes et dependances.
 ### 25.2 Graph dot
 
 ```
-muffin graph --dot > graph.dot
+flan graph --dot > graph.dot
 ```
 
 <a id="25-3-json-de-graphe"></a>
 ### 25.3 JSON de graphe
 
-Le schema cible est `schemas/muffin.graph.json.schema.json`.
+Le schema cible est `schemas/flan.graph.json.schema.json`.
 Utiliser ce format pour IDE/CI.
 
 <a id="26-tutoriel-diagnostics-et-qualite"></a>
@@ -1879,13 +1879,13 @@ Utiliser ce format pour IDE/CI.
 
 ```
 error[P001]: invalid token
-  at MuffinConfig:12:3
+  at FlanConfig:12:3
 ```
 
 <a id="26-3-conseils-pour-debug"></a>
 ### 26.3 Conseils pour debug
 
-- utiliser `muffin print`
+- utiliser `flan print`
 - isoler un bake via `--bake`
 - activer `-v`
 
@@ -1896,15 +1896,15 @@ error[P001]: invalid token
 ### 27.1 CI
 
 Dans un pipeline:
-1) `muffin build muffin --print > Muffinconfig.mff`
-2) archiver `Muffinconfig.mff`
-3) executer `muffin run`
+1) `flan build flan --print > Flanconfig.mff`
+2) archiver `Flanconfig.mff`
+3) executer `flan run`
 
 <a id="27-2-ide"></a>
 ### 27.2 IDE
 
 L IDE peut:
-- lire `Muffinconfig.mff`
+- lire `Flanconfig.mff`
 - afficher le DAG via `graph.json`
 - naviguer dans les sources
 
@@ -1919,7 +1919,7 @@ Utiliser les schemas pour valider la sortie machine-readable.
 Exemple typique:
 ```
 root/
-  MuffinConfig
+  FlanConfig
   src/
     lib/
     app/
@@ -1968,12 +1968,12 @@ Utiliser `--log` et inspecter la commande.
 <a id="30-2-rappel-des-chemins-par-defaut"></a>
 ### 30.2 Rappel des chemins par defaut
 
-- `MuffinConfig` a la racine
-- `Muffinconfig.mff` en sortie
+- `FlanConfig` a la racine
+- `Flanconfig.mff` en sortie
 - `target/` pour logs runner
 
-<a id="30-3-exemple-de-muffinfile-complet"></a>
-### 30.3 Exemple de MuffinConfig complet
+<a id="30-3-exemple-de-flanfile-complet"></a>
+### 30.3 Exemple de FlanConfig complet
 
 ```
 !muf 4
@@ -2036,7 +2036,7 @@ Utiliser `--log` et inspecter la commande.
 - build en `release`
 - executer tests
 - verifier outputs dans `dist/`
-- archiver `Muffinconfig.mff`
+- archiver `Flanconfig.mff`
 
 <a id="31-tutoriel-structure-multi-modules"></a>
 ## 31. Tutoriel: structure multi-modules
@@ -2048,7 +2048,7 @@ Objectif: organiser un projet avec plusieurs libs et un binaire final.
 
 ```
 root/
-  MuffinConfig
+  FlanConfig
   src/
     core/
       core.c
@@ -2114,7 +2114,7 @@ Utiliser `target/out` pour les sorties immediates, puis `dist/` pour publier.
 <a id="32-2-copier-vers-dist"></a>
 ### 32.2 Copier vers dist
 
-Muffin ne fait pas la copie automatiquement. On peut ajouter un bake:
+Flan ne fait pas la copie automatiquement. On peut ajouter un bake:
 ```
 [bake dist]
   .needs app
@@ -2149,7 +2149,7 @@ Le JSON est pratique pour:
 <a id="33-2-graph-json"></a>
 ### 33.2 Graph JSON
 
-Le schema cible est `muffin.graph.json/1`.
+Le schema cible est `flan.graph.json/1`.
 Le fichier est stable et deterministe.
 
 <a id="33-3-validation"></a>
@@ -2169,7 +2169,7 @@ Le header `mff 1` fixe la version du format.
 ### 34.2 Utiliser MFF en CI
 
 ```
-muffin build muffin --print > Muffinconfig.mff
+flan build flan --print > Flanconfig.mff
 ```
 
 Puis archiver l artefact. Cela permet:
@@ -2187,7 +2187,7 @@ Comme c est deterministe, un diff git est lisible et utile.
 <a id="35-1-erreurs-de-parse"></a>
 ### 35.1 Erreurs de parse
 
-Si MUF est invalide, la phase `build muffin` renvoie des diagnostics.
+Si MUF est invalide, la phase `build flan` renvoie des diagnostics.
 
 <a id="35-2-erreurs-de-run"></a>
 ### 35.2 Erreurs de run
@@ -2247,8 +2247,8 @@ Le cache est simple mais efficace pour des projets moyens.
 ### 37.2 Tests par profile
 
 ```
-muffin run --profile debug --bake test
-muffin run --profile release --bake test
+flan run --profile debug --bake test
+flan run --profile release --bake test
 ```
 
 <a id="37-3-tests-en-ci"></a>
@@ -2262,8 +2262,8 @@ Automatiser la sequence:
 <a id="38-tutoriel-conventions-d-equipe"></a>
 ## 38. Tutoriel: conventions d equipe
 
-<a id="38-1-style-muffinfile"></a>
-### 38.1 Style MuffinConfig
+<a id="38-1-style-flanfile"></a>
+### 38.1 Style FlanConfig
 
 Recommandations:
 - un bloc par ligne de responsabilite
@@ -2273,7 +2273,7 @@ Recommandations:
 <a id="38-2-lint-humain"></a>
 ### 38.2 Lint humain
 
-Avant `muffin fmt`, etablir une convention d equipe.
+Avant `flan fmt`, etablir une convention d equipe.
 
 <a id="38-3-revisions"></a>
 ### 38.3 Revisions
@@ -2310,7 +2310,7 @@ Les blocs et directives ont ete concus pour etre etendus sans casser la compatib
 ### 40.1 Checklists par phase
 
 Configuration:
-- MuffinConfig valide
+- FlanConfig valide
 - profiles definis
 - tools resolus
 
@@ -2385,7 +2385,7 @@ Objectif: montrer un pipeline en deux etapes avec outputs intermediaires.
 <a id="42-1-c-ocaml-conceptuel"></a>
 ### 42.1 C + OCaml (conceptuel)
 
-Muffin peut orchestrer plusieurs tools:
+Flan peut orchestrer plusieurs tools:
 - `ocamlc`
 - `gcc`
 
@@ -2520,7 +2520,7 @@ Les outputs intermediaires doivent etre dans `target/out`.
 <a id="46-2-nettoyage"></a>
 ### 46.2 Nettoyage
 
-`muffin cache clear` supprime les caches, pas les outputs.
+`flan cache clear` supprime les caches, pas les outputs.
 Utiliser un script externe pour nettoyer `target/`.
 
 <a id="46-3-regle-d-or"></a>
@@ -2531,25 +2531,25 @@ Ne pas melanger sources et outputs.
 <a id="47-tutoriel-cli-approfondie"></a>
 ## 47. Tutoriel: CLI approfondie
 
-<a id="47-1-muffin-build"></a>
-### 47.1 Muffin build
+<a id="47-1-flan-build"></a>
+### 47.1 Flan build
 
 ```
-muffin build muffin --root . --file MuffinConfig --profile debug --target x86_64-unknown-linux-gnu
+flan build flan --root . --file FlanConfig --profile debug --target x86_64-unknown-linux-gnu
 ```
 
-<a id="47-2-muffin-print"></a>
-### 47.2 Muffin print
+<a id="47-2-flan-print"></a>
+### 47.2 Flan print
 
 ```
-muffin print --root . --file MuffinConfig
+flan print --root . --file FlanConfig
 ```
 
-<a id="47-3-muffin-check"></a>
-### 47.3 Muffin check
+<a id="47-3-flan-check"></a>
+### 47.3 Flan check
 
 ```
-muffin check --root . --file MuffinConfig
+flan check --root . --file FlanConfig
 ```
 
 <a id="48-tutoriel-audit-de-config"></a>
@@ -2566,7 +2566,7 @@ muffin check --root . --file MuffinConfig
 ### 48.2 Comparer deux MFF
 
 ```
-diff Muffinconfig.mff other/Muffinconfig.mff
+diff Flanconfig.mff other/Flanconfig.mff
 ```
 
 <a id="48-3-metriques-simples"></a>
@@ -2584,8 +2584,8 @@ Nombre de bakes, nombre de sources, taille du log.
 2) en faire des bakes
 3) stabiliser les paths
 
-<a id="49-2-exemple-makefile-muffin"></a>
-### 49.2 Exemple Makefile -> Muffin
+<a id="49-2-exemple-makefile-flan"></a>
+### 49.2 Exemple Makefile -> Flan
 
 ```
 gcc -c src/main.c -o target/out/main.o
@@ -2615,7 +2615,7 @@ Devient:
 <a id="50-conclusion-du-guide"></a>
 ## 50. Conclusion du guide
 
-Muffin vise:
+Flan vise:
 - un format declaratif stable
 - une separation claire entre configuration et execution
 - des artefacts deterministes
@@ -2629,8 +2629,8 @@ Ce guide peut etre etendu en fonction de l evolution du runner et des schemas.
 ### 51.1 Documenter le build
 
 Ajouter un court README:
-- comment lancer `muffin build`
-- comment lancer `muffin run`
+- comment lancer `flan build`
+- comment lancer `flan run`
 - quels outputs attendre
 
 <a id="51-2-exemples-reproduisibles"></a>
@@ -2641,7 +2641,7 @@ Fournir un exemple minimal qui compile sans configuration externe.
 <a id="51-3-mettre-a-jour"></a>
 ### 51.3 Mettre a jour
 
-Synchroniser la doc avec les changements du MuffinConfig.
+Synchroniser la doc avec les changements du FlanConfig.
 
 <a id="52-tutoriel-projets-multi-binaries"></a>
 ## 52. Tutoriel: projets multi-binaries
@@ -2673,15 +2673,15 @@ Synchroniser la doc avec les changements du MuffinConfig.
 ### 52.2 Execution ciblee
 
 ```
-muffin run --bake app_one
-muffin run --bake app_two
+flan run --bake app_one
+flan run --bake app_two
 ```
 
 <a id="52-3-execution-globale"></a>
 ### 52.3 Execution globale
 
 ```
-muffin run --all
+flan run --all
 ```
 
 <a id="53-tutoriel-organisation-par-dossiers"></a>
@@ -2691,14 +2691,14 @@ muffin run --all
 ### 53.1 Convention de root
 
 Le root doit contenir:
-- MuffinConfig
+- FlanConfig
 - sources
 - dossier target
 
 <a id="53-2-sous-projets"></a>
 ### 53.2 Sous-projets
 
-Si plusieurs projets cohabitent, preferer un MuffinConfig par projet.
+Si plusieurs projets cohabitent, preferer un FlanConfig par projet.
 
 <a id="53-3-eviter-les-chemins-absolus"></a>
 ### 53.3 Eviter les chemins absolus
@@ -2773,8 +2773,8 @@ Inspecter le log:
 - `cmd`
 - `status`
 
-<a id="56-3-reproduire-hors-muffin"></a>
-### 56.3 Reproduire hors Muffin
+<a id="56-3-reproduire-hors-flan"></a>
+### 56.3 Reproduire hors Flan
 
 Copier la commande et l executer manuellement pour isoler l erreur.
 
@@ -2836,7 +2836,7 @@ Supprimer `target/` avant une release propre.
 <a id="59-3-archive-finale"></a>
 ### 59.3 Archive finale
 
-Archiver `dist/` et `Muffinconfig.mff`.
+Archiver `dist/` et `Flanconfig.mff`.
 
 <a id="60-annexes-additionnelles"></a>
 ## 60. Annexes additionnelles
@@ -2846,7 +2846,7 @@ Archiver `dist/` et `Muffinconfig.mff`.
 
 ```
 root/
-  MuffinConfig
+  FlanConfig
   src/
   include/
   assets/
@@ -2857,10 +2857,10 @@ root/
 <a id="60-2-commandes-essentielles"></a>
 ### 60.2 Commandes essentielles
 
-- `muffin build muffin`
-- `muffin run`
-- `muffin print`
-- `muffin check`
+- `flan build flan`
+- `flan run`
+- `flan print`
+- `flan check`
 
 <a id="60-3-rappel"></a>
 ### 60.3 Rappel
@@ -2916,20 +2916,20 @@ Toujours utiliser des paths relatifs au root.
 <a id="63-2-normalisation"></a>
 ### 63.2 Normalisation
 
-Muffin normalise les chemins avec `/`.
+Flan normalise les chemins avec `/`.
 
 <a id="63-3-depots-multiples"></a>
 ### 63.3 Depots multiples
 
-Si un sous-projet est un submodule, preferer un MuffinConfig separé.
+Si un sous-projet est un submodule, preferer un FlanConfig separé.
 
 <a id="64-tutoriel-edition-collaborative"></a>
 ## 64. Tutoriel: edition collaborative
 
-<a id="64-1-revue-de-muffinfile"></a>
-### 64.1 Revue de MuffinConfig
+<a id="64-1-revue-de-flanfile"></a>
+### 64.1 Revue de FlanConfig
 
-Considerer le MuffinConfig comme du code critique.
+Considerer le FlanConfig comme du code critique.
 
 <a id="64-2-historique"></a>
 ### 64.2 Historique
@@ -2939,7 +2939,7 @@ Les diffs sur MUF sont lisibles et utiles.
 <a id="64-3-validation-ci"></a>
 ### 64.3 Validation CI
 
-Executer `muffin check` en CI.
+Executer `flan check` en CI.
 
 <a id="65-tutoriel-logs-et-audit-long-terme"></a>
 ## 65. Tutoriel: logs et audit long terme
@@ -2957,7 +2957,7 @@ Comparer les logs pour detecter des regressions de commandes.
 <a id="65-3-tracabilite"></a>
 ### 65.3 Traçabilite
 
-Associer un log a une version de MuffinConfig.
+Associer un log a une version de FlanConfig.
 
 <a id="66-tutoriel-build-reproductible"></a>
 ## 66. Tutoriel: build reproductible
@@ -2975,7 +2975,7 @@ Utiliser des toolchains versionnees.
 <a id="66-3-mff-comme-preuve"></a>
 ### 66.3 MFF comme preuve
 
-Archiver `Muffinconfig.mff` avec l artefact final.
+Archiver `Flanconfig.mff` avec l artefact final.
 
 <a id="67-tutoriel-integrer-des-scripts"></a>
 ## 67. Tutoriel: integrer des scripts
@@ -3013,8 +3013,8 @@ Limiter les scripts pour conserver la reproductibilite.
 ### 68.1 Deux targets
 
 ```
-muffin build muffin --target x86_64-unknown-linux-gnu
-muffin build muffin --target aarch64-unknown-linux-gnu
+flan build flan --target x86_64-unknown-linux-gnu
+flan build flan --target aarch64-unknown-linux-gnu
 ```
 
 <a id="68-2-outputs-separes"></a>
@@ -3025,7 +3025,7 @@ Utiliser `target/${target}` pour separer les artefacts.
 <a id="68-3-verifier-les-diffs"></a>
 ### 68.3 Verifier les diffs
 
-Comparer les `Muffinconfig.mff` par target.
+Comparer les `Flanconfig.mff` par target.
 
 <a id="69-tutoriel-maintenir-le-guide"></a>
 ## 69. Tutoriel: maintenir le guide
@@ -3070,15 +3070,15 @@ Fin du guide et de la reference.
 <a id="71-tutoriel-discipline-de-versioning"></a>
 ## 71. Tutoriel: discipline de versioning
 
-<a id="71-1-versionner-le-muffinfile"></a>
-### 71.1 Versionner le MuffinConfig
+<a id="71-1-versionner-le-flanfile"></a>
+### 71.1 Versionner le FlanConfig
 
-Toujours committer le MuffinConfig avec le code source.
+Toujours committer le FlanConfig avec le code source.
 
 <a id="71-2-versionner-le-mff"></a>
 ### 71.2 Versionner le MFF
 
-Archiver `Muffinconfig.mff` pour les builds importants.
+Archiver `Flanconfig.mff` pour les builds importants.
 
 <a id="71-3-tagger-les-releases"></a>
 ### 71.3 Tagger les releases
@@ -3244,18 +3244,18 @@ Eviter les changements cassants dans les conventions internes.
 <a id="80-1-commandes-resumees"></a>
 ### 80.1 Commandes resumees
 
-- build: `muffin build muffin`
-- run: `muffin run --bake app`
-- print: `muffin print`
+- build: `flan build flan`
+- run: `flan run --bake app`
+- print: `flan print`
 
 <a id="80-2-artefacts"></a>
 ### 80.2 Artefacts
 
-- `Muffinconfig.mff`
+- `Flanconfig.mff`
 - logs runner
 - outputs `target/out`
 
 <a id="80-3-dernier-rappel"></a>
 ### 80.3 Dernier rappel
 
-Muffin privilegie la stabilite et la lisibilite des configurations.
+Flan privilegie la stabilite et la lisibilite des configurations.

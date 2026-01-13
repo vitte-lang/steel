@@ -1,6 +1,6 @@
 // src/remake.rs
 //
-// Muffin — remake / incremental rebuild engine (planner-side)
+// Flan — remake / incremental rebuild engine (planner-side)
 //
 // Purpose:
 // - Decide what needs to be rebuilt, given a set of rules, their dependencies, and a cache DB.

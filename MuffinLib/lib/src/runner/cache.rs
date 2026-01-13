@@ -1,6 +1,6 @@
-// C:\Users\gogin\Documents\GitHub\muffin\MuffinLib\lib\src\runner\cache.rs
+// C:\Users\gogin\Documents\GitHub\flan\FlanLib\lib\src\runner\cache.rs
 
-//! Cache / store layer for Muffin runner.
+//! Cache / store layer for Flan runner.
 //!
 //! This module provides a deterministic, content-addressed cache used during
 //! the execution phase (build vitte / runner).
@@ -11,7 +11,7 @@
 //! - portable across machines
 //! - policy-driven (on/off/readonly/strict in future)
 
-use crate::error::MuffinError;
+use crate::error::FlanError;
 use sha2::{Digest, Sha256};
 use std::{
     fs,
@@ -60,7 +60,7 @@ impl Cache {
     }
 
     /// Store a file in the cache (content-addressed).
-    pub fn store_file(&self, src: &Path) -> Result<CacheKey, MuffinError> {
+    pub fn store_file(&self, src: &Path) -> Result<CacheKey, FlanError> {
         let hash = hash_file(src)?;
         let key = CacheKey::new(hash.clone());
         let dst = self.entry_path(&key);
@@ -78,10 +78,10 @@ impl Cache {
     }
 
     /// Restore a cached file to a destination path.
-    pub fn restore_file(&self, key: &CacheKey, dst: &Path) -> Result<(), MuffinError> {
+    pub fn restore_file(&self, key: &CacheKey, dst: &Path) -> Result<(), FlanError> {
         let src = self.entry_path(key);
         if !src.exists() {
-            return Err(MuffinError::ExecutionFailed(format!(
+            return Err(FlanError::ExecutionFailed(format!(
                 "cache miss for key {}",
                 key.hash
             )));
@@ -97,7 +97,7 @@ impl Cache {
 }
 
 /// Compute SHA-256 hash of a file (hex-encoded).
-pub fn hash_file(path: &Path) -> Result<String, MuffinError> {
+pub fn hash_file(path: &Path) -> Result<String, FlanError> {
     let mut file = fs::File::open(path)?;
     let mut hasher = Sha256::new();
     let mut buf = [0u8; 8192];
@@ -127,7 +127,7 @@ mod tests {
 
         let src = dir.path().join("input.txt");
         let mut f = fs::File::create(&src).unwrap();
-        writeln!(f, "hello muffin").unwrap();
+        writeln!(f, "hello flan").unwrap();
 
         let key = cache.store_file(&src).unwrap();
         assert!(cache.contains(&key));
@@ -136,6 +136,6 @@ mod tests {
         cache.restore_file(&key, &dst).unwrap();
 
         let content = fs::read_to_string(dst).unwrap();
-        assert!(content.contains("hello muffin"));
+        assert!(content.contains("hello flan"));
     }
 }

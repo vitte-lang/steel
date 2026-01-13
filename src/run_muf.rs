@@ -70,7 +70,7 @@ impl std::error::Error for RunError {}
 #[derive(Debug, Default, Clone)]
 pub struct RunOptions {
     pub root_dir: PathBuf,
-    pub muffin_file: Option<PathBuf>,
+    pub flan_file: Option<PathBuf>,
     pub profile: Option<String>,
     pub toolchain_dir: Option<PathBuf>,
     pub dry_run: bool,
@@ -108,15 +108,15 @@ pub fn run(opts: &RunOptions) -> Result<(), RunError> {
         cwd.join(&opts.root_dir)
     };
 
-    let muffinfile = resolve_muffinfile(&root, opts.muffin_file.as_deref())?;
-    let src = fs::read_to_string(&muffinfile).map_err(|e| RunError::Io {
+    let flanfile = resolve_flanfile(&root, opts.flan_file.as_deref())?;
+    let src = fs::read_to_string(&flanfile).map_err(|e| RunError::Io {
         op: "read",
-        path: muffinfile.clone(),
+        path: flanfile.clone(),
         err: e.to_string(),
     })?;
 
     let muf = vittelib::muf_parser::parse_muf(&src).map_err(|e| RunError::Parse {
-        path: muffinfile.clone(),
+        path: flanfile.clone(),
         msg: e.to_string(),
     })?;
     let cfg = interpret_muf(&muf)?;
@@ -260,7 +260,7 @@ fn run_log_path(root: &Path, workspace: &BTreeMap<String, String>, override_path
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("target"));
     let ts = run_log_stamp();
-    let name = format!("muffin_run_{ts}.mff");
+    let name = format!("flan_run_{ts}.mff");
     resolve_path_under_root(root, &target_dir.join(name).to_string_lossy())
 }
 
@@ -518,12 +518,12 @@ fn write_log_header(path: &Path) -> Result<(), RunError> {
         path: path.to_path_buf(),
         err: e.to_string(),
     })?;
-    writeln!(f, "format \"muffin-runlog-1\"").map_err(|e| RunError::Io {
+    writeln!(f, "format \"flan-runlog-1\"").map_err(|e| RunError::Io {
         op: "write",
         path: path.to_path_buf(),
         err: e.to_string(),
     })?;
-    writeln!(f, "tool \"muffin\"").map_err(|e| RunError::Io {
+    writeln!(f, "tool \"flan\"").map_err(|e| RunError::Io {
         op: "write",
         path: path.to_path_buf(),
         err: e.to_string(),
@@ -619,7 +619,7 @@ fn build_args(
     Ok(args)
 }
 
-fn resolve_muffinfile(root: &Path, explicit: Option<&Path>) -> Result<PathBuf, RunError> {
+fn resolve_flanfile(root: &Path, explicit: Option<&Path>) -> Result<PathBuf, RunError> {
     if let Some(p) = explicit {
         let out = if p.is_absolute() {
             p.to_path_buf()
@@ -629,13 +629,13 @@ fn resolve_muffinfile(root: &Path, explicit: Option<&Path>) -> Result<PathBuf, R
         return Ok(out);
     }
 
-    let candidate = root.join("MuffinConfig.muf");
+    let candidate = root.join("FlanConfig.muf");
     if candidate.exists() {
         Ok(candidate)
     } else {
         Err(RunError::Config {
-            msg: format!("missing MuffinConfig.muf in {}", root.display()),
-            help: Some("pass --file <path> or create MuffinConfig.muf".into()),
+            msg: format!("missing FlanConfig.muf in {}", root.display()),
+            help: Some("pass --file <path> or create FlanConfig.muf".into()),
         })
     }
 }
@@ -1161,7 +1161,7 @@ mod tests {
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_nanos();
-        dir.push(format!("muffin_test_{prefix}_{stamp}"));
+        dir.push(format!("flan_test_{prefix}_{stamp}"));
         fs::create_dir_all(&dir).unwrap();
         dir
     }
@@ -1224,8 +1224,8 @@ mod tests {
         ensure_log_header(&log).unwrap();
         let s = fs::read_to_string(&log).unwrap();
         assert_eq!(s.matches("[log meta]").count(), 1);
-        assert!(s.contains("format \"muffin-runlog-1\""));
-        assert!(s.contains("tool \"muffin\""));
+        assert!(s.contains("format \"flan-runlog-1\""));
+        assert!(s.contains("tool \"flan\""));
         fs::remove_dir_all(&dir).ok();
     }
 

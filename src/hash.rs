@@ -1,6 +1,6 @@
 // src/hash.rs
 //
-// Muffin — hash (stable hashing + fingerprints)
+// Flan — hash (stable hashing + fingerprints)
 //
 // Purpose:
 // - Provide fast, dependency-free hashing primitives used for:

@@ -1,6 +1,6 @@
 // src/shuffle.rs
 //
-// Muffin — shuffle utilities
+// Flan — shuffle utilities
 //
 // Purpose:
 // - Provide deterministic and non-deterministic shuffling helpers.

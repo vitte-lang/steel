@@ -1,22 +1,22 @@
 // src/load.rs
 //
-// Muffin — load (workspace discovery + MuffinConfig/build.muf ingestion)
+// Flan — load (workspace discovery + FlanConfig/build.muf ingestion)
 //
 // Purpose:
-// - Locate a workspace root and MuffinConfig/build.muf
+// - Locate a workspace root and FlanConfig/build.muf
 // - Load + merge configuration layers into a single in-memory Workspace
 // - Provide deterministic precedence + clear diagnostics
 //
 // This module focuses on:
-// - discovery: walk up from cwd to find MuffinConfig/build.muf (or use explicit path)
+// - discovery: walk up from cwd to find FlanConfig/build.muf (or use explicit path)
 // - reading: uses a small read helper (inline) to read UTF-8 (BOM safe)
 // - parsing: stub interface; plug your real parser/lowering pipeline
 // - merging: overlays (profile/target/env) applied deterministically
 //
 // Notes:
 // - No external deps.
-// - Replace "stub parser" with your actual Muffin AST/IR builder.
-// - Designed to be used by CLI commands like `build muffin`, `check`, etc.
+// - Replace "stub parser" with your actual Flan AST/IR builder.
+// - Designed to be used by CLI commands like `build flan`, `check`, etc.
 //
 // Typical usage:
 //   let ctx = LoadCtx::from_cwd(".")?.with_profile("debug");
@@ -92,8 +92,8 @@ pub struct LoadCtx {
     /// Optional explicit workspace root.
     pub root_hint: Option<PathBuf>,
 
-    /// Optional explicit muffinfile path.
-    pub muffinfile_hint: Option<PathBuf>,
+    /// Optional explicit flanfile path.
+    pub flanfile_hint: Option<PathBuf>,
 
     /// Active profile & target (optional).
     pub profile: Option<String>,
@@ -102,7 +102,7 @@ pub struct LoadCtx {
     /// env var prefix for overrides (ex: MUFFIN_)
     pub env_prefix: String,
 
-    /// if true, missing MuffinConfig doesn't error (returns empty workspace)
+    /// if true, missing FlanConfig doesn't error (returns empty workspace)
     pub allow_missing: bool,
 }
 
@@ -111,7 +111,7 @@ impl LoadCtx {
         Ok(Self {
             cwd: cwd.into(),
             root_hint: None,
-            muffinfile_hint: None,
+            flanfile_hint: None,
             profile: None,
             target: None,
             env_prefix: "MUFFIN_".to_string(),
@@ -124,8 +124,8 @@ impl LoadCtx {
         self
     }
 
-    pub fn with_muffinfile(mut self, path: impl Into<PathBuf>) -> Self {
-        self.muffinfile_hint = Some(path.into());
+    pub fn with_flanfile(mut self, path: impl Into<PathBuf>) -> Self {
+        self.flanfile_hint = Some(path.into());
         self
     }
 
@@ -155,7 +155,7 @@ impl LoadCtx {
 #[derive(Debug, Clone)]
 pub struct Workspace {
     pub root: PathBuf,
-    pub muffinfile: Option<PathBuf>,
+    pub flanfile: Option<PathBuf>,
 
     pub vars: BTreeMap<String, String>,
     pub profiles: BTreeMap<String, Profile>,
@@ -170,7 +170,7 @@ impl Workspace {
     pub fn new(root: PathBuf) -> Self {
         Self {
             root,
-            muffinfile: None,
+            flanfile: None,
             vars: BTreeMap::new(),
             profiles: BTreeMap::new(),
             targets: BTreeMap::new(),
@@ -229,7 +229,7 @@ pub struct WorkspaceLoader {
 impl Default for WorkspaceLoader {
     fn default() -> Self {
         Self {
-            search_filenames: vec!["MuffinConfig", "build.muf"],
+            search_filenames: vec!["FlanConfig", "build.muf"],
             allow_overrides: true,
             last_wins: true,
         }
@@ -245,18 +245,18 @@ impl WorkspaceLoader {
         let root = self.resolve_root(ctx)?;
         let mut ws = Workspace::new(root.clone());
 
-        let muffinfile = self.resolve_muffinfile(ctx, &root)?;
-        ws.muffinfile = muffinfile.clone();
+        let flanfile = self.resolve_flanfile(ctx, &root)?;
+        ws.flanfile = flanfile.clone();
 
-        // Base layer: from MuffinConfig/build.muf (if any)
-        if let Some(path) = &muffinfile {
+        // Base layer: from FlanConfig/build.muf (if any)
+        if let Some(path) = &flanfile {
             let text = read_text_utf8(path)?;
-            let frag = parse_muffinfile(path, &text)?;
+            let frag = parse_flanfile(path, &text)?;
             self.merge_fragment(&mut ws, frag, "file")?;
         } else if !ctx.allow_missing {
             return Err(LoadError::NotFound {
                 what: format!(
-                    "workspace muffinfile (searched: {})",
+                    "workspace flanfile (searched: {})",
                     self.search_filenames.join(", ")
                 ),
             });
@@ -277,12 +277,12 @@ impl WorkspaceLoader {
             return Ok(r.clone());
         }
 
-        // If muffinfile hint provided, root is its parent (best-effort).
-        if let Some(p) = &ctx.muffinfile_hint {
+        // If flanfile hint provided, root is its parent (best-effort).
+        if let Some(p) = &ctx.flanfile_hint {
             return Ok(p.parent().unwrap_or_else(|| Path::new(".")).to_path_buf());
         }
 
-        // Otherwise: walk up from cwd to find MuffinConfig/build.muf
+        // Otherwise: walk up from cwd to find FlanConfig/build.muf
         let mut cur = ctx.cwd.clone();
         loop {
             for name in &self.search_filenames {
@@ -301,8 +301,8 @@ impl WorkspaceLoader {
         Ok(ctx.cwd.clone())
     }
 
-    fn resolve_muffinfile(&self, ctx: &LoadCtx, root: &Path) -> Result<Option<PathBuf>, LoadError> {
-        if let Some(p) = &ctx.muffinfile_hint {
+    fn resolve_flanfile(&self, ctx: &LoadCtx, root: &Path) -> Result<Option<PathBuf>, LoadError> {
+        if let Some(p) = &ctx.flanfile_hint {
             return Ok(Some(p.clone()));
         }
 
@@ -317,8 +317,8 @@ impl WorkspaceLoader {
     }
 
     fn merge_fragment(&self, ws: &mut Workspace, frag: WorkspaceFragment, source: &str) -> Result<(), LoadError> {
-        if ws.muffinfile.is_none() {
-            ws.muffinfile = frag.muffinfile.clone();
+        if ws.flanfile.is_none() {
+            ws.flanfile = frag.flanfile.clone();
         }
 
         merge_kv(&mut ws.vars, frag.vars, self, &format!("{source}.vars"))?;
@@ -334,7 +334,7 @@ impl WorkspaceLoader {
 
 #[derive(Debug, Clone, Default)]
 pub struct WorkspaceFragment {
-    pub muffinfile: Option<PathBuf>,
+    pub flanfile: Option<PathBuf>,
     pub vars: BTreeMap<String, String>,
     pub profiles: BTreeMap<String, Profile>,
     pub targets: BTreeMap<String, Target>,
@@ -464,7 +464,7 @@ fn strip_utf8_bom(bytes: &[u8]) -> &[u8] {
 
 /* ============================== parser + lowering ============================== */
 
-fn parse_muffinfile(path: &Path, text: &str) -> Result<WorkspaceFragment, LoadError> {
+fn parse_flanfile(path: &Path, text: &str) -> Result<WorkspaceFragment, LoadError> {
     let ast = parse_muf(text).map_err(|e| LoadError::Parse {
         path: path.to_path_buf(),
         message: format!("{} at {}:{}", e.message, e.span.start.line, e.span.start.col),
@@ -474,7 +474,7 @@ fn parse_muffinfile(path: &Path, text: &str) -> Result<WorkspaceFragment, LoadEr
 
 fn lower_muf_ast(path: &Path, ast: &MufFile) -> Result<WorkspaceFragment, LoadError> {
     let mut frag = WorkspaceFragment::default();
-    frag.muffinfile = Some(path.to_path_buf());
+    frag.flanfile = Some(path.to_path_buf());
     for stmt in &ast.stmts {
         lower_stmt(stmt, &mut frag)?;
     }

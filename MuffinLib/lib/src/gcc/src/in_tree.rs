@@ -1,4 +1,4 @@
-//! GCC / Clang driver integration for Muffin (in-tree module).
+//! GCC / Clang driver integration for Flan (in-tree module).
 
 pub mod detect;
 pub mod args;

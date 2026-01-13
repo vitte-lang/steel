@@ -1,8 +1,8 @@
-// /Users/vincent/Documents/Github/muffin/src/def_target_file.rs
+// /Users/vincent/Documents/Github/flan/src/def_target_file.rs
 //! def_target_file — target file definition + serialization (std-only)
 //!
 //! This module defines a compact, explicit representation for a resolved Target,
-//! suitable for inclusion in `Muffinconfig.mff` and/or for consumption by a build runner.
+//! suitable for inclusion in `Flanconfig.mff` and/or for consumption by a build runner.
 //!
 //! Key design points:
 //! - deterministic ordering (BTreeMap/BTreeSet)
@@ -10,7 +10,7 @@
 //! - explicit host/target selection + options
 //! - optional lists of rules/steps (can be expanded later)
 //!
-//! Not a full build graph. The execution layer owns DAG orchestration; Muffin emits
+//! Not a full build graph. The execution layer owns DAG orchestration; Flan emits
 //! resolved target *configuration* and optional rule metadata.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -267,7 +267,7 @@ pub fn format_target_block(t: &TargetDef) -> String {
 
 /// Parse a target block from an extremely small line-based format.
 ///
-/// This is *not* the MuffinConfig grammar. This is a utility parser for the emitted `.mff` blocks
+/// This is *not* the FlanConfig grammar. This is a utility parser for the emitted `.mff` blocks
 /// in tests/tools, using a minimal subset:
 /// - `target "<id>"` begins a block
 /// - `kind "<k>"`, `output "<o>"`, `root "<path>"`, `name "<name>"`

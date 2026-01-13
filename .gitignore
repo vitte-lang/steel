@@ -35,7 +35,7 @@
 *.cmd
 
 # Logs & traces
-*.log
+*
 *.tmp
 *.swp
 *.swo
@@ -61,7 +61,7 @@ aclocal.m4
 autom4te.cache/
 compile
 config.cache
-config.log
+config
 config.status
 configure
 depcomp
@@ -99,7 +99,7 @@ Thumbs.db
 *.7z
 
 # =========================
-# Muffin artifacts
+# Flan artifacts
 # =========================
 *.mff
 .DS_Store

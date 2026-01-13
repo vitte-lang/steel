@@ -1,9 +1,9 @@
-//! C:\Users\gogin\Documents\GitHub\muffin\MuffinLib\lib\src\lib.rs — MAX.
+//! C:\Users\gogin\Documents\GitHub\flan\FlanLib\lib\src\lib.rs — MAX.
 //!
-//! MuffinLib: core utility library for Muffin toolchain.
+//! FlanLib: core utility library for Flan toolchain.
 //!
 //! This crate is intentionally dependency-light and std-only by default.
-//! It aggregates and re-exports foundational modules used across the Muffin
+//! It aggregates and re-exports foundational modules used across the Flan
 //! compiler/build ecosystem.
 //!
 //! Modules (expected):
@@ -24,7 +24,7 @@ pub mod error;
 pub mod prelude;
 
 pub type Result<T> = crate::error::Result<T>;
-pub use crate::error::MuffinError;
+pub use crate::error::FlanError;
 
 // Facade: wire module roots to the shared source trees.
 #[path = "diag/src/mod.rs"]
@@ -49,11 +49,11 @@ pub mod ocaml;
 pub mod cpython;
 
 // MUF v4.1 lexer/parser/AST (Bracket + Dot Ops).
-#[path = "muffin/src/ast.rs"]
+#[path = "flan/src/ast.rs"]
 pub mod muf_ast;
-#[path = "muffin/src/lexer.rs"]
+#[path = "flan/src/lexer.rs"]
 pub mod muf_lexer;
-#[path = "muffin/src/parser.rs"]
+#[path = "flan/src/parser.rs"]
 pub mod muf_parser;
 
 // --- Common ergonomic re-exports (keep stable) ---
@@ -77,7 +77,7 @@ pub use muf_parser::{parse_muf, ParseError as MufParseError};
 // If not present, remove these lines.
 pub use platform::Platform;
 
-/// MuffinLib version string (compile-time).
+/// FlanLib version string (compile-time).
 pub const MUFFINLIB_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Build profile info (best-effort).
@@ -94,7 +94,7 @@ pub fn info_string() -> String {
     let os = option_env!("CARGO_CFG_TARGET_OS").unwrap_or("unknown");
     let arch = option_env!("CARGO_CFG_TARGET_ARCH").unwrap_or("unknown");
     format!(
-        "muffinlib {} ({}/{})",
+        "flanlib {} ({}/{})",
         MUFFINLIB_VERSION,
         os,
         arch

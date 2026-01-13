@@ -1,4 +1,4 @@
-//! Content-Addressable Storage (CAS) for Muffin Store (cas.rs) — MAX (std-only).
+//! Content-Addressable Storage (CAS) for Flan Store (cas.rs) — MAX (std-only).
 //!
 //! Goals:
 //! - Store blobs by content hash (digest) under a directory root.
@@ -139,7 +139,7 @@ pub struct CasConfig {
 impl Default for CasConfig {
     fn default() -> Self {
         Self {
-            root: PathBuf::from(".muffin-store"),
+            root: PathBuf::from(".flan-store"),
             cas_dir_name: "cas".into(),
             version: "v1".into(),
             algo: DigestAlgo::Fnv1a64,
@@ -462,7 +462,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_else(|_| std::time::Duration::from_secs(0))
             .as_nanos();
-        p.push(format!("muffin_cas_test_{pid}_{ts}"));
+        p.push(format!("flan_cas_test_{pid}_{ts}"));
         let _ = std::fs::remove_dir_all(&p);
         p
     }

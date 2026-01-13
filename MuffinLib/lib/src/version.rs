@@ -1,6 +1,6 @@
 //! Version utilities (version.rs) — MAX (std-only).
 //!
-//! This module centralizes Muffin/MuffinLib version strings and compatibility helpers.
+//! This module centralizes Flan/FlanLib version strings and compatibility helpers.
 //!
 //! Design goals:
 //! - Provide a single place to query the library version.
@@ -108,7 +108,7 @@ impl fmt::Display for Version {
 }
 
 /// Return parsed library version (best-effort).
-pub fn muffinlib_version_parsed() -> Version {
+pub fn flanlib_version_parsed() -> Version {
     Version::parse(MUFFINLIB_VERSION).unwrap_or_else(|| Version::new(0, 0, 0))
 }
 

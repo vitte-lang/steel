@@ -1,6 +1,6 @@
 //! Graph module root.
 //!
-//! This crate/module hosts build-graph primitives used by Muffin.
+//! This crate/module hosts build-graph primitives used by Flan.
 //!
 //! Submodules:
 //! - `bake`: build graph (nodes/artifacts/deps) + planning helpers

@@ -1,11 +1,11 @@
 [package]
-name = "MuffinLib"
+name = "FlanLib"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.63"
-description = "Core utility library for Muffin"
+description = "Core utility library for Flan"
 license = "MIT"
-repository = "https://github.com/vitte-lang/muffin"
+repository = "https://github.com/vitte-lang/flan"
 publish = false
 
 [lib]

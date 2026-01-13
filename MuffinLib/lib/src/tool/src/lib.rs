@@ -1,5 +1,5 @@
-// C:\Users\gogin\Documents\GitHub\muffin\MuffinLib\lib\src\tool\src\lib.rs
-//! muffin_tool — MAX (std-only).
+// C:\Users\gogin\Documents\GitHub\flan\FlanLib\lib\src\tool\src\lib.rs
+//! flan_tool — MAX (std-only).
 //!
 //! Modules:
 //! - `mod`    : core spec/runner/output types

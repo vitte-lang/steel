@@ -1,23 +1,23 @@
 [package]
-name = "muffin"
+name = "flan"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.63"
 autobins = false
 authors = ["Vitte Team"]
-description = "Muffin: Declarative configuration layer for Vitte build system"
-repository = "https://github.com/vitte-lang/muffin"
+description = "Flan: Declarative configuration layer for Vitte build system"
+repository = "https://github.com/vitte-lang/flan"
 license = "See COPYING"
 readme = "README.md"
 
 [workspace]
 members = [
     ".",
-    "MuffinLib/lib",
-    "MuffinLib/lib/src/platform",
-    "MuffinLib/lib/src/gcc",
-    "MuffinLib/lib/src/ocaml",
-    "MuffinLib/lib/src/cpython",
+    "FlanLib/lib",
+    "FlanLib/lib/src/platform",
+    "FlanLib/lib/src/gcc",
+    "FlanLib/lib/src/ocaml",
+    "FlanLib/lib/src/cpython",
 ]
 resolver = "2"
 
@@ -45,7 +45,7 @@ env_logger = "0.11"
 chrono = "0.4"
 
 # VitteLib (utility library)
-vittelib = { path = "MuffinLib/lib", package = "MuffinLib" }
+vittelib = { path = "FlanLib/lib", package = "FlanLib" }
 
 # Utilities
 regex = "1.10"
@@ -78,12 +78,12 @@ criterion = "0.5"
 insta = "1.34"
 
 [lib]
-name = "muffin"
+name = "flan"
 path = "src/lib.rs"
 
 [[bin]]
-name = "muffin"
-path = "src/bin/muffin.rs"
+name = "flan"
+path = "src/bin/flan.rs"
 
 [profile.release]
 opt-level = 3

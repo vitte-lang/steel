@@ -1,4 +1,4 @@
-//! MuffinLib error types and Result alias.
+//! FlanLib error types and Result alias.
 
 use std::fmt;
 
@@ -10,9 +10,9 @@ pub struct Diagnostic {
     pub help: Vec<String>,
 }
 
-/// Error type for the MuffinLib facade crate.
+/// Error type for the FlanLib facade crate.
 #[derive(Debug)]
-pub enum MuffinError {
+pub enum FlanError {
     /// Generic error message.
     Message(String),
     /// User-facing validation failure.
@@ -29,63 +29,63 @@ pub enum MuffinError {
     Io(std::io::Error),
 }
 
-impl fmt::Display for MuffinError {
+impl fmt::Display for FlanError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            MuffinError::Message(msg) => write!(f, "{msg}"),
-            MuffinError::ValidationFailed(msg) => write!(f, "{msg}"),
-            MuffinError::ExecutionFailed(msg) => write!(f, "{msg}"),
-            MuffinError::InvalidCommand { message, .. } => write!(f, "{message}"),
-            MuffinError::NotFound(msg) => write!(f, "{msg}"),
-            MuffinError::Internal(msg) => write!(f, "{msg}"),
-            MuffinError::Io(err) => write!(f, "io error: {err}"),
+            FlanError::Message(msg) => write!(f, "{msg}"),
+            FlanError::ValidationFailed(msg) => write!(f, "{msg}"),
+            FlanError::ExecutionFailed(msg) => write!(f, "{msg}"),
+            FlanError::InvalidCommand { message, .. } => write!(f, "{message}"),
+            FlanError::NotFound(msg) => write!(f, "{msg}"),
+            FlanError::Internal(msg) => write!(f, "{msg}"),
+            FlanError::Io(err) => write!(f, "io error: {err}"),
         }
     }
 }
 
-impl std::error::Error for MuffinError {}
+impl std::error::Error for FlanError {}
 
-impl From<std::io::Error> for MuffinError {
+impl From<std::io::Error> for FlanError {
     fn from(err: std::io::Error) -> Self {
-        MuffinError::Io(err)
+        FlanError::Io(err)
     }
 }
 
-impl MuffinError {
+impl FlanError {
     /// Build a structured diagnostic for rendering in the CLI.
     pub fn diagnostic(&self) -> Diagnostic {
         match self {
-            MuffinError::Message(msg) => Diagnostic {
+            FlanError::Message(msg) => Diagnostic {
                 code: "E0001",
                 message: msg.clone(),
                 help: Vec::new(),
             },
-            MuffinError::ValidationFailed(msg) => Diagnostic {
+            FlanError::ValidationFailed(msg) => Diagnostic {
                 code: "E0100",
                 message: msg.clone(),
                 help: Vec::new(),
             },
-            MuffinError::ExecutionFailed(msg) => Diagnostic {
+            FlanError::ExecutionFailed(msg) => Diagnostic {
                 code: "E0200",
                 message: msg.clone(),
                 help: Vec::new(),
             },
-            MuffinError::InvalidCommand { message, help } => Diagnostic {
+            FlanError::InvalidCommand { message, help } => Diagnostic {
                 code: "E0300",
                 message: message.clone(),
                 help: help.clone(),
             },
-            MuffinError::NotFound(msg) => Diagnostic {
+            FlanError::NotFound(msg) => Diagnostic {
                 code: "E0404",
                 message: msg.clone(),
                 help: Vec::new(),
             },
-            MuffinError::Internal(msg) => Diagnostic {
+            FlanError::Internal(msg) => Diagnostic {
                 code: "E0500",
                 message: msg.clone(),
                 help: Vec::new(),
             },
-            MuffinError::Io(err) => Diagnostic {
+            FlanError::Io(err) => Diagnostic {
                 code: "E0002",
                 message: format!("io error: {err}"),
                 help: Vec::new(),
@@ -96,11 +96,11 @@ impl MuffinError {
     /// Exit code mapping for CLI consumers.
     pub fn exit_code(&self) -> u8 {
         match self {
-            MuffinError::InvalidCommand { .. } | MuffinError::ValidationFailed(_) => 2,
-            MuffinError::ExecutionFailed(_) => 3,
-            MuffinError::Io(_) | MuffinError::NotFound(_) => 4,
-            MuffinError::Internal(_) => 5,
-            MuffinError::Message(_) => 1,
+            FlanError::InvalidCommand { .. } | FlanError::ValidationFailed(_) => 2,
+            FlanError::ExecutionFailed(_) => 3,
+            FlanError::Io(_) | FlanError::NotFound(_) => 4,
+            FlanError::Internal(_) => 5,
+            FlanError::Message(_) => 1,
         }
     }
 
@@ -123,5 +123,5 @@ impl MuffinError {
     }
 }
 
-/// Convenience Result alias for MuffinLib consumers.
-pub type Result<T> = std::result::Result<T, MuffinError>;
+/// Convenience Result alias for FlanLib consumers.
+pub type Result<T> = std::result::Result<T, FlanError>;

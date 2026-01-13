@@ -8,7 +8,7 @@ pub struct CSpec {
     /// Standard C
     pub c_std: CStd,
 
-    /// Profil logique Muffin
+    /// Profil logique Flan
     pub profile: BuildProfile,
 
     /// Options générales
@@ -39,7 +39,7 @@ pub enum BuildProfile {
 }
 
 impl CSpec {
-    /// Profil par défaut Muffin (dev)
+    /// Profil par défaut Flan (dev)
     pub fn dev() -> Self {
         Self {
             c_std: CStd::C17,
@@ -61,7 +61,7 @@ impl CSpec {
         }
     }
 
-    /// Profil release canonique Muffin
+    /// Profil release canonique Flan
     pub fn release() -> Self {
         Self {
             c_std: CStd::C17,
@@ -83,7 +83,7 @@ impl CSpec {
         }
     }
 
-    /// Appliquer des overrides venant de MuffinConfig
+    /// Appliquer des overrides venant de FlanConfig
     pub fn apply_overrides(&mut self, o: CSpecOverrides) {
         if let Some(std) = o.c_std {
             self.c_std = std;
@@ -115,7 +115,7 @@ impl CSpec {
     }
 }
 
-/// Overrides optionnels (issus du MuffinConfig)
+/// Overrides optionnels (issus du FlanConfig)
 #[derive(Debug, Default, Clone)]
 pub struct CSpecOverrides {
     pub c_std: Option<CStd>,

@@ -1,8 +1,8 @@
-// /Users/vincent/Documents/Github/muffin/src/externs.rs
+// /Users/vincent/Documents/Github/flan/src/externs.rs
 //! externs — external tool and environment detection (std-only)
 //!
 //! Provides best-effort discovery for common build tools and environment facts.
-//! Intended for Muffin (configuration) and the execution layer to share a stable
+//! Intended for Flan (configuration) and the execution layer to share a stable
 //! interface for:
 //! - locating tools in PATH
 //! - probing versions (best-effort, deterministic formatting)

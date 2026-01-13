@@ -1,19 +1,19 @@
-// /Users/vincent/Documents/Github/muffin/src/commands.rs
+// /Users/vincent/Documents/Github/flan/src/commands.rs
 //! commands — CLI command implementations (std-only)
 //!
-//! This module provides a thin, deterministic CLI dispatcher for Muffin.
+//! This module provides a thin, deterministic CLI dispatcher for Flan.
 //! It is designed to work without external crates and to keep the CLI contract
 //! stable while internal modules evolve.
 //!
 //! Supported commands (current contract):
 //! - `help` / `--help`
 //! - `version`
-//! - `build muffin [flags...]`  (Configuration phase; emits Muffinconfig.mff)
-//! - `resolve [flags...]`       (alias of `build muffin`)
+//! - `build flan [flags...]`  (Configuration phase; emits Flanconfig.mff)
+//! - `resolve [flags...]`       (alias of `build flan`)
 //! - `check [flags...]`         (best-effort validate; emits then deletes unless strict)
 //! - `print [flags...]`         (emits + prints the resolved mcfg)
 //! - `graph`                    (stub; reserved for DOT/text graph export)
-//! - `fmt`                      (stub; reserved for formatting MuffinConfigs)
+//! - `fmt`                      (stub; reserved for formatting FlanConfigs)
 
 use std::env;
 use std::fs;
@@ -24,7 +24,7 @@ use crate::build_muf;
 use crate::build_muf::BuildMufError;
 use crate::run_muf;
 
-pub const CLI_NAME: &str = "muffin";
+pub const CLI_NAME: &str = "flan";
 
 #[derive(Debug)]
 pub enum CommandError {
@@ -50,7 +50,7 @@ pub enum Cmd {
     Help,
     Version,
 
-    BuildMuffin(build_muf::BuildMufOptions),
+    BuildFlan(build_muf::BuildMufOptions),
     Resolve(build_muf::BuildMufOptions),
     Check(build_muf::BuildMufOptions),
     Print(build_muf::BuildMufOptions),
@@ -140,7 +140,7 @@ pub fn parse_command(args: &[String]) -> Result<Cmd> {
     if args.len() <= 1 {
         return Err(CommandError::Usage(err_msg(
             "U001",
-            "missing command. Run `muffin -help` for the list of commands.",
+            "missing command. Run `flan -help` for the list of commands.",
         )));
     }
 
@@ -155,7 +155,7 @@ pub fn parse_command(args: &[String]) -> Result<Cmd> {
     }
 
     match sub {
-        // `build muffin ...`
+        // `build flan ...`
         "build" => parse_build(&args[2..]),
         // `resolve ...` (alias)
         "resolve" => {
@@ -202,9 +202,9 @@ fn parse_build(rest: &[String]) -> Result<Cmd> {
 
     let tool = rest[0].as_str();
     match tool {
-        "muffin" => {
+        "flan" => {
             let o = parse_build_args(&rest[1..])?;
-            Ok(Cmd::BuildMuffin(o))
+            Ok(Cmd::BuildFlan(o))
         }
         other => Err(CommandError::Usage(format!(
             "unknown build target: {other}\n\n{}",
@@ -423,7 +423,7 @@ fn parse_run_args(rest: &[String]) -> Result<run_muf::RunOptions> {
                 let v = it.next().ok_or_else(|| {
                     CommandError::Usage("--file expects a path\n\n".to_string() + run_help())
                 })?;
-                o.muffin_file = Some(PathBuf::from(v));
+                o.flan_file = Some(PathBuf::from(v));
             }
             "--profile" => {
                 let v = it.next().ok_or_else(|| {
@@ -493,7 +493,7 @@ fn parse_run_args(rest: &[String]) -> Result<run_muf::RunOptions> {
 fn map_build_error(err: BuildMufError) -> CommandError {
     match err {
         BuildMufError::Arg { msg } => {
-            if msg.contains("build muffin —") {
+            if msg.contains("build flan —") {
                 CommandError::Usage(msg)
             } else {
                 CommandError::Usage(format!(
@@ -521,12 +521,12 @@ pub fn execute(cmd: Cmd) -> Result<()> {
             Ok(())
         }
 
-        Cmd::BuildMuffin(o) => exec_build_muffin(o),
-        Cmd::Resolve(o) => exec_build_muffin(o),
+        Cmd::BuildFlan(o) => exec_build_flan(o),
+        Cmd::Resolve(o) => exec_build_flan(o),
 
         Cmd::Print(mut o) => {
             o.print = true;
-            exec_build_muffin(o)
+            exec_build_flan(o)
         }
         Cmd::Run(o) => exec_run_muf(o),
         Cmd::Doctor(o) => exec_doctor(o),
@@ -536,7 +536,7 @@ pub fn execute(cmd: Cmd) -> Result<()> {
         Cmd::Check(mut o) => {
             // Best-effort semantics:
             // - run the resolver
-            // - emit to a temp-ish path under `.muffin-cache/check/`
+            // - emit to a temp-ish path under `.flan-cache/check/`
             // - remove after success (unless strict=false removal failures are ignored)
             let root = if o.root_dir.as_os_str().is_empty() {
                 env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
@@ -545,7 +545,7 @@ pub fn execute(cmd: Cmd) -> Result<()> {
             };
 
             let check_emit = root
-                .join(".muffin-cache")
+                .join(".flan-cache")
                 .join("check")
                 .join(build_muf::DEFAULT_EMIT_NAME);
 
@@ -584,7 +584,7 @@ pub fn execute(cmd: Cmd) -> Result<()> {
     }
 }
 
-fn exec_build_muffin(o: build_muf::BuildMufOptions) -> Result<()> {
+fn exec_build_flan(o: build_muf::BuildMufOptions) -> Result<()> {
     build_muf::run(&o).map_err(|e| CommandError::Failure {
         code: 1,
         msg: err_msg("E001", e.to_string()),
@@ -610,7 +610,7 @@ fn exec_graph(o: GraphOptions) -> Result<()> {
             println!("root: {}", root.display());
         }
         GraphFormat::Dot => {
-            println!("digraph muffin {{");
+            println!("digraph flan {{");
             println!("  // graph export not implemented");
             println!("  root [label=\"{}\"];", escape_dot(&root.display().to_string()));
             println!("}}");
@@ -620,9 +620,9 @@ fn exec_graph(o: GraphOptions) -> Result<()> {
 }
 
 fn exec_fmt(o: FmtOptions) -> Result<()> {
-    // Reserved: MuffinConfig formatter.
+    // Reserved: FlanConfig formatter.
     // Current behavior: deterministic placeholder.
-    let file = o.file.unwrap_or_else(|| PathBuf::from("MuffinConfig"));
+    let file = o.file.unwrap_or_else(|| PathBuf::from("FlanConfig"));
     if o.check_only {
         println!("fmt --check: not implemented (file={})", file.display());
     } else {
@@ -641,45 +641,45 @@ fn version_string() -> String {
 fn usage_unknown(cmd: &str) -> String {
     err_msg(
         "U001",
-        format!("unknown command: {cmd}. Run `muffin -help` for the list of commands."),
+        format!("unknown command: {cmd}. Run `flan -help` for the list of commands."),
     )
 }
 
 pub fn usage_text() -> &'static str {
-    "muffin — Declarative configuration layer for the Muffin pipeline
+    "flan — Declarative configuration layer for the Flan pipeline
 
 USAGE:
-  muffin <command> [args...]
+  flan <command> [args...]
 
 COMMANDS:
   help, -h, --help
   version, -V, --version
 
-  build muffin [--root <path>] [--file <path>] [--profile <name>] [--target <triple>] [--emit <path>]
+  build flan [--root <path>] [--file <path>] [--profile <name>] [--target <triple>] [--emit <path>]
               [--offline] [--strict] [--no-tool-fingerprint] [--include-hidden] [--follow-symlinks]
               [--max-depth <n>] [--print] [-v]
 
-  resolve      Alias of: build muffin (emits Muffinconfig.mff)
-  check        Validate best-effort (emits then deletes Muffinconfig.mff under .muffin-cache/check/)
-  print        Emit + print Muffinconfig.mff to stdout
-  run          Execute tool steps from MuffinConfig.muf (runner)
+  resolve      Alias of: build flan (emits Flanconfig.mff)
+  check        Validate best-effort (emits then deletes Flanconfig.mff under .flan-cache/check/)
+  print        Emit + print Flanconfig.mff to stdout
+  run          Execute tool steps from FlanConfig.muf (runner)
   doctor       Diagnostics for PATH, tools, and config
   toolchain    Toolchain diagnostics (doctor)
   cache        Cache status/clear
 
   graph        (stub) Export graph (text|dot)
-  fmt          (stub) Format MuffinConfig
+  fmt          (stub) Format FlanConfig
 
 NOTES:
-  - `build muffin` performs the Configuration phase and emits Muffinconfig.mff.
-  - Running `muffin` with no args shows this help."
+  - `build flan` performs the Configuration phase and emits Flanconfig.mff.
+  - Running `flan` with no args shows this help."
 }
 
 fn graph_help() -> &'static str {
-    "muffin graph (stub)
+    "flan graph (stub)
 
 USAGE:
-  muffin graph [--root <path>] [--text|--dot] [-v]
+  flan graph [--root <path>] [--text|--dot] [-v]
 
 FLAGS:
   --root <path>   Workspace root
@@ -689,26 +689,26 @@ FLAGS:
 }
 
 fn fmt_help() -> &'static str {
-    "muffin fmt (stub)
+    "flan fmt (stub)
 
 USAGE:
-  muffin fmt [--file <path>] [--check] [-v]
+  flan fmt [--file <path>] [--check] [-v]
 
 FLAGS:
-  --file <path>   MuffinConfig path (default: MuffinConfig)
+  --file <path>   FlanConfig path (default: FlanConfig)
   --check         Check-only mode
   -v, --verbose   Verbose output"
 }
 
 fn run_help() -> &'static str {
-    "muffin run — Execute tool steps from MuffinConfig.muf
+    "flan run — Execute tool steps from FlanConfig.muf
 
 USAGE:
-  muffin run [--root <path>] [--file <path>] [--profile <name>] [--toolchain <path>] [--bake <name>] [--all] [--print] [--no-cache] [--log <path>] [--log-mode <m>] [-v]
+  flan run [--root <path>] [--file <path>] [--profile <name>] [--toolchain <path>] [--bake <name>] [--all] [--print] [--no-cache] [--log <path>] [--log-mode <m>] [-v]
 
 FLAGS:
   --root <path>     Workspace root (default: cwd)
-  --file <path>     Explicit MuffinConfig path (default: MuffinConfig.muf under root)
+  --file <path>     Explicit FlanConfig path (default: FlanConfig.muf under root)
   --profile <name>  Select profile (default: workspace.profile or debug)
   --toolchain <p>   Toolchain directory (overrides PATH lookup for tools)
   --bake <name>     Run a specific bake (repeatable)
@@ -721,10 +721,10 @@ FLAGS:
 }
 
 fn doctor_help() -> &'static str {
-    "muffin doctor
+    "flan doctor
 
 USAGE:
-  muffin doctor [--root <path>] [--json] [-v]
+  flan doctor [--root <path>] [--json] [-v]
 
 FLAGS:
   --root <path>   Workspace root (default: cwd)
@@ -733,10 +733,10 @@ FLAGS:
 }
 
 fn toolchain_help() -> &'static str {
-    "muffin toolchain doctor
+    "flan toolchain doctor
 
 USAGE:
-  muffin toolchain doctor [--json] [-v]
+  flan toolchain doctor [--json] [-v]
 
 FLAGS:
   --json          JSON output (machine-friendly)
@@ -744,10 +744,10 @@ FLAGS:
 }
 
 fn cache_help() -> &'static str {
-    "muffin cache
+    "flan cache
 
 USAGE:
-  muffin cache <status|clear> [--root <path>] [--json] [-v]
+  flan cache <status|clear> [--root <path>] [--json] [-v]
 
 FLAGS:
   --root <path>   Workspace root (default: cwd)
@@ -816,9 +816,9 @@ fn exec_doctor(o: DoctorOptions) -> Result<()> {
     let root = o
         .root_dir
         .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
-    let config_path = root.join("MuffinConfig.muf");
+    let config_path = root.join("FlanConfig.muf");
 
-    let tools = ["muffin", "gcc", "ar"];
+    let tools = ["flan", "gcc", "ar"];
     if o.json {
         let config_exists = config_path.exists();
         let mut out = String::new();
@@ -855,7 +855,7 @@ fn exec_doctor(o: DoctorOptions) -> Result<()> {
         return Ok(());
     }
 
-    println!("muffin doctor");
+    println!("flan doctor");
     println!("root: {}", root.display());
     if config_path.exists() {
         println!("config: ok ({})", config_path.display());
@@ -972,7 +972,7 @@ fn exec_toolchain_doctor(o: ToolchainDoctorOptions) -> Result<()> {
         return Ok(());
     }
 
-    println!("muffin toolchain doctor");
+    println!("flan toolchain doctor");
 
     match (&python_exec, &python_info) {
         (Some(path), Some((impl_name, ver))) => {
@@ -1017,7 +1017,7 @@ fn exec_cache(o: CacheOptions) -> Result<()> {
     let root = o
         .root_dir
         .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
-    let cache_dir = root.join(".muffin-cache");
+    let cache_dir = root.join(".flan-cache");
 
     match o.action {
         CacheAction::Status => {

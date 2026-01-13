@@ -1,11 +1,11 @@
-# Architecture interne - Muffin
+# Architecture interne - Flan
 
 ## Vue d'ensemble
 
-Muffin est organisé en **modules fonctionnels** selon le pipeline de configuration :
+Flan est organisé en **modules fonctionnels** selon le pipeline de configuration :
 
 ```
-INPUT (MuffinConfig, toolchains, targets)
+INPUT (FlanConfig, toolchains, targets)
   ↓
 [PARSER] → tokens/AST
   ↓
@@ -13,7 +13,7 @@ INPUT (MuffinConfig, toolchains, targets)
   ↓
 [RESOLVER] → resolved configuration
   ↓
-[GENERATOR] → Muffinconfig.mcfg
+[GENERATOR] → Flanconfig.mcfg
   ↓
 OUTPUT (consommé par le runner)
 ```
@@ -38,10 +38,10 @@ OUTPUT (consommé par le runner)
 
 ### Generator (`generator::*`)
 - **interface.rs** — Abstraction runtime (I/O, filesystem)
-- **output.rs** — Sérialisation en Muffinconfig.mcfg, export graphes
+- **output.rs** — Sérialisation en Flanconfig.mcfg, export graphes
 
 ### Model (`model::*`)
-- **muffinint.rs** — Internal data structures (Workspace, Package, Profile, Target, Toolchain)
+- **flanint.rs** — Internal data structures (Workspace, Package, Profile, Target, Toolchain)
 - **def_target_file.rs** — Target file definitions
 - **rule.rs** — Rule model and implicit rules
 
@@ -73,11 +73,11 @@ OUTPUT (consommé par le runner)
 
 ## Flux de données
 
-### Phase 1 : Configuration (build muffin)
+### Phase 1 : Configuration (build flan)
 
 ```
 1. LOAD
-   MuffinConfig → (arscan) → tokens
+   FlanConfig → (arscan) → tokens
                  ↓
    tokens → (read) → AST (Workspace, Packages, Profiles, Targets)
 
@@ -100,13 +100,13 @@ OUTPUT (consommé par le runner)
          ConfigResolved
 
 4. GENERATE
-   ConfigResolved → (output) → Muffinconfig.mcfg
+   ConfigResolved → (output) → Flanconfig.mcfg
                                + exports (DOT, JSON, etc.)
 ```
 
 ### Phase 2 : Construction (execution)
 
-Le runner lit Muffinconfig.mcfg et :
+Le runner lit Flanconfig.mcfg et :
 - Construit le DAG des règles
 - Résout les dépendances de fichiers
 - Exécute l'ordre topologique
@@ -116,7 +116,7 @@ Le runner lit Muffinconfig.mcfg et :
 
 ### Séparation Déclaratif/Exécutif
 
-- **Muffin** (déclaratif) : *Ce qu'on veut construire*
+- **Flan** (déclaratif) : *Ce qu'on veut construire*
   - Config normalisée et validée
   - Pas de détails d'exécution (pas de flags compilateur réels, pas d'ordre d'exécution)
 
@@ -124,7 +124,7 @@ Le runner lit Muffinconfig.mcfg et :
   - DAG, parallélisation, cache
   - Détails d'exécution isolés
 
-### Muffinconfig.mcfg comme contrat
+### Flanconfig.mcfg comme contrat
 
 - Configuration **gelée** (immutable après génération)
 - **Normalisée** (plus d'ambiguïté)
@@ -172,7 +172,7 @@ Le runner lit Muffinconfig.mcfg et :
 
 1. Implémenter dans `commands.rs`
 2. Ajouter enum variant dans CLI
-3. Router dans `src/bin/muffin.rs`
+3. Router dans `src/bin/flan.rs`
 
 ### Ajouter un nouveau type de target
 

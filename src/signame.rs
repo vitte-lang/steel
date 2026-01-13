@@ -1,6 +1,6 @@
-// C:\Users\gogin\Documents\GitHub\muffin\src\signame.rs
+// C:\Users\gogin\Documents\GitHub\flan\src\signame.rs
 //
-// Muffin — signal naming and normalization
+// Flan — signal naming and normalization
 //
 // Purpose:
 // - Provide a stable mapping between OS signals and names, for diagnostics/logging.

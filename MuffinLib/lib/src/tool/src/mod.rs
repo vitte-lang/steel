@@ -1,4 +1,4 @@
-//! Tool abstraction for Muffin (mod.rs) — MAX (std-only).
+//! Tool abstraction for Flan (mod.rs) — MAX (std-only).
 //!
 //! This module defines:
 //! - `ToolSpec`: declarative description of a tool (exe + args + env + cwd)
@@ -9,7 +9,7 @@
 //! Design goals:
 //! - deterministic command lines (stable args ordering when built from maps)
 //! - portable across Windows/macOS/Linux/BSD
-//! - allow Muffin "capsule" policy layers to constrain tool execution (wired elsewhere)
+//! - allow Flan "capsule" policy layers to constrain tool execution (wired elsewhere)
 //!
 //! Notes:
 //! - std-only: no async, no kill-timeout on all platforms (best-effort).

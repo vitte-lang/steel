@@ -1,4 +1,4 @@
-// C:\Users\gogin\Documents\GitHub\muffin\MuffinLib\lib\src\runner\process.rs
+// C:\Users\gogin\Documents\GitHub\flan\FlanLib\lib\src\runner\process.rs
 
 //! Process execution layer for the runner.
 //!
@@ -10,7 +10,7 @@
 //!
 //! This is used by `runner::Runner` to execute Tool nodes.
 
-use crate::error::MuffinError;
+use crate::error::FlanError;
 use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
@@ -100,7 +100,7 @@ impl ProcessSpec {
 }
 
 /// Run a process and capture output.
-pub fn run_process(spec: &ProcessSpec) -> Result<ProcessOutput, MuffinError> {
+pub fn run_process(spec: &ProcessSpec) -> Result<ProcessOutput, FlanError> {
     // Resolve program is delegated to Command/OS PATH.
     let mut cmd = Command::new(&spec.program);
 
@@ -124,7 +124,7 @@ pub fn run_process(spec: &ProcessSpec) -> Result<ProcessOutput, MuffinError> {
 
     let started = Instant::now();
     let out = cmd.output().map_err(|e| {
-        MuffinError::ExecutionFailed(format!(
+        FlanError::ExecutionFailed(format!(
             "failed to spawn tool '{}': {}",
             spec.program, e
         ))
@@ -139,8 +139,8 @@ pub fn run_process(spec: &ProcessSpec) -> Result<ProcessOutput, MuffinError> {
     })
 }
 
-/// Validate a process exit status and map to MuffinError with context.
-pub fn ensure_success(spec: &ProcessSpec, out: &ProcessOutput) -> Result<(), MuffinError> {
+/// Validate a process exit status and map to FlanError with context.
+pub fn ensure_success(spec: &ProcessSpec, out: &ProcessOutput) -> Result<(), FlanError> {
     if out.success() {
         return Ok(());
     }
@@ -154,7 +154,7 @@ pub fn ensure_success(spec: &ProcessSpec, out: &ProcessOutput) -> Result<(), Muf
         String::from_utf8_lossy(&out.stderr).to_string()
     };
 
-    Err(MuffinError::ExecutionFailed(format!(
+    Err(FlanError::ExecutionFailed(format!(
         "tool failed: program='{}' code={} stderr={}",
         spec.program, code, sanitize_one_line(&stderr)
     )))

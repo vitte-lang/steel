@@ -1,7 +1,7 @@
-// /Users/vincent/Documents/Github/muffin/src/expand.rs
+// /Users/vincent/Documents/Github/flan/src/expand.rs
 //! expand — macro + variable expansion (std-only)
 //!
-//! This module implements a small, deterministic expansion engine used by Muffin:
+//! This module implements a small, deterministic expansion engine used by Flan:
 //! - `${var}` and `$var` variable references
 //! - `$(env:NAME)` environment reads (optional)
 //! - `$(path:join a b c)` path joins (lexical, platform-aware)

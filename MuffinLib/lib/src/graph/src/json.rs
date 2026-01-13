@@ -1,4 +1,4 @@
-//! JSON model + std-only encoding for Muffin build graphs (MAX).
+//! JSON model + std-only encoding for Flan build graphs (MAX).
 //!
 //! This module provides a serializable JSON representation for `BakeGraph`
 //! (nodes, artifacts, deps) and a std-only JSON encoder/decoder.
@@ -53,7 +53,7 @@ fn err(msg: impl Into<String>) -> JsonError {
 /// Top-level JSON representation.
 #[derive(Debug, Clone)]
 pub struct GraphJson {
-    pub schema: String, // "muffin.graph"
+    pub schema: String, // "flan.graph"
     pub version: String,
     pub meta: BTreeMap<String, String>,
     pub artifacts: Vec<ArtifactJson>,
@@ -64,7 +64,7 @@ pub struct GraphJson {
 impl GraphJson {
     pub fn new() -> Self {
         Self {
-            schema: "muffin.graph".into(),
+            schema: "flan.graph".into(),
             version: GRAPH_JSON_SCHEMA_VERSION.into(),
             meta: BTreeMap::new(),
             artifacts: Vec::new(),
@@ -110,7 +110,7 @@ impl GraphJson {
     }
 
     pub fn into_graph(self) -> Result<BakeGraph, JsonError> {
-        if self.schema != "muffin.graph" {
+        if self.schema != "flan.graph" {
             return Err(err(format!("unsupported schema: {}", self.schema)));
         }
 

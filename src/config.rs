@@ -1,7 +1,7 @@
-// /Users/vincent/Documents/Github/muffin/src/config.rs
+// /Users/vincent/Documents/Github/flan/src/config.rs
 //! config — configuration coherence + invariants (std-only)
 //!
-//! Validator layer for Muffin configuration objects.
+//! Validator layer for Flan configuration objects.
 //! This module is intentionally independent from any parser implementation:
 //! it validates *shapes*, *paths*, and *selection invariants* (profile/target/toolchain)
 //! and can be used both before and after resolution.
@@ -11,7 +11,7 @@
 //! - validate workspace-level invariants (paths under root, distinct output dirs, etc.)
 //!
 //! Non-goals (by design):
-//! - full semantic validation of the MuffinConfig language
+//! - full semantic validation of the FlanConfig language
 //! - dependency resolution correctness (owned by resolver layer)
 //!
 //! This module provides:
@@ -165,11 +165,11 @@ pub fn validate_resolved_config(cfg: &crate::build_muf::ResolvedConfig, policy: 
         );
     }
 
-    // MuffinConfig invariants
-    if !cfg.muffinfile_path.is_file() {
+    // FlanConfig invariants
+    if !cfg.flanfile_path.is_file() {
         r.push(
-            Diagnostic::err("CFG_MUFFINFILE_MISSING", "MuffinConfig path does not exist or is not a file")
-                .with_path(cfg.muffinfile_path.clone()),
+            Diagnostic::err("CFG_MUFFINFILE_MISSING", "FlanConfig path does not exist or is not a file")
+                .with_path(cfg.flanfile_path.clone()),
         );
     }
 
@@ -531,7 +531,7 @@ pub fn normalize_path(p: &Path) -> PathBuf {
 pub fn is_ignored_dir_name(name: &OsStr) -> bool {
     matches!(
         name.to_string_lossy().as_ref(),
-        ".git" | ".hg" | ".svn" | "target" | "node_modules" | "dist" | "build" | ".muffin" | ".muffin-cache"
+        ".git" | ".hg" | ".svn" | "target" | "node_modules" | "dist" | "build" | ".flan" | ".flan-cache"
     )
 }
 
@@ -577,7 +577,7 @@ mod tests {
     fn output_dirs_distinctness() {
         let policy = ConfigPolicy::default();
         let root = Path::new("/tmp/project");
-        let r = validate_output_paths(root, Path::new("build"), Path::new("build"), Path::new(".muffin-cache"), &policy);
+        let r = validate_output_paths(root, Path::new("build"), Path::new("build"), Path::new(".flan-cache"), &policy);
         assert!(r.has_errors());
     }
 }

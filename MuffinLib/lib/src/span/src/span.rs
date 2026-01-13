@@ -1,6 +1,6 @@
 //! Span model (span.rs) — MAX.
 //!
-//! This file is the canonical "span" layer used by Muffin diagnostics.
+//! This file is the canonical "span" layer used by Flan diagnostics.
 //!
 //! Design:
 //! - UTF-8 byte offsets

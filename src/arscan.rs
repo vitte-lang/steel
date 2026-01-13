@@ -1,7 +1,7 @@
 //! arscan — Artifact/manifest scanner
 //!
-//! Small, dependency-free directory scanner used to discover Muffin files
-//! (e.g. `build.muf`, `mod.muf`, `MuffinConfig`, `Muffinconfig.mff`).
+//! Small, dependency-free directory scanner used to discover Flan files
+//! (e.g. `build.muf`, `mod.muf`, `FlanConfig`, `Flanconfig.mff`).
 //!
 //! Goals
 //! - No external crates
@@ -16,24 +16,24 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
-/// Known Muffin artifact kinds.
+/// Known Flan artifact kinds.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum ArtifactKind {
     /// A bake/build file (canonical: `build.muf`).
     BuildMuf,
     /// A module/package manifest (canonical: `mod.muf`).
     ModMuf,
-    /// Main Muffin configuration file (canonical: `MuffinConfig` or `muffin`).
-    MuffinConfig,
-    /// Resolved configuration (canonical: `Muffinconfig.mff`).
-    MuffinconfigMff,
+    /// Main Flan configuration file (canonical: `FlanConfig` or `flan`).
+    FlanConfig,
+    /// Resolved configuration (canonical: `Flanconfig.mff`).
+    FlanconfigMff,
     /// Legacy resolved configuration (historical: `.mcf`).
     LegacyMcf,
     /// Legacy/alt config files mentioned in ecosystem (e.g. `.mfg`).
     LegacyMfg,
     /// Any `*.muf` file that is not recognized as a known canonical name.
     GenericMuf,
-    /// Any `*.mff` file that is not recognized as `Muffinconfig.mff`.
+    /// Any `*.mff` file that is not recognized as `Flanconfig.mff`.
     GenericMff,
     /// Unknown / not classified.
     Unknown,
@@ -41,13 +41,13 @@ pub enum ArtifactKind {
 
 impl ArtifactKind {
     #[inline]
-    pub fn is_muffin(&self) -> bool {
+    pub fn is_flan(&self) -> bool {
         matches!(
             self,
             ArtifactKind::BuildMuf
                 | ArtifactKind::ModMuf
-                | ArtifactKind::MuffinConfig
-                | ArtifactKind::MuffinconfigMff
+                | ArtifactKind::FlanConfig
+                | ArtifactKind::FlanconfigMff
                 | ArtifactKind::LegacyMcf
                 | ArtifactKind::LegacyMfg
                 | ArtifactKind::GenericMuf
@@ -116,8 +116,8 @@ impl Default for ScanOptions {
                 OsString::from("node_modules"),
                 OsString::from("dist"),
                 OsString::from("build"),
-                OsString::from(".muffin"),
-                OsString::from(".muffin-cache"),
+                OsString::from(".flan"),
+                OsString::from(".flan-cache"),
             ],
         }
     }
@@ -133,7 +133,7 @@ pub struct ScanReport {
     pub skipped_entries: u64,
 }
 
-/// Scan a directory tree for Muffin artifacts.
+/// Scan a directory tree for Flan artifacts.
 pub fn scan(root: impl AsRef<Path>, opts: &ScanOptions) -> ScanReport {
     let root = root.as_ref();
 
@@ -279,9 +279,9 @@ fn classify_path(path: &Path) -> ArtifactKind {
     match file_name {
         "build.muf" => return ArtifactKind::BuildMuf,
         "mod.muf" => return ArtifactKind::ModMuf,
-        "MuffinConfig" | "muffin" => return ArtifactKind::MuffinConfig,
-        "Muffinconfig.mff" => return ArtifactKind::MuffinconfigMff,
-        "Muffinconfig.mcf" => return ArtifactKind::LegacyMcf,
+        "FlanConfig" | "flan" => return ArtifactKind::FlanConfig,
+        "Flanconfig.mff" => return ArtifactKind::FlanconfigMff,
+        "Flanconfig.mcf" => return ArtifactKind::LegacyMcf,
         _ => {}
     }
 
@@ -358,13 +358,13 @@ mod tests {
 
     #[test]
     fn scan_finds_canonical_files() {
-        let root = unique_temp_dir("muffin_arscan");
+        let root = unique_temp_dir("flan_arscan");
         fs::create_dir_all(&root).unwrap();
 
         touch(&root.join("build.muf"), "bake ...");
         touch(&root.join("mod.muf"), "mod ...");
-        touch(&root.join("MuffinConfig"), "workspace ...");
-        touch(&root.join("Muffinconfig.mff"), "mff 1");
+        touch(&root.join("FlanConfig"), "workspace ...");
+        touch(&root.join("Flanconfig.mff"), "mff 1");
 
         // Noise
         touch(&root.join("README.md"), "hello");
@@ -381,7 +381,7 @@ mod tests {
         // Count by kind.
         let mut build_muf = 0;
         let mut mod_muf = 0;
-        let mut muffinfile = 0;
+        let mut flanfile = 0;
         let mut mcfg = 0;
         let mut generic_muf = 0;
         let mut generic_mff = 0;
@@ -390,8 +390,8 @@ mod tests {
             match a.kind {
                 ArtifactKind::BuildMuf => build_muf += 1,
                 ArtifactKind::ModMuf => mod_muf += 1,
-                ArtifactKind::MuffinConfig => muffinfile += 1,
-                ArtifactKind::MuffinconfigMff => mcfg += 1,
+                ArtifactKind::FlanConfig => flanfile += 1,
+                ArtifactKind::FlanconfigMff => mcfg += 1,
                 ArtifactKind::GenericMuf => generic_muf += 1,
                 ArtifactKind::GenericMff => generic_mff += 1,
                 _ => {}
@@ -400,7 +400,7 @@ mod tests {
 
         assert_eq!(build_muf, 1);
         assert_eq!(mod_muf, 1);
-        assert_eq!(muffinfile, 1);
+        assert_eq!(flanfile, 1);
         assert_eq!(mcfg, 1);
         assert_eq!(generic_muf, 1);
         assert_eq!(generic_mff, 1);
@@ -411,12 +411,12 @@ mod tests {
 
     #[test]
     fn scan_is_deterministic_by_rel_path_ordering() {
-        let root = unique_temp_dir("muffin_arscan_det");
+        let root = unique_temp_dir("flan_arscan_det");
         fs::create_dir_all(&root).unwrap();
 
         touch(&root.join("z/build.muf"), "b");
         touch(&root.join("a/mod.muf"), "m");
-        touch(&root.join("b/Muffinconfig.mff"), "c");
+        touch(&root.join("b/Flanconfig.mff"), "c");
 
         let opts = ScanOptions {
             max_depth: 8,
@@ -437,12 +437,12 @@ mod tests {
 
     #[test]
     fn scan_respects_ignore_and_hidden_defaults() {
-        let root = unique_temp_dir("muffin_arscan_ign");
+        let root = unique_temp_dir("flan_arscan_ign");
         fs::create_dir_all(&root).unwrap();
 
         touch(&root.join(".git/build.muf"), "b");
         touch(&root.join("target/mod.muf"), "m");
-        touch(&root.join(".hidden/Muffinconfig.mff"), "c");
+        touch(&root.join(".hidden/Flanconfig.mff"), "c");
         touch(&root.join("ok/build.muf"), "b");
 
         let opts = ScanOptions::default();

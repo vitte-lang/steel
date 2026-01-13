@@ -1,6 +1,6 @@
-//! Muffin CPython – Args (MAX)
+//! Flan CPython – Args (MAX)
 //!
-//! Construction des lignes de commande Python utilisées par Muffin.
+//! Construction des lignes de commande Python utilisées par Flan.
 //!
 //! Couvre :
 //! - compilation bytecode CPython (.pyc)
@@ -58,7 +58,7 @@ impl PyOptLevel {
     }
 }
 
-/// Arguments Python génériques Muffin
+/// Arguments Python génériques Flan
 #[derive(Debug, Clone)]
 pub struct PyArgs {
     /// Interpréteur (python, python3, pypy, etc.)

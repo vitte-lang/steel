@@ -1,7 +1,7 @@
 //! Prelude (prelude.rs) — MAX.
 //!
 //! Purpose:
-//! - Provide a single glob-import path for common MuffinLib types.
+//! - Provide a single glob-import path for common FlanLib types.
 //! - Keep it conservative enough to avoid name conflicts, but ergonomic.
 //!
 //! Usage:
@@ -13,7 +13,7 @@
 //! - This file assumes the crate root re-exports modules/types as in `lib.rs`.
 //! - If some modules are feature-gated, you can gate exports here too.
 
-pub use crate::error::{MuffinError, Result};
+pub use crate::error::{FlanError, Result};
 
 // --- span ---
 pub use crate::span::{

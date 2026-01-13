@@ -1,6 +1,6 @@
 //! Diagnostic codes registry.
 //!
-//! This module centralizes diagnostic code definitions for MuffinLib.
+//! This module centralizes diagnostic code definitions for FlanLib.
 //!
 //! Goals:
 //! - stable string codes for tooling (LSP, JSON outputs, CI parsing)

@@ -1,8 +1,8 @@
-//! build_muf — `build muffin` (Configuration phase)
+//! build_muf — `build flan` (Configuration phase)
 //!
-//! Implements the **Configuration** step of the Muffin pipeline:
+//! Implements the **Configuration** step of the Flan pipeline:
 //! parse/validate/resolve workspace configuration, then emit the canonical
-//! resolved configuration artifact `Muffinconfig.mff`.
+//! resolved configuration artifact `Flanconfig.mff`.
 //!
 //! Design constraints
 //! - std-only (no external crates)
@@ -10,8 +10,8 @@
 //! - best-effort by default (strict mode available)
 //!
 //! Integration points
-//! - A real MuffinConfig parser/resolver can replace `resolve_workspace()`.
-//! - A build runner can consume the emitted `Muffinconfig.mff`.
+//! - A real FlanConfig parser/resolver can replace `resolve_workspace()`.
+//! - A build runner can consume the emitted `Flanconfig.mff`.
 
 use std::collections::BTreeMap;
 use std::env;
@@ -24,13 +24,13 @@ use std::process::Command;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Canonical emitted file name.
-pub const DEFAULT_EMIT_NAME: &str = "Muffinconfig.mff";
+pub const DEFAULT_EMIT_NAME: &str = "Flanconfig.mff";
 
 /// Current mff schema version (header: `mff <version>`).
 pub const MFF_SCHEMA_VERSION: u32 = 1;
 
-/// Default MuffinConfig names for discovery.
-pub const DEFAULT_MUFFINFILE_NAMES: &[&str] = &["MuffinConfig", "muffin"];
+/// Default FlanConfig names for discovery.
+pub const DEFAULT_MUFFINFILE_NAMES: &[&str] = &["FlanConfig", "flan"];
 
 pub type Result<T> = std::result::Result<T, BuildMufError>;
 
@@ -72,14 +72,14 @@ fn io_err(op: &'static str, path: impl Into<PathBuf>, err: io::Error) -> BuildMu
     }
 }
 
-/// Options for `build muffin`.
+/// Options for `build flan`.
 #[derive(Debug, Clone)]
 pub struct BuildMufOptions {
     /// Workspace root directory.
     pub root_dir: PathBuf,
 
-    /// Explicit MuffinConfig path (overrides discovery).
-    pub muffin_file: Option<PathBuf>,
+    /// Explicit FlanConfig path (overrides discovery).
+    pub flan_file: Option<PathBuf>,
 
     /// Selected build profile (e.g. debug/release/custom).
     pub profile: Option<String>,
@@ -87,7 +87,7 @@ pub struct BuildMufOptions {
     /// Selected target triple (e.g. x86_64-unknown-linux-gnu).
     pub target: Option<String>,
 
-    /// Emit path for resolved config. If None, defaults to `${root}/Muffinconfig.mff`
+    /// Emit path for resolved config. If None, defaults to `${root}/Flanconfig.mff`
     /// (or MUFFIN_EMIT if set).
     pub emit_path: Option<PathBuf>,
 
@@ -120,7 +120,7 @@ impl Default for BuildMufOptions {
     fn default() -> Self {
         Self {
             root_dir: env::current_dir().unwrap_or_else(|_| PathBuf::from(".")),
-            muffin_file: None,
+            flan_file: None,
             profile: None,
             target: None,
             emit_path: None,
@@ -142,7 +142,7 @@ pub struct ResolvedConfig {
     pub schema_version: u32,
 
     pub project_root: PathBuf,
-    pub muffinfile_path: PathBuf,
+    pub flanfile_path: PathBuf,
 
     pub profile: String,
     pub target: String,
@@ -243,7 +243,7 @@ impl ToolchainInfo {
     }
 }
 
-/// Parse CLI args (arguments after `build muffin`) into options.
+/// Parse CLI args (arguments after `build flan`) into options.
 ///
 /// Flags:
 /// - `--root <path>`
@@ -283,7 +283,7 @@ pub fn parse_args(args: &[String]) -> Result<BuildMufOptions> {
                     .ok_or_else(|| BuildMufError::Arg {
                         msg: "--file expects a path".into(),
                     })?;
-                o.muffin_file = Some(PathBuf::from(v));
+                o.flan_file = Some(PathBuf::from(v));
             }
             "--profile" => {
                 let v = it
@@ -337,7 +337,7 @@ pub fn parse_args(args: &[String]) -> Result<BuildMufOptions> {
                     msg: format!("unknown flag: {x}"),
                 })
             }
-            // Support: `build muffin <path>` as shorthand root (single positional).
+            // Support: `build flan <path>` as shorthand root (single positional).
             other => {
                 if positional_root_set {
                     return Err(BuildMufError::Arg {
@@ -354,17 +354,17 @@ pub fn parse_args(args: &[String]) -> Result<BuildMufOptions> {
 }
 
 pub fn help_text() -> &'static str {
-    "build muffin — Configuration phase
+    "build flan — Configuration phase
 
 Usage:
-  build muffin [--root <path>] [--file <path>] [--profile <name>] [--target <triple>] [--emit <path>] [--print] [--strict] [--offline]
+  build flan [--root <path>] [--file <path>] [--profile <name>] [--target <triple>] [--emit <path>] [--print] [--strict] [--offline]
 
 Flags:
   --root <path>             Workspace root (default: cwd)
-  --file <path>             Explicit MuffinConfig path (skip discovery)
+  --file <path>             Explicit FlanConfig path (skip discovery)
   --profile <name>          Profile (default: MUFFIN_PROFILE or debug)
   --target <triple>         Target triple (default: host triple best-effort)
-  --emit <path>             Emit path (default: root/Muffinconfig.mff or MUFFIN_EMIT)
+  --emit <path>             Emit path (default: root/Flanconfig.mff or MUFFIN_EMIT)
   --print                   Also print emitted config to stdout
   --offline                 Offline mode
   --strict                  Fail on any IO irregularity
@@ -377,21 +377,21 @@ Flags:
 }
 
 /// Execute the configuration phase:
-/// 1) discover MuffinConfig if needed
+/// 1) discover FlanConfig if needed
 /// 2) validate minimal invariants
 /// 3) resolve into a canonical `ResolvedConfig`
-/// 4) emit `Muffinconfig.mff`
+/// 4) emit `Flanconfig.mff`
 pub fn run(opts: &BuildMufOptions) -> Result<ResolvedConfig> {
     let root = normalize_path(&opts.root_dir);
 
-    let muffinfile = if let Some(p) = &opts.muffin_file {
+    let flanfile = if let Some(p) = &opts.flan_file {
         root_join_if_relative(&root, p)
     } else {
-        discover_muffinfile(&root, opts)?
+        discover_flanfile(&root, opts)?
     };
 
-    validate_inputs(&root, &muffinfile, opts)?;
-    let resolved = resolve_workspace(&root, &muffinfile, opts)?;
+    validate_inputs(&root, &flanfile, opts)?;
+    let resolved = resolve_workspace(&root, &flanfile, opts)?;
 
     let emit_path = choose_emit_path(&root, opts);
     emit_mcfg(&emit_path, &resolved)?;
@@ -403,8 +403,8 @@ pub fn run(opts: &BuildMufOptions) -> Result<ResolvedConfig> {
     Ok(resolved)
 }
 
-/// Discover MuffinConfig/muffin by scanning the root directory (bounded recursion).
-fn discover_muffinfile(root: &Path, opts: &BuildMufOptions) -> Result<PathBuf> {
+/// Discover FlanConfig/flan by scanning the root directory (bounded recursion).
+fn discover_flanfile(root: &Path, opts: &BuildMufOptions) -> Result<PathBuf> {
     // Fast path: root candidates.
     for n in DEFAULT_MUFFINFILE_NAMES {
         let p = root.join(n);
@@ -418,7 +418,7 @@ fn discover_muffinfile(root: &Path, opts: &BuildMufOptions) -> Result<PathBuf> {
         Some(p) => Ok(p),
         None => Err(BuildMufError::Validate {
             msg: format!(
-                "no MuffinConfig found in {} (expected one of: {:?})",
+                "no FlanConfig found in {} (expected one of: {:?})",
                 root.display(),
                 DEFAULT_MUFFINFILE_NAMES
             ),
@@ -438,8 +438,8 @@ fn discover_with_local_scan(root: &Path, opts: &BuildMufOptions) -> Option<PathB
         OsString::from("node_modules"),
         OsString::from("dist"),
         OsString::from("build"),
-        OsString::from(".muffin"),
-        OsString::from(".muffin-cache"),
+        OsString::from(".flan"),
+        OsString::from(".flan-cache"),
     ];
 
     while let Some((dir, depth)) = stack.pop() {
@@ -499,7 +499,7 @@ fn discover_with_local_scan(root: &Path, opts: &BuildMufOptions) -> Option<PathB
 
             if md.is_file() {
                 if let Some(fname) = path.file_name().and_then(|s| s.to_str()) {
-                    if fname == "MuffinConfig" || fname == "muffin" {
+                    if fname == "FlanConfig" || fname == "flan" {
                         return Some(path);
                     }
                 }
@@ -510,26 +510,26 @@ fn discover_with_local_scan(root: &Path, opts: &BuildMufOptions) -> Option<PathB
     None
 }
 
-fn validate_inputs(root: &Path, muffinfile: &Path, opts: &BuildMufOptions) -> Result<()> {
+fn validate_inputs(root: &Path, flanfile: &Path, opts: &BuildMufOptions) -> Result<()> {
     if !root.is_dir() {
         return Err(BuildMufError::Validate {
             msg: format!("root is not a directory: {}", root.display()),
         });
     }
 
-    if !muffinfile.is_file() {
+    if !flanfile.is_file() {
         return Err(BuildMufError::Validate {
-            msg: format!("MuffinConfig not found: {}", muffinfile.display()),
+            msg: format!("FlanConfig not found: {}", flanfile.display()),
         });
     }
 
-    // In strict mode, ensure MuffinConfig is under root.
-    if opts.strict && muffinfile.strip_prefix(root).is_err() {
+    // In strict mode, ensure FlanConfig is under root.
+    if opts.strict && flanfile.strip_prefix(root).is_err() {
         return Err(BuildMufError::Validate {
             msg: format!(
-                "--strict: MuffinConfig must be under root. root={}, file={}",
+                "--strict: FlanConfig must be under root. root={}, file={}",
                 root.display(),
-                muffinfile.display()
+                flanfile.display()
             ),
         });
     }
@@ -539,8 +539,8 @@ fn validate_inputs(root: &Path, muffinfile: &Path, opts: &BuildMufOptions) -> Re
 
 /// Resolve workspace configuration into a canonical config snapshot.
 ///
-/// Replace this function with a real MuffinConfig parser/resolver.
-fn resolve_workspace(root: &Path, muffinfile: &Path, opts: &BuildMufOptions) -> Result<ResolvedConfig> {
+/// Replace this function with a real FlanConfig parser/resolver.
+fn resolve_workspace(root: &Path, flanfile: &Path, opts: &BuildMufOptions) -> Result<ResolvedConfig> {
     let profile = opts
         .profile
         .clone()
@@ -556,7 +556,7 @@ fn resolve_workspace(root: &Path, muffinfile: &Path, opts: &BuildMufOptions) -> 
     let paths = ResolvedPaths {
         build_dir: root.join("build"),
         dist_dir: root.join("dist"),
-        cache_dir: root.join(".muffin-cache"),
+        cache_dir: root.join(".flan-cache"),
     };
 
     let collect_versions = !opts.no_tool_fingerprint;
@@ -564,31 +564,31 @@ fn resolve_workspace(root: &Path, muffinfile: &Path, opts: &BuildMufOptions) -> 
 
     // Deterministic vars: explicit and ordered (BTreeMap).
     let mut vars = BTreeMap::new();
-    vars.insert("muffin.profile".to_string(), profile.clone());
-    vars.insert("muffin.target".to_string(), target.clone());
-    vars.insert("muffin.offline".to_string(), opts.offline.to_string());
-    vars.insert("muffin.root".to_string(), root.to_string_lossy().to_string());
-    vars.insert("muffin.file".to_string(), muffinfile.to_string_lossy().to_string());
+    vars.insert("flan.profile".to_string(), profile.clone());
+    vars.insert("flan.target".to_string(), target.clone());
+    vars.insert("flan.offline".to_string(), opts.offline.to_string());
+    vars.insert("flan.root".to_string(), root.to_string_lossy().to_string());
+    vars.insert("flan.file".to_string(), flanfile.to_string_lossy().to_string());
     insert_toolchain_env_vars(&mut vars, &toolchain);
 
-    // Best-effort: read MuffinConfig bytes and hash for fingerprint.
+    // Best-effort: read FlanConfig bytes and hash for fingerprint.
     let file_bytes =
-        fs::read(muffinfile).map_err(|e| io_err("read", muffinfile.to_path_buf(), e))?;
+        fs::read(flanfile).map_err(|e| io_err("read", flanfile.to_path_buf(), e))?;
 
     let fingerprint = compute_fingerprint(&file_bytes, &profile, &target, &toolchain);
 
     if opts.verbose {
-        eprintln!("[muffin] root       : {}", root.display());
-        eprintln!("[muffin] muffinfile : {}", muffinfile.display());
-        eprintln!("[muffin] profile    : {profile}");
-        eprintln!("[muffin] target     : {target}");
-        eprintln!("[muffin] fingerprint: {fingerprint}");
+        eprintln!("[flan] root       : {}", root.display());
+        eprintln!("[flan] flanfile : {}", flanfile.display());
+        eprintln!("[flan] profile    : {profile}");
+        eprintln!("[flan] target     : {target}");
+        eprintln!("[flan] fingerprint: {fingerprint}");
     }
 
     Ok(ResolvedConfig {
         schema_version: MFF_SCHEMA_VERSION,
         project_root: root.to_path_buf(),
-        muffinfile_path: muffinfile.to_path_buf(),
+        flanfile_path: flanfile.to_path_buf(),
         profile,
         target,
         paths,
@@ -612,7 +612,7 @@ fn choose_emit_path(root: &Path, opts: &BuildMufOptions) -> PathBuf {
     root.join(DEFAULT_EMIT_NAME)
 }
 
-/// Emit `Muffinconfig.mff`.
+/// Emit `Flanconfig.mff`.
 pub fn emit_mcfg(path: &Path, cfg: &ResolvedConfig) -> Result<()> {
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)
@@ -638,8 +638,8 @@ pub fn format_mcfg(cfg: &ResolvedConfig) -> String {
         escape(cfg.project_root.to_string_lossy().as_ref())
     ));
     out.push_str(&format!(
-        "  muffinfile \"{}\"\n",
-        escape(cfg.muffinfile_path.to_string_lossy().as_ref())
+        "  flanfile \"{}\"\n",
+        escape(cfg.flanfile_path.to_string_lossy().as_ref())
     ));
     out.push_str(".end\n\n");
 
@@ -916,10 +916,10 @@ fn compute_fingerprint(file_bytes: &[u8], profile: &str, target: &str, toolchain
     format!("fnv1a64:{:016x}", h)
 }
 
-/// Optional utility: generate a default config skeleton (no MuffinConfig read).
+/// Optional utility: generate a default config skeleton (no FlanConfig read).
 pub fn generate_default_mcfg(root: impl AsRef<Path>) -> ResolvedConfig {
     let root = normalize_path(root.as_ref());
-    let muffinfile = root.join("MuffinConfig");
+    let flanfile = root.join("FlanConfig");
 
     let profile = env::var("MUFFIN_PROFILE").unwrap_or_else(|_| "debug".to_string());
     let target = env::var("MUFFIN_TARGET").unwrap_or_else(|_| host_triple_best_effort());
@@ -927,8 +927,8 @@ pub fn generate_default_mcfg(root: impl AsRef<Path>) -> ResolvedConfig {
     let toolchain = ToolchainInfo::from_env(false);
 
     let mut vars = BTreeMap::new();
-    vars.insert("muffin.profile".to_string(), profile.clone());
-    vars.insert("muffin.target".to_string(), target.clone());
+    vars.insert("flan.profile".to_string(), profile.clone());
+    vars.insert("flan.target".to_string(), target.clone());
     insert_toolchain_env_vars(&mut vars, &toolchain);
 
     let fingerprint = compute_fingerprint(b"", &profile, &target, &toolchain);
@@ -936,13 +936,13 @@ pub fn generate_default_mcfg(root: impl AsRef<Path>) -> ResolvedConfig {
     ResolvedConfig {
         schema_version: MFF_SCHEMA_VERSION,
         project_root: root.clone(),
-        muffinfile_path: muffinfile,
+        flanfile_path: flanfile,
         profile,
         target,
         paths: ResolvedPaths {
             build_dir: root.join("build"),
             dist_dir: root.join("dist"),
-            cache_dir: root.join(".muffin-cache"),
+            cache_dir: root.join(".flan-cache"),
         },
         toolchain,
         vars,
@@ -986,7 +986,7 @@ mod tests {
             "--target".into(),
             "x86_64-unknown-linux-gnu".into(),
             "--emit".into(),
-            "out/Muffinconfig.mff".into(),
+            "out/Flanconfig.mff".into(),
             "--offline".into(),
             "--strict".into(),
             "--print".into(),
@@ -999,7 +999,7 @@ mod tests {
         assert_eq!(o.root_dir, PathBuf::from("./proj"));
         assert_eq!(o.profile.as_deref(), Some("release"));
         assert_eq!(o.target.as_deref(), Some("x86_64-unknown-linux-gnu"));
-        assert_eq!(o.emit_path.as_deref(), Some(Path::new("out/Muffinconfig.mff")));
+        assert_eq!(o.emit_path.as_deref(), Some(Path::new("out/Flanconfig.mff")));
         assert!(o.offline);
         assert!(o.strict);
         assert!(o.print);
@@ -1025,35 +1025,35 @@ mod tests {
 
         let mut o = BuildMufOptions::default();
         o.root_dir = root.clone();
-        o.emit_path = Some(PathBuf::from("out/Muffinconfig.mff"));
+        o.emit_path = Some(PathBuf::from("out/Flanconfig.mff"));
         assert_eq!(
             choose_emit_path(&root, &o),
-            PathBuf::from("/workspace/out/Muffinconfig.mff")
+            PathBuf::from("/workspace/out/Flanconfig.mff")
         );
 
         // env fallback
         o.emit_path = None;
-        env::set_var("MUFFIN_EMIT", "dist/Muffinconfig.mff");
+        env::set_var("MUFFIN_EMIT", "dist/Flanconfig.mff");
         assert_eq!(
             choose_emit_path(&root, &o),
-            PathBuf::from("/workspace/dist/Muffinconfig.mff")
+            PathBuf::from("/workspace/dist/Flanconfig.mff")
         );
 
         // default fallback
         env::remove_var("MUFFIN_EMIT");
         assert_eq!(
             choose_emit_path(&root, &o),
-            PathBuf::from("/workspace/Muffinconfig.mff")
+            PathBuf::from("/workspace/Flanconfig.mff")
         );
     }
 
     #[test]
     fn run_emits_mcfg() {
-        let dir = unique_temp_dir("muffin_build_muf");
+        let dir = unique_temp_dir("flan_build_muf");
         fs::create_dir_all(&dir).unwrap();
 
-        // create MuffinConfig
-        touch(&dir.join("MuffinConfig"), "workspace ...\n");
+        // create FlanConfig
+        touch(&dir.join("FlanConfig"), "workspace ...\n");
 
         let opts = BuildMufOptions {
             root_dir: dir.clone(),

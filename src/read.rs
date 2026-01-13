@@ -1,10 +1,10 @@
 // Module: read
 // src/read.rs
 //
-// Muffin — robust file reading utilities
+// Flan — robust file reading utilities
 //
 // Purpose:
-// - Centralize file/stream reading logic used across Muffin.
+// - Centralize file/stream reading logic used across Flan.
 // - Provide consistent behavior for:
 //   - reading UTF-8 text with BOM handling
 //   - reading bytes
@@ -15,7 +15,7 @@
 // No external deps.
 //
 // Typical usage:
-//   let txt = read_text(Path::new("MuffinConfig"))?;
+//   let txt = read_text(Path::new("FlanConfig"))?;
 //   let bytes = read_bytes_limited(Path::new("foo.bin"), 8 * 1024 * 1024)?;
 //
 // Integration:

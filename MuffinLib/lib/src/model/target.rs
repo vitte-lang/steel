@@ -1,4 +1,4 @@
-// C:\Users\gogin\Documents\GitHub\muffin\MuffinLib\lib\src\model\target.rs
+// C:\Users\gogin\Documents\GitHub\flan\FlanLib\lib\src\model\target.rs
 
 use serde::{Deserialize, Serialize};
 use std::{

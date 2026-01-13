@@ -1,4 +1,4 @@
-// C:\Users\gogin\Documents\GitHub\muffin\MuffinLib\lib\src\tool\src\mod_.rs
+// C:\Users\gogin\Documents\GitHub\flan\FlanLib\lib\src\tool\src\mod_.rs
 //! Core tool types (renamed file) — MAX.
 //!
 //! If you want `src/mod.rs` instead, rename this file to `mod.rs`

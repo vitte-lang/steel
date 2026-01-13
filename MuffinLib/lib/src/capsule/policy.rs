@@ -1,6 +1,6 @@
 //! Capsule security policy model + evaluation helpers.
 //!
-//! This module defines a compact but expressive policy surface for Muffin “capsules”
+//! This module defines a compact but expressive policy surface for Flan “capsules”
 //! (sandbox policies): filesystem, environment, networking, time, process, and resource
 //! limits. It is designed to be:
 //! - deterministic (no hidden implicit allow)

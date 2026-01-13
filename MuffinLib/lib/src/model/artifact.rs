@@ -1,4 +1,4 @@
-// C:\Users\gogin\Documents\GitHub\muffin\MuffinLib\lib\src\model\artifact.rs
+// C:\Users\gogin\Documents\GitHub\flan\FlanLib\lib\src\model\artifact.rs
 
 #![allow(clippy::derive_partial_eq_without_eq)]
 
@@ -98,7 +98,7 @@ impl fmt::Display for ArtifactPathKind {
     }
 }
 
-/// An artifact reference (input/output) used by the Muffin model layer.
+/// An artifact reference (input/output) used by the Flan model layer.
 ///
 /// This type is designed to be:
 /// - serializable (serde)

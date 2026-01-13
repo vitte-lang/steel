@@ -1,5 +1,0 @@
-# MuffinConfig — OCaml Ultra Project (theme: astronomy logbook)
-# This file is used by `muffin build` (configuration + fingerprint).
-# For actual compilation, see MuffinConfig.muf in the same folder.
-
-workspace "ocaml-ultra"

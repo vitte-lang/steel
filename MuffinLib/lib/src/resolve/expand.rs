@@ -1,6 +1,6 @@
-// C:\Users\gogin\Documents\GitHub\muffin\MuffinLib\lib\src\resolve\expand.rs
+// C:\Users\gogin\Documents\GitHub\flan\FlanLib\lib\src\resolve\expand.rs
 
-use crate::error::MuffinError;
+use crate::error::FlanError;
 use std::{
     collections::{BTreeMap, BTreeSet},
     env,
@@ -65,7 +65,7 @@ impl ExpandCtx {
 ///
 /// Policy:
 /// - unknown variables are an error (strict determinism)
-pub fn expand_str(input: &str, ctx: &ExpandCtx) -> Result<String, MuffinError> {
+pub fn expand_str(input: &str, ctx: &ExpandCtx) -> Result<String, FlanError> {
     let mut out = String::with_capacity(input.len());
     let mut chars = input.chars().peekable();
 
@@ -91,7 +91,7 @@ pub fn expand_str(input: &str, ctx: &ExpandCtx) -> Result<String, MuffinError> {
                             key.push(ch);
                         }
                         if !closed {
-                            return Err(MuffinError::ValidationFailed(
+                            return Err(FlanError::ValidationFailed(
                                 "unterminated ${...} expansion".into(),
                             ));
                         }
@@ -101,7 +101,7 @@ pub fn expand_str(input: &str, ctx: &ExpandCtx) -> Result<String, MuffinError> {
                     }
                     _ => {
                         // single '$' is not allowed: ambiguous
-                        return Err(MuffinError::ValidationFailed(
+                        return Err(FlanError::ValidationFailed(
                             "unexpected '$' (use $$ for literal '$' or ${VAR} for expansion)".into(),
                         ));
                     }
@@ -114,23 +114,23 @@ pub fn expand_str(input: &str, ctx: &ExpandCtx) -> Result<String, MuffinError> {
     Ok(out)
 }
 
-fn resolve_key(key: &str, ctx: &ExpandCtx) -> Result<String, MuffinError> {
+fn resolve_key(key: &str, ctx: &ExpandCtx) -> Result<String, FlanError> {
     // reserved keys
     match key {
         "TRIPLE" => ctx
             .triple
             .clone()
-            .ok_or_else(|| MuffinError::ValidationFailed("missing TRIPLE in expansion context".into())),
+            .ok_or_else(|| FlanError::ValidationFailed("missing TRIPLE in expansion context".into())),
         "PROFILE" => ctx
             .profile
             .clone()
-            .ok_or_else(|| MuffinError::ValidationFailed("missing PROFILE in expansion context".into())),
+            .ok_or_else(|| FlanError::ValidationFailed("missing PROFILE in expansion context".into())),
         "ROOT" => Ok(normalize_path_lossy(&ctx.root)),
         _ => {
             // ENV:FOO forces environment lookup
             if let Some(rest) = key.strip_prefix("ENV:") {
                 return env::var(rest).map_err(|_| {
-                    MuffinError::ValidationFailed(format!("missing environment variable: {}", rest))
+                    FlanError::ValidationFailed(format!("missing environment variable: {}", rest))
                 });
             }
 
@@ -139,7 +139,7 @@ fn resolve_key(key: &str, ctx: &ExpandCtx) -> Result<String, MuffinError> {
                 return Ok(v.clone());
             }
             env::var(key).map_err(|_| {
-                MuffinError::ValidationFailed(format!("unknown expansion variable: {}", key))
+                FlanError::ValidationFailed(format!("unknown expansion variable: {}", key))
             })
         }
     }
@@ -149,7 +149,7 @@ fn resolve_key(key: &str, ctx: &ExpandCtx) -> Result<String, MuffinError> {
 /// - expands variables
 /// - resolves relative paths against ctx.root
 /// - normalizes separators and removes `.` segments
-pub fn expand_path(input: &str, ctx: &ExpandCtx) -> Result<PathBuf, MuffinError> {
+pub fn expand_path(input: &str, ctx: &ExpandCtx) -> Result<PathBuf, FlanError> {
     let s = expand_str(input, ctx)?;
     let p = PathBuf::from(s);
 
@@ -166,7 +166,7 @@ pub fn expand_path(input: &str, ctx: &ExpandCtx) -> Result<PathBuf, MuffinError>
 pub fn expand_map(
     map: &BTreeMap<String, String>,
     ctx: &ExpandCtx,
-) -> Result<BTreeMap<String, String>, MuffinError> {
+) -> Result<BTreeMap<String, String>, FlanError> {
     let mut out = BTreeMap::new();
     for (k, v) in map.iter() {
         out.insert(k.clone(), expand_str(v, ctx)?);
@@ -178,7 +178,7 @@ pub fn expand_map(
 pub fn expand_list_dedup_sorted(
     items: &[String],
     ctx: &ExpandCtx,
-) -> Result<Vec<String>, MuffinError> {
+) -> Result<Vec<String>, FlanError> {
     let mut set = BTreeSet::new();
     for it in items {
         set.insert(expand_str(it, ctx)?);

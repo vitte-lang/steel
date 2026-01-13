@@ -1,9 +1,9 @@
-// C:\Users\gogin\Documents\GitHub\muffin\MuffinLib\lib\src\resolve\implicit.rs
+// C:\Users\gogin\Documents\GitHub\flan\FlanLib\lib\src\resolve\implicit.rs
 
 //! Implicit resolution layer.
 //!
 //! This module injects *implicit defaults* into the resolved model
-//! when the user did not specify them explicitly in `MuffinConfig.muf`.
+//! when the user did not specify them explicitly in `FlanConfig.muf`.
 //!
 //! Rules here must be:
 //! - deterministic
@@ -11,7 +11,7 @@
 //! - transparent (easy to explain via diagnostics)
 
 use crate::{
-    error::MuffinError,
+    error::FlanError,
     model::{
         artifact::ArtifactKind,
         graph::{Graph, Node, NodeKind, Port},
@@ -23,7 +23,7 @@ use std::collections::BTreeMap;
 /// Apply implicit defaults to a resolved target.
 ///
 /// This is called *after* parsing + validation, but *before* graph finalization.
-pub fn apply_target_implicits(target: &mut Target) -> Result<(), MuffinError> {
+pub fn apply_target_implicits(target: &mut Target) -> Result<(), FlanError> {
     // Default kind: binary
     if target.kind.is_none() {
         target.kind = Some(TargetKind::Binary);
@@ -31,7 +31,7 @@ pub fn apply_target_implicits(target: &mut Target) -> Result<(), MuffinError> {
 
     // Default name fallback
     if target.name.is_empty() {
-        return Err(MuffinError::ValidationFailed(
+        return Err(FlanError::ValidationFailed(
             "target name cannot be empty".into(),
         ));
     }
@@ -46,9 +46,9 @@ pub fn apply_target_implicits(target: &mut Target) -> Result<(), MuffinError> {
 /// - implicit link steps
 /// - implicit artifact ports
 ///
-/// The goal is to keep user Muffin files minimal while producing
+/// The goal is to keep user Flan files minimal while producing
 /// a fully explicit DAG for execution.
-pub fn apply_graph_implicits(graph: &mut Graph) -> Result<(), MuffinError> {
+pub fn apply_graph_implicits(graph: &mut Graph) -> Result<(), FlanError> {
     let mut new_nodes = Vec::new();
 
     for node in graph.nodes.values() {
@@ -70,7 +70,7 @@ pub fn apply_graph_implicits(graph: &mut Graph) -> Result<(), MuffinError> {
 fn apply_target_node_implicits(
     target_node: &Node,
     new_nodes: &mut Vec<Node>,
-) -> Result<(), MuffinError> {
+) -> Result<(), FlanError> {
     let target_name = target_node.label.clone();
 
     match target_node.subkind.as_deref() {

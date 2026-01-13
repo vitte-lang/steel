@@ -1,4 +1,4 @@
-// C:\Users\gogin\Documents\GitHub\muffin\MuffinLib\lib\src\runner\sandbox.rs
+// C:\Users\gogin\Documents\GitHub\flan\FlanLib\lib\src\runner\sandbox.rs
 
 //! Sandbox layer (MVP).
 //!
@@ -14,7 +14,7 @@
 //! - The immediate value is: a stable config surface + consistent checks +
 //!   wiring points for future OS backends.
 
-use crate::error::MuffinError;
+use crate::error::FlanError;
 use std::{
     collections::BTreeSet,
     path::{Path, PathBuf},
@@ -103,7 +103,7 @@ impl Sandbox {
     ///
     /// This does not enforce OS-level restrictions; it ensures the policy makes sense
     /// and that expected directories exist / can be created.
-    pub fn preflight(&self) -> Result<(), MuffinError> {
+    pub fn preflight(&self) -> Result<(), FlanError> {
         if !self.policy.enabled {
             return Ok(());
         }
@@ -113,12 +113,12 @@ impl Sandbox {
         let write = dedup_roots(&self.policy.fs_write_roots);
 
         if read.is_empty() {
-            return Err(MuffinError::ValidationFailed(
+            return Err(FlanError::ValidationFailed(
                 "sandbox enabled but fs_read_roots is empty".into(),
             ));
         }
         if write.is_empty() {
-            return Err(MuffinError::ValidationFailed(
+            return Err(FlanError::ValidationFailed(
                 "sandbox enabled but fs_write_roots is empty".into(),
             ));
         }
@@ -126,7 +126,7 @@ impl Sandbox {
         // Ensure all roots are absolute or workspace-relative (MVP rule).
         for p in read.iter().chain(write.iter()) {
             if p.as_os_str().is_empty() {
-                return Err(MuffinError::ValidationFailed(
+                return Err(FlanError::ValidationFailed(
                     "sandbox root path is empty".into(),
                 ));
             }
@@ -136,7 +136,7 @@ impl Sandbox {
         for w in &write {
             if !w.exists() {
                 std::fs::create_dir_all(w).map_err(|e| {
-                    MuffinError::ExecutionFailed(format!(
+                    FlanError::ExecutionFailed(format!(
                         "sandbox cannot create write root '{}': {}",
                         w.display(),
                         e
@@ -165,24 +165,24 @@ impl Sandbox {
         is_under_any_root(path, &self.policy.fs_write_roots)
     }
 
-    /// Enforce a read access check (returns MuffinError).
-    pub fn ensure_read(&self, path: &Path) -> Result<(), MuffinError> {
+    /// Enforce a read access check (returns FlanError).
+    pub fn ensure_read(&self, path: &Path) -> Result<(), FlanError> {
         if self.can_read(path) {
             Ok(())
         } else {
-            Err(MuffinError::ExecutionFailed(format!(
+            Err(FlanError::ExecutionFailed(format!(
                 "sandbox deny read: {}",
                 path.display()
             )))
         }
     }
 
-    /// Enforce a write access check (returns MuffinError).
-    pub fn ensure_write(&self, path: &Path) -> Result<(), MuffinError> {
+    /// Enforce a write access check (returns FlanError).
+    pub fn ensure_write(&self, path: &Path) -> Result<(), FlanError> {
         if self.can_write(path) {
             Ok(())
         } else {
-            Err(MuffinError::ExecutionFailed(format!(
+            Err(FlanError::ExecutionFailed(format!(
                 "sandbox deny write: {}",
                 path.display()
             )))

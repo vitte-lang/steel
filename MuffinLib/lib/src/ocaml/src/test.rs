@@ -1,4 +1,4 @@
-//! Muffin OCaml – Tests (MAX)
+//! Flan OCaml – Tests (MAX)
 //!
 //! Tests unitaires et de cohérence pour le backend OCaml.
 //!

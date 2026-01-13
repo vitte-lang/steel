@@ -1,4 +1,4 @@
-// C:\Users\gogin\Documents\GitHub\muffin\MuffinLib\lib\src\output\mod.rs
+// C:\Users\gogin\Documents\GitHub\flan\FlanLib\lib\src\output\mod.rs
 
 //! Output / emission layer.
 //!
@@ -7,7 +7,7 @@
 //!
 //! Current exports:
 //! - `graph_json` : JSON export of the resolved DAG for CI/IDE tooling.
-//! - `mub`        : MUB (Muffin Universal Binary) frozen configuration artifact.
+//! - `mub`        : MUB (Flan Universal Binary) frozen configuration artifact.
 //!
 //! Notes:
 //! - No `.mff` artifacts: the canonical frozen config is `config.mub`.

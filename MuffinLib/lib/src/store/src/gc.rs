@@ -1,4 +1,4 @@
-//! Garbage Collection (GC) for Muffin Store (gc.rs) — MAX (std-only).
+//! Garbage Collection (GC) for Flan Store (gc.rs) — MAX (std-only).
 //!
 //! This module provides GC for a CAS-like store:
 //! - mark phase: compute reachable digests from a set of roots (manifests, mff bundles, indexes)
@@ -140,7 +140,7 @@ impl GcReport {
 }
 
 /// Roots provider interface.
-/// In real Muffin, this should come from `mff/index` or `store/index`.
+/// In real Flan, this should come from `mff/index` or `store/index`.
 pub trait RootsProvider {
     /// Return an iterator of digests considered "roots".
     fn roots(&self, cas: &Cas) -> Result<Vec<Digest>, GcError>;
@@ -449,7 +449,7 @@ mod tests {
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap_or_else(|_| std::time::Duration::from_secs(0))
             .as_nanos();
-        p.push(format!("muffin_gc_test_{pid}_{ts}"));
+        p.push(format!("flan_gc_test_{pid}_{ts}"));
         let _ = std::fs::remove_dir_all(&p);
         p
     }

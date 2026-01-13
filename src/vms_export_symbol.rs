@@ -1,6 +1,6 @@
-// C:\Users\gogin\Documents\GitHub\muffin\src\vms_export_symbol.rs
+// C:\Users\gogin\Documents\GitHub\flan\src\vms_export_symbol.rs
 //
-// Muffin — VMS (Virtual Muffin System) utilities
+// Flan — VMS (Virtual Flan System) utilities
 // Export symbol normalization, validation, and formatting.
 //
 // Why:
@@ -14,7 +14,7 @@
 // What you get:
 // - Strict validator (fails fast): C-like symbol charset.
 // - Lenient canonicalizer (never fails): sanitize + fallback.
-// - Profiles: c_abi(), muffin_entrypoints().
+// - Profiles: c_abi(), flan_entrypoints().
 // - Helpers: prefixing, component names, and small deterministic folding.
 //
 // Charset model (strict):
@@ -31,7 +31,7 @@ use std::borrow::Cow;
 use std::fmt;
 
 pub const DEFAULT_MAX_LEN: usize = 128;
-pub const DEFAULT_PREFIX: &str = "muffin_";
+pub const DEFAULT_PREFIX: &str = "flan_";
 pub const DEFAULT_FALLBACK: &str = "export";
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -134,7 +134,7 @@ impl ExportSymbolOptions {
         }
     }
 
-    pub fn muffin_entrypoints() -> Self {
+    pub fn flan_entrypoints() -> Self {
         Self {
             prefix: DEFAULT_PREFIX,
             strict: false,
@@ -146,7 +146,7 @@ impl ExportSymbolOptions {
             separator: '_',
             force_lowercase: true,
             force_uppercase: false,
-            fallback: "muffin_export",
+            fallback: "flan_export",
         }
     }
 
@@ -297,8 +297,8 @@ pub fn sanitize_export_symbol(input: &str, opts: &ExportSymbolOptions) -> Export
     }
 }
 
-pub fn muffin_export_symbol(input: &str) -> ExportSymbol {
-    sanitize_export_symbol(input, &ExportSymbolOptions::muffin_entrypoints())
+pub fn flan_export_symbol(input: &str) -> ExportSymbol {
+    sanitize_export_symbol(input, &ExportSymbolOptions::flan_entrypoints())
 }
 
 pub fn try_parse_export_symbol(input: &str, opts: &ExportSymbolOptions) -> Result<ExportSymbol, ExportSymbolError> {
@@ -550,21 +550,21 @@ mod tests {
     #[test]
     fn strict_validation_accepts_basic() {
         let opts = ExportSymbolOptions::strict_c_abi();
-        validate_export_symbol("muffin_plugin_init", &opts).unwrap();
+        validate_export_symbol("flan_plugin_init", &opts).unwrap();
     }
 
     #[test]
     fn strict_validation_rejects_dash() {
         let opts = ExportSymbolOptions::strict_c_abi();
-        let err = validate_export_symbol("muffin-plugin", &opts).unwrap_err();
+        let err = validate_export_symbol("flan-plugin", &opts).unwrap_err();
         assert!(matches!(err, ExportSymbolError::InvalidChar { .. }));
     }
 
     #[test]
     fn sanitize_replaces_separators() {
         let opts = ExportSymbolOptions::c_abi();
-        let sym = sanitize_export_symbol("muffin.plugin:init", &opts);
-        assert_eq!(sym.name, "muffin_plugin_init");
+        let sym = sanitize_export_symbol("flan.plugin:init", &opts);
+        assert_eq!(sym.name, "flan_plugin_init");
         assert_eq!(sym.source, ExportSymbolSource::Sanitized);
     }
 
@@ -577,9 +577,9 @@ mod tests {
 
     #[test]
     fn sanitize_prefix_entrypoint() {
-        let opts = ExportSymbolOptions::muffin_entrypoints();
+        let opts = ExportSymbolOptions::flan_entrypoints();
         let sym = sanitize_export_symbol("plugin.init", &opts);
-        assert_eq!(sym.name, "muffin_plugin_init");
+        assert_eq!(sym.name, "flan_plugin_init");
     }
 
     #[test]
@@ -613,16 +613,16 @@ mod tests {
     }
 
     #[test]
-    fn muffin_export_symbol_helper() {
-        let sym = muffin_export_symbol("Build::Plan");
-        assert_eq!(sym.name, "muffin_build_plan");
+    fn flan_export_symbol_helper() {
+        let sym = flan_export_symbol("Build::Plan");
+        assert_eq!(sym.name, "flan_build_plan");
     }
 
     #[test]
     fn format_prefixed_joins_cleanly() {
-        assert_eq!(format_prefixed("muffin", "init"), "muffin_init");
-        assert_eq!(format_prefixed("muffin_", "init"), "muffin_init");
-        assert_eq!(format_prefixed("muffin", "_init"), "muffin_init");
+        assert_eq!(format_prefixed("flan", "init"), "flan_init");
+        assert_eq!(format_prefixed("flan_", "init"), "flan_init");
+        assert_eq!(format_prefixed("flan", "_init"), "flan_init");
     }
 
     #[test]

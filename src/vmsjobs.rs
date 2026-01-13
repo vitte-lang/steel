@@ -1,6 +1,6 @@
 // src/vmsjobs.rs
 //
-// Muffin — VMS job model (minimal, std-only)
+// Flan — VMS job model (minimal, std-only)
 //
 // Purpose:
 // - Provide a small, self-contained job graph model used by vmsify/vmsfunctions.

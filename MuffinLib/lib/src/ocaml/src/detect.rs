@@ -1,4 +1,4 @@
-//! Muffin OCaml – Detect (MAX)
+//! Flan OCaml – Detect (MAX)
 //!
 //! Détection de l’environnement OCaml :
 //! - présence de ocamlc / ocamlopt
@@ -9,12 +9,12 @@
 //! Utilisé par :
 //! - driver.rs
 //! - validation toolchain
-//! - planification Muffin
+//! - planification Flan
 
 use std::path::PathBuf;
 use std::process::Command;
 
-use super::error::MuffinError;
+use super::error::FlanError;
 
 /// Informations sur l’environnement OCaml
 #[derive(Debug, Clone)]
@@ -39,13 +39,13 @@ pub struct OcamlInfo {
 }
 
 /// Détection principale OCaml
-pub fn detect_ocaml() -> Result<OcamlInfo, MuffinError> {
+pub fn detect_ocaml() -> Result<OcamlInfo, FlanError> {
     let ocamlc = which("ocamlc");
     let ocamlopt = which("ocamlopt");
     let ocamlfind = which("ocamlfind");
 
     if ocamlc.is_none() && ocamlopt.is_none() {
-        return Err(MuffinError::ValidationFailed(
+        return Err(FlanError::ValidationFailed(
             "no OCaml compiler found (ocamlc / ocamlopt missing)".into(),
         ));
     }
@@ -86,26 +86,26 @@ fn which(name: &str) -> Option<PathBuf> {
 }
 
 /// Récupère la version OCaml via `-version`
-fn ocaml_version(exe: &PathBuf) -> Result<String, MuffinError> {
+fn ocaml_version(exe: &PathBuf) -> Result<String, FlanError> {
     let out = Command::new(exe)
         .arg("-version")
         .output()
         .map_err(|e| {
-            MuffinError::ValidationFailed(format!(
+            FlanError::ValidationFailed(format!(
                 "failed to execute {:?}: {e}",
                 exe
             ))
         })?;
 
     if !out.status.success() {
-        return Err(MuffinError::ValidationFailed(
+        return Err(FlanError::ValidationFailed(
             "unable to query OCaml version".into(),
         ));
     }
 
     let ver = String::from_utf8_lossy(&out.stdout).trim().to_string();
     if ver.is_empty() {
-        return Err(MuffinError::ValidationFailed(
+        return Err(FlanError::ValidationFailed(
             "OCaml returned empty version".into(),
         ));
     }

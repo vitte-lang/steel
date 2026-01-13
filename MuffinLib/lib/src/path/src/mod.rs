@@ -1,6 +1,6 @@
 //! `path` crate/module root (mod.rs) — MAX.
 //!
-//! This module centralizes path utilities used across MuffinLib:
+//! This module centralizes path utilities used across FlanLib:
 //! - canonicalization and normalization (`canon`)
 //! - globbing (`glob`)
 //!

@@ -1,6 +1,6 @@
-//! Muffin OCaml – Driver (MAX)
+//! Flan OCaml – Driver (MAX)
 //!
-//! Driver d’exécution OCaml pour Muffin.
+//! Driver d’exécution OCaml pour Flan.
 //!
 //! Responsabilités :
 //! - détecter l’environnement OCaml
@@ -13,13 +13,13 @@
 //! - planification
 //! - cache CAS
 
-use super::error::MuffinError;
+use super::error::FlanError;
 use super::runner::process::CommandRunner;
 
 use super::args::{OcamlArgs, OcamlBackend};
 use super::detect::{detect_ocaml, OcamlInfo};
 
-/// Driver OCaml Muffin
+/// Driver OCaml Flan
 pub struct OcamlDriver<'a> {
     runner: &'a CommandRunner,
     info: OcamlInfo,
@@ -31,7 +31,7 @@ impl<'a> OcamlDriver<'a> {
     /* --------------------------------------------------------------------- */
 
     /// Initialise le driver (détection OCaml)
-    pub fn new(runner: &'a CommandRunner) -> Result<Self, MuffinError> {
+    pub fn new(runner: &'a CommandRunner) -> Result<Self, FlanError> {
         let info = detect_ocaml()?;
         Ok(Self { runner, info })
     }
@@ -46,9 +46,9 @@ impl<'a> OcamlDriver<'a> {
     /* --------------------------------------------------------------------- */
 
     /// Exécute une compilation OCaml décrite par `OcamlArgs`
-    pub fn run(&self, args: &OcamlArgs) -> Result<(), MuffinError> {
+    pub fn run(&self, args: &OcamlArgs) -> Result<(), FlanError> {
         // Validation locale
-        args.validate().map_err(MuffinError::ValidationFailed)?;
+        args.validate().map_err(FlanError::ValidationFailed)?;
 
         // Vérification des capacités
         self.check_backend_support(args)?;
@@ -60,7 +60,7 @@ impl<'a> OcamlDriver<'a> {
                 .ocamlc
                 .as_ref()
                 .ok_or_else(|| {
-                    MuffinError::ValidationFailed(
+                    FlanError::ValidationFailed(
                         "ocamlc requested but not available".into(),
                     )
                 })?,
@@ -69,7 +69,7 @@ impl<'a> OcamlDriver<'a> {
                 .ocamlopt
                 .as_ref()
                 .ok_or_else(|| {
-                    MuffinError::ValidationFailed(
+                    FlanError::ValidationFailed(
                         "ocamlopt requested but not available".into(),
                     )
                 })?,
@@ -78,7 +78,7 @@ impl<'a> OcamlDriver<'a> {
         // Génération argv final
         let argv = args.to_argv();
 
-        // Exécution via runner Muffin
+        // Exécution via runner Flan
         self.runner.run(
             compiler.as_os_str(),
             &argv,
@@ -93,12 +93,12 @@ impl<'a> OcamlDriver<'a> {
     /* --------------------------------------------------------------------- */
 
     /// Compile un exécutable OCaml natif simple
-    pub fn compile_executable(&self, args: &OcamlArgs) -> Result<(), MuffinError> {
+    pub fn compile_executable(&self, args: &OcamlArgs) -> Result<(), FlanError> {
         self.run(args)
     }
 
     /// Compile une librairie OCaml
-    pub fn compile_library(&self, args: &OcamlArgs) -> Result<(), MuffinError> {
+    pub fn compile_library(&self, args: &OcamlArgs) -> Result<(), FlanError> {
         self.run(args)
     }
 
@@ -106,18 +106,18 @@ impl<'a> OcamlDriver<'a> {
     /* Validation interne                                                     */
     /* --------------------------------------------------------------------- */
 
-    fn check_backend_support(&self, args: &OcamlArgs) -> Result<(), MuffinError> {
+    fn check_backend_support(&self, args: &OcamlArgs) -> Result<(), FlanError> {
         match args.backend {
             OcamlBackend::Ocamlc => {
                 if !self.info.has_bytecode {
-                    return Err(MuffinError::ValidationFailed(
+                    return Err(FlanError::ValidationFailed(
                         "OCaml bytecode backend (ocamlc) not supported".into(),
                     ));
                 }
             }
             OcamlBackend::Ocamlopt => {
                 if !self.info.has_native {
-                    return Err(MuffinError::ValidationFailed(
+                    return Err(FlanError::ValidationFailed(
                         "OCaml native backend (ocamlopt) not supported".into(),
                     ));
                 }

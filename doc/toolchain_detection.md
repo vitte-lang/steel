@@ -1,6 +1,6 @@
 # Toolchain Detection (CPython / OCaml / GHC)
 
-This document describes how Muffin detects and validates language toolchains
+This document describes how Flan detects and validates language toolchains
 for the CPython, OCaml, and GHC Haskell backends. It lists the expected
 executables, the environment variables you can use, and the typical failure
 modes.
@@ -14,7 +14,7 @@ modes.
 - `nuitka` (only if you explicitly request the Nuitka backend)
 
 ### Detection strategy
-- Muffin probes `python3` then `python` using an inline script:
+- Flan probes `python3` then `python` using an inline script:
   - `platform.python_implementation()`
   - `sys.version_info`
 - The detected implementation is one of:
@@ -24,7 +24,7 @@ modes.
 
 ### Environment variables (recommended)
 - `PYTHON` or `PYTHONBIN`: point to a specific interpreter if multiple are
-  installed (set this in your shell or wrapper script and pass it to Muffin).
+  installed (set this in your shell or wrapper script and pass it to Flan).
 - `PYTHONPATH`: if you rely on non-standard module paths at build time.
 - `PYTHONUTF8=1`: enforce UTF-8 in environments with legacy locale defaults.
 - `NUITKA_CACHE_DIR`: set if you want Nuitka to write cache outside project.
@@ -51,7 +51,7 @@ python -m nuitka --version
 - `ocamlopt` (native)
 
 ### Detection strategy
-- Muffin checks `ocamlc` and `ocamlopt` availability in `PATH`.
+- Flan checks `ocamlc` and `ocamlopt` availability in `PATH`.
 - Backend selection:
   - `Ocamlc` requires `ocamlc`.
   - `Ocamlopt` requires `ocamlopt`.
@@ -80,7 +80,7 @@ ocamlc -where
 - `ghc` (required)
 
 ### Detection strategy
-- Muffin runs `ghc --print-libdir` to verify presence.
+- Flan runs `ghc --print-libdir` to verify presence.
 - Then queries `ghc --numeric-version`.
 - Both native and bytecode modes are considered supported by default; the
   detection step only verifies `ghc` can run.
@@ -108,6 +108,6 @@ ghc --print-libdir
 1) Verify the tool binary is on `PATH`.
 2) Check the version output matches what your project expects.
 3) If you use virtual environments or custom installs, export the related
-   environment variables before running Muffin.
+   environment variables before running Flan.
 4) Use `which <tool>` / `where <tool>` to confirm the resolved executable.
 5) Run the suggested checks above to validate the toolchain manually.

@@ -1,9 +1,9 @@
 // src/implicit.rs
 //
-// Muffin — implicit (implicit rules, implicit variables, implicit defaults)
+// Flan — implicit (implicit rules, implicit variables, implicit defaults)
 //
 // Purpose:
-// - Provide the implicit behavior layer that makes Muffin ergonomic without
+// - Provide the implicit behavior layer that makes Flan ergonomic without
 //   turning configuration into "magic":
 //   - default variables (workspace root, build dir, profile/target defaults)
 //   - implicit tools (cc, cxx, ar) when not defined explicitly
@@ -32,7 +32,7 @@ use std::path::{Path, PathBuf};
 #[derive(Debug, Clone)]
 pub struct Workspace {
     pub root: PathBuf,
-    pub muffinfile: Option<PathBuf>,
+    pub flanfile: Option<PathBuf>,
     pub vars: BTreeMap<String, String>,
     pub profiles: BTreeMap<String, Profile>,
     pub targets: BTreeMap<String, Target>,
@@ -181,9 +181,9 @@ fn inject_default_vars(ws: &mut Workspace, cfg: &ImplicitConfig, tr: &mut Implic
     // workspace.root
     insert_var(ws, cfg, tr, "workspace.root", ws.root.display().to_string(), "workspace root")?;
 
-    // muffinfile path (if any)
-    if let Some(mf) = &ws.muffinfile {
-        insert_var(ws, cfg, tr, "workspace.muffinfile", mf.display().to_string(), "muffinfile path")?;
+    // flanfile path (if any)
+    if let Some(mf) = &ws.flanfile {
+        insert_var(ws, cfg, tr, "workspace.flanfile", mf.display().to_string(), "flanfile path")?;
     }
 
     // build dir
@@ -438,7 +438,7 @@ mod tests {
     fn applies_defaults() {
         let mut ws = Workspace {
             root: PathBuf::from("."),
-            muffinfile: None,
+            flanfile: None,
             vars: BTreeMap::new(),
             profiles: BTreeMap::new(),
             targets: BTreeMap::new(),

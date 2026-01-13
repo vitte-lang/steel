@@ -1,6 +1,6 @@
 //! Glob utilities (glob.rs) — MAX (std-only).
 //!
-//! Muffin uses globs for:
+//! Flan uses globs for:
 //! - selecting source files (e.g. `src/**/*.c`)
 //! - selecting manifest inputs (e.g. `**/*.muf`)
 //! - excluding generated output (e.g. `!build/**`)

@@ -1,4 +1,4 @@
-// C:\Users\gogin\Documents\GitHub\muffin\MuffinLib\lib\src\output\mub.rs
+// C:\Users\gogin\Documents\GitHub\flan\FlanLib\lib\src\output\mub.rs
 
 use crate::model::graph::Graph;
 use serde::{Deserialize, Serialize};
@@ -9,10 +9,10 @@ use std::{
     path::{Path, PathBuf},
 };
 
-/// MUB (Muffin Universal Binary) schema version.
+/// MUB (Flan Universal Binary) schema version.
 ///
 /// This file is the frozen, portable, deterministic configuration artifact
-/// generated from `MuffinConfig.muf` and consumed by downstream build execution.
+/// generated from `FlanConfig.muf` and consumed by downstream build execution.
 ///
 /// - little-endian header
 /// - versioned schema
@@ -23,8 +23,8 @@ pub const MUB_SCHEMA_VERSION: u32 = 1;
 pub const MUB_MAGIC: [u8; 4] = *b"MUB\0";
 
 /// Default relative output location (recommended).
-/// Typically written under `target/muffin/config.mub`.
-pub const DEFAULT_MUB_REL_PATH: &str = "target/muffin/config.mub";
+/// Typically written under `target/flan/config.mub`.
+pub const DEFAULT_MUB_REL_PATH: &str = "target/flan/config.mub";
 
 /// Fixed header (packed manually).
 ///
@@ -77,7 +77,7 @@ impl Default for MubOptions {
 }
 
 /// Frozen payload: keep it simple and stable.
-/// The downstream executor (Vitte or Muffin runtime) consumes this.
+/// The downstream executor (Vitte or Flan runtime) consumes this.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MubPayload {
     /// Payload schema tag for tooling.
@@ -119,7 +119,7 @@ pub enum MubError {
 /// Build a payload structure from a resolved `Graph`.
 pub fn build_payload(graph: Graph) -> MubPayload {
     MubPayload {
-        schema: format!("muffin.mub/{}", MUB_SCHEMA_VERSION),
+        schema: format!("flan.mub/{}", MUB_SCHEMA_VERSION),
         meta: graph.meta.clone(),
         graph,
     }
@@ -153,7 +153,7 @@ pub fn write_mub_file(
         let json_path = path.with_extension("graph.json");
         // Reuse graph_json module if present in your crate.
         let json = serde_json::json!({
-            "schema": "muffin.graph.json/1",
+            "schema": "flan.graph.json/1",
             "meta": payload.meta,
             "nodes": payload.graph.nodes,
             "edges": payload.graph.edges,
@@ -164,7 +164,7 @@ pub fn write_mub_file(
     if opts.emit_fingerprints_sidecar {
         let fp_path = path.with_extension("fingerprints.json");
         let json = serde_json::json!({
-            "schema": "muffin.fingerprints.json/1",
+            "schema": "flan.fingerprints.json/1",
             "fingerprints": {},
         });
         fs::write(&fp_path, serde_json::to_string_pretty(&json).unwrap_or_else(|_| "{}".into()))?;

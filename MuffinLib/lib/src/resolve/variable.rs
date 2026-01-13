@@ -1,4 +1,4 @@
-// C:\Users\gogin\Documents\GitHub\muffin\MuffinLib\lib\src\resolve\variable.rs
+// C:\Users\gogin\Documents\GitHub\flan\FlanLib\lib\src\resolve\variable.rs
 
 //! Variable resolution layer.
 //!
@@ -10,10 +10,10 @@
 //! Order of precedence (lowest → highest):
 //! 1. Built-in defaults
 //! 2. Environment variables
-//! 3. MuffinConfig.muf explicit variables
+//! 3. FlanConfig.muf explicit variables
 //! 4. CLI overrides (-D KEY=VALUE)
 
-use crate::error::MuffinError;
+use crate::error::FlanError;
 use std::collections::BTreeMap;
 
 /// Container for resolved variables.
@@ -64,20 +64,20 @@ impl VarSet {
     /// Rules:
     /// - names must be ASCII, uppercase, and use `_`
     /// - values must be non-empty
-    pub fn validate(&self) -> Result<(), MuffinError> {
+    pub fn validate(&self) -> Result<(), FlanError> {
         for (k, v) in self.vars.iter() {
             if k.is_empty()
                 || !k
                     .chars()
                     .all(|c| c.is_ascii_uppercase() || c.is_ascii_digit() || c == '_')
             {
-                return Err(MuffinError::ValidationFailed(format!(
+                return Err(FlanError::ValidationFailed(format!(
                     "invalid variable name: {}",
                     k
                 )));
             }
             if v.is_empty() {
-                return Err(MuffinError::ValidationFailed(format!(
+                return Err(FlanError::ValidationFailed(format!(
                     "variable {} has empty value",
                     k
                 )));
@@ -120,13 +120,13 @@ pub fn env_vars() -> VarSet {
 pub fn resolve_vars(
     explicit: &BTreeMap<String, String>,
     cli_overrides: &BTreeMap<String, String>,
-) -> Result<VarSet, MuffinError> {
+) -> Result<VarSet, FlanError> {
     let mut vars = builtin_vars();
 
     // env overrides defaults
     vars.merge_override(&env_vars());
 
-    // explicit MuffinConfig.muf overrides env
+    // explicit FlanConfig.muf overrides env
     for (k, v) in explicit {
         vars.set(k.clone(), v.clone());
     }

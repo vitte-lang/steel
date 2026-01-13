@@ -2,7 +2,7 @@
 //!
 //! This module provides foundational span/file primitives used by diagnostics.
 //! Typical dependency graph:
-//! - `span` has no heavy deps and is used by `diag`, `parser`, `muffin`, etc.
+//! - `span` has no heavy deps and is used by `diag`, `parser`, `flan`, etc.
 //!
 //! Contents:
 //! - `file`: `SourceFile`, line/col mapping, `FileId`

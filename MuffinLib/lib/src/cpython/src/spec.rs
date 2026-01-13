@@ -1,4 +1,4 @@
-//! Muffin CPython – Spec (MAX)
+//! Flan CPython – Spec (MAX)
 //!
 //! Spécification déclarative d’une unité de build Python.
 //!

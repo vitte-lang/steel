@@ -5,7 +5,7 @@ from datetime import date
 from app.controller import add_book, checkin, checkout, refresh_view, select_book
 from app.state import AppState
 from core.data import seed_catalog
-from core.logic import list_rows
+from coreic import list_rows
 from core.model import Book
 
 

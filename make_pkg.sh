@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_NAME="Muffin"
-BIN_NAME="muffin"
+APP_NAME="Flan"
+BIN_NAME="flan"
 VERSION="0.1.0"
-IDENT="io.vitte-lang.muffin"
+IDENT="io.vitte-lang.flan"
 
 MODE="${1:-universal2}"          # x86_64 | universal2
 MIN_OS="${MIN_OS:-}"             # ex: 26.0 (optionnel). Laisse vide = pas de contrainte.

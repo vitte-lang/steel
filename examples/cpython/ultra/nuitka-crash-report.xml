@@ -3,7 +3,7 @@
   <scons_environment />
   <scons_error_reports>
     <scons_error_report>
-      <command>"/usr/bin/clang" -o "/Users/vincent/Documents/Github/muffin/exemples/cpython/ultra/target/out/main.dist/cpython_ultra_macos.bin" -flto --target=arm64-apple-macos26.0 -O2 -Wno-deprecated-declarations -headerpad_max_install_names -Wl,-sectcreate,constants,constants,./__constants.bin @"./@link_input.txt" -L/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/lib -lm "/opt/homebrew/opt/python@3.14/Frameworks/Python.framework/Versions/3.14/lib/python3.14/config-3.14-darwin/libpython3.14.a"</command>
+      <command>"/usr/bin/clang" -o "/Users/vincent/Documents/Github/flan/exemples/cpython/ultra/target/out/main.dist/cpython_ultra_macos.bin" -flto --target=arm64-apple-macos26.0 -O2 -Wno-deprecated-declarations -headerpad_max_install_names -Wl,-sectcreate,constants,constants,./__constants.bin @"./@link_input.txt" -L/opt/homebrew/Cellar/python@3.14/3.14.2/Frameworks/Python.framework/Versions/3.14/lib -lm "/opt/homebrew/opt/python@3.14/Frameworks/Python.framework/Versions/3.14/lib/python3.14/config-3.14-darwin/libpython3.14.a"</command>
       <stderr>
 Undefined symbols for architecture arm64:  "__Py_TriggerGC", referenced from:      _impl_cli$gui$$36$$$36$$$36$function__2__build_layout in lto.o      _MAKE_UNPACK_ITERATOR in lto.o      _impl_core$logic$$36$$$36$$$36$function__2_list_rows in lto.o      _MAKE_GENERATOR_core$model$$36$$$36$$$36$function__2_find$$36$$$36$$$36$genexpr__1_genexpr in lto.o      _Nuitka_Function_New in lto.o      _Nuitka_CallFunctionPosArgsKwArgs in lto.o      _Nuitka_Method_New in lto.o      ...ld: symbol(s) not found for architecture arm64clang: error: linker command failed with exit code 1 (use -v to see invocation)
 </stderr>
@@ -27,7 +27,7 @@ Undefined symbols for architecture arm64:  "__Py_TriggerGC", referenced from:   
       <module_usage name="sys" finding="absolute" line="2" />
       <module_usage name="app.state" finding="absolute" line="4" />
       <module_usage name="core.data" finding="absolute" line="5" />
-      <module_usage name="core.logic" finding="absolute" line="6" />
+      <module_usage name="coreic" finding="absolute" line="6" />
       <module_usage name="cli.gui" finding="absolute" line="11" />
       <module_usage name="_codecs_cn" finding="absolute" line="1" />
       <module_usage name="_codecs_hk" finding="absolute" line="1" />
@@ -1134,7 +1134,7 @@ Undefined symbols for architecture arm64:  "__Py_TriggerGC", referenced from:   
     <optimization-time pass="2" time="0.00" micro_passes="1" max_branch_merge="14" merged_total="37" />
     <module_usages>
       <module_usage name="typing" finding="absolute" line="1" />
-      <module_usage name="core.logic" finding="absolute" line="3" />
+      <module_usage name="coreic" finding="absolute" line="3" />
       <module_usage name="core.model" finding="absolute" line="4" />
       <module_usage name="app.state" finding="relative" line="6" />
     </module_usages>
@@ -1247,7 +1247,7 @@ Undefined symbols for architecture arm64:  "__Py_TriggerGC", referenced from:   
       <module_usage name="app.controller" finding="absolute" line="5" />
       <module_usage name="app.state" finding="absolute" line="6" />
       <module_usage name="core.data" finding="absolute" line="7" />
-      <module_usage name="core.logic" finding="absolute" line="8" />
+      <module_usage name="coreic" finding="absolute" line="8" />
       <module_usage name="core.model" finding="absolute" line="9" />
     </module_usages>
   </module>
@@ -1471,7 +1471,7 @@ Undefined symbols for architecture arm64:  "__Py_TriggerGC", referenced from:   
       <module_usage name="core.model" finding="relative" line="1" />
     </module_usages>
   </module>
-  <module name="core.logic" kind="CompiledPythonModule" usage="import" reason="Instructed by user to follow to all modules." source_path="${cwd}/core/logic.py">
+  <module name="coreic" kind="CompiledPythonModule" usage="import" reason="Instructed by user to follow to all modules." source_path="${cwd}/core/logic.py">
     <optimization-time pass="1" time="0.00" micro_passes="5" max_branch_merge="11" merged_total="239" />
     <optimization-time pass="2" time="0.00" micro_passes="1" max_branch_merge="10" merged_total="47" />
     <module_usages>
@@ -4971,7 +4971,7 @@ Undefined symbols for architecture arm64:  "__Py_TriggerGC", referenced from:   
     <module_data filename="module.cli.gui.const" blob_name="cli.gui" blob_size="2764" input_size="5049" />
     <module_data filename="module.core.const" blob_name="core" blob_size="110" input_size="227" />
     <module_data filename="module.core.data.const" blob_name="core.data" blob_size="553" input_size="876" />
-    <module_data filename="module.core.logic.const" blob_name="core.logic" blob_size="457" input_size="1027" />
+    <module_data filename="module.coreic.const" blob_name="coreic" blob_size="457" input_size="1027" />
     <module_data filename="module.core.model.const" blob_name="core.model" blob_size="704" input_size="1410" />
   </data_composer>
   <command_line>

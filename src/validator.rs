@@ -1,9 +1,9 @@
 // src/validator.rs
 //
-// Muffin — validation primitives
+// Flan — validation primitives
 //
 // Purpose:
-// - Provide a small, deterministic validation framework used across Muffin.
+// - Provide a small, deterministic validation framework used across Flan.
 // - Validate config, manifests, paths, identifiers, target specs, tool definitions, etc.
 // - Aggregate issues as diagnostics-friendly structures (warnings/errors with optional spans).
 //
@@ -15,7 +15,7 @@
 //
 // Typical usage:
 //
-//   let mut v = Validator::new("MuffinConfig");
+//   let mut v = Validator::new("FlanConfig");
 //   v.require(!name.is_empty(), "name must not be empty").at_line(12);
 //   v.check_path_exists(&path, "missing input").error();
 //   let report = v.finish();

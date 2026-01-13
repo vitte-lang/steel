@@ -1,6 +1,6 @@
 //! BSD platform helpers (bsd.rs) — MAX (std-only).
 //!
-//! This module provides BSD-oriented platform utilities used by Muffin.
+//! This module provides BSD-oriented platform utilities used by Flan.
 //! Targets:
 //! - FreeBSD
 //! - OpenBSD
@@ -154,19 +154,19 @@ pub fn temp_dir() -> PathBuf {
     env::temp_dir()
 }
 
-/// Return default Muffin config directory (e.g. for `muffin/config.muf`).
-pub fn muffin_config_dir() -> PathBuf {
-    config_dir().join("muffin")
+/// Return default Flan config directory (e.g. for `flan/config.muf`).
+pub fn flan_config_dir() -> PathBuf {
+    config_dir().join("flan")
 }
 
-/// Return default Muffin cache directory.
-pub fn muffin_cache_dir() -> PathBuf {
-    cache_dir().join("muffin")
+/// Return default Flan cache directory.
+pub fn flan_cache_dir() -> PathBuf {
+    cache_dir().join("flan")
 }
 
-/// Return default Muffin data directory.
-pub fn muffin_data_dir() -> PathBuf {
-    data_dir().join("muffin")
+/// Return default Flan data directory.
+pub fn flan_data_dir() -> PathBuf {
+    data_dir().join("flan")
 }
 
 /* ------------------------- Process / shell helpers ---------------------- */
@@ -198,7 +198,7 @@ pub fn default_env() -> BTreeMap<String, String> {
         m.insert("LANG".into(), "C".into());
     }
 
-    // Optional: Muffin marker
+    // Optional: Flan marker
     m.insert("MUFFIN_PLATFORM".into(), "bsd".into());
     m
 }

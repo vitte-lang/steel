@@ -2,7 +2,7 @@
 
 ## 📋 Résumé des changements
 
-Muffin a été enrichi avec une **stratégie complète de compatibilité cross-platform**, couvrant les anciens et nouveaux OS.
+Flan a été enrichi avec une **stratégie complète de compatibilité cross-platform**, couvrant les anciens et nouveaux OS.
 
 ---
 
@@ -105,7 +105,7 @@ cargo test --test os_compatibility --all-features
 ### Détection runtime
 
 ```rust
-use muffin::os::get_current_os;
+use flan::os::get_current_os;
 
 let os = get_current_os();
 println!("OS: {} {:?}", os.name(), os.tier());
@@ -201,9 +201,9 @@ pub trait OsAdapter {
    cargo test --test os_compatibility --all-features
    ```
 
-2. **Intégrer** dans les commandes Muffin :
+2. **Intégrer** dans les commandes Flan :
    ```rust
-   use muffin::os::get_current_os;
+   use flan::os::get_current_os;
    ```
 
 3. **CI/CD** : Ajouter workflows GitHub Actions pour test multi-OS
@@ -256,5 +256,5 @@ cargo test --features legacy --all
 
 ---
 
-Muffin est maintenant **production-ready** pour une utilisation cross-platform du Cambrien au Quaternaire ! 🎉
+Flan est maintenant **production-ready** pour une utilisation cross-platform du Cambrien au Quaternaire ! 🎉
 

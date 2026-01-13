@@ -3,7 +3,7 @@
 version = 3
 
 [[package]]
-name = "MuffinLib"
+name = "FlanLib"
 version = "0.1.0"
 
 [[package]]
@@ -577,10 +577,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f52b00d39961fc5b2736ea853c9cc86238e165017a493d1d5c8eac6bdc4cc273"
 
 [[package]]
-name = "muffin"
+name = "flan"
 version = "0.1.0"
 dependencies = [
- "MuffinLib",
+ "FlanLib",
  "anyhow",
  "chrono",
  "clap",
@@ -607,30 +607,30 @@ dependencies = [
 ]
 
 [[package]]
-name = "muffin-cpython"
+name = "flan-cpython"
 version = "0.1.0"
 dependencies = [
- "MuffinLib",
+ "FlanLib",
  "serde",
  "tempfile",
  "thiserror",
 ]
 
 [[package]]
-name = "muffin-ocaml"
+name = "flan-ocaml"
 version = "0.1.0"
 dependencies = [
- "MuffinLib",
+ "FlanLib",
  "serde",
  "tempfile",
  "thiserror",
 ]
 
 [[package]]
-name = "muffin_gcc"
+name = "flan_gcc"
 version = "0.1.0"
 dependencies = [
- "MuffinLib",
+ "FlanLib",
  "anyhow",
  "serde",
  "serde_json",
@@ -642,7 +642,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "muffin_platform"
+name = "flan_platform"
 version = "0.1.0"
 
 [[package]]
