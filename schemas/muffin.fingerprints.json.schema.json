@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "muffin.fingerprints.json/1",
+  "title": "Muffin Fingerprints JSON",
+  "type": "object",
+  "required": ["schema", "fingerprints"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": {
+      "const": "muffin.fingerprints.json/1"
+    },
+    "fingerprints": {
+      "type": "object",
+      "additionalProperties": { "type": "string" }
+    }
+  }
+}

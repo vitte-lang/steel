@@ -4,7 +4,7 @@
 //
 // Purpose:
 // - Centralize "loading" of external configuration / data sources into Muffin runtime:
-//   - Muffinfile / build.muf parsing results (AST/IR) -> internal models
+//   - MuffinConfig / build.muf parsing results (AST/IR) -> internal models
 //   - plugin/registry metadata -> internal structures
 //   - workspace config (global + local) -> merged view
 //   - environment overlays
@@ -19,7 +19,7 @@
 // No external deps.
 //
 // Notes:
-// - The actual parsing of Muffinfile is not implemented here; plug in your parser.
+// - The actual parsing of MuffinConfig is not implemented here; plug in your parser.
 // - For "max", a small in-memory provider and a file provider stub are included.
 
 #![allow(dead_code)]
@@ -388,19 +388,19 @@ impl LoadProvider for EnvProvider {
     }
 }
 
-/// Provider: file loader stub (Muffinfile/build.muf).
+/// Provider: file loader stub (MuffinConfig/build.muf).
 /// This expects a single file path and returns a Parse error until you hook a parser.
-pub struct MuffinfileProvider {
+pub struct MuffinConfigProvider {
     pub path: PathBuf,
 }
 
-impl MuffinfileProvider {
+impl MuffinConfigProvider {
     pub fn new(path: PathBuf) -> Self {
         Self { path }
     }
 }
 
-impl LoadProvider for MuffinfileProvider {
+impl LoadProvider for MuffinConfigProvider {
     fn name(&self) -> &'static str {
         "muffinfile"
     }

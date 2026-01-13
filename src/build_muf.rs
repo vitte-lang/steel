@@ -10,7 +10,7 @@
 //! - best-effort by default (strict mode available)
 //!
 //! Integration points
-//! - A real Muffinfile parser/resolver can replace `resolve_workspace()`.
+//! - A real MuffinConfig parser/resolver can replace `resolve_workspace()`.
 //! - A build runner can consume the emitted `Muffinconfig.mff`.
 
 use std::collections::BTreeMap;
@@ -29,8 +29,8 @@ pub const DEFAULT_EMIT_NAME: &str = "Muffinconfig.mff";
 /// Current mff schema version (header: `mff <version>`).
 pub const MFF_SCHEMA_VERSION: u32 = 1;
 
-/// Default Muffinfile names for discovery.
-pub const DEFAULT_MUFFINFILE_NAMES: &[&str] = &["Muffinfile", "muffin"];
+/// Default MuffinConfig names for discovery.
+pub const DEFAULT_MUFFINFILE_NAMES: &[&str] = &["MuffinConfig", "muffin"];
 
 pub type Result<T> = std::result::Result<T, BuildMufError>;
 
@@ -78,7 +78,7 @@ pub struct BuildMufOptions {
     /// Workspace root directory.
     pub root_dir: PathBuf,
 
-    /// Explicit Muffinfile path (overrides discovery).
+    /// Explicit MuffinConfig path (overrides discovery).
     pub muffin_file: Option<PathBuf>,
 
     /// Selected build profile (e.g. debug/release/custom).
@@ -171,6 +171,9 @@ pub struct ToolchainInfo {
     pub ar: Option<String>,
     pub ld: Option<String>,
     pub rustc: Option<String>,
+    pub python: Option<String>,
+    pub ocaml: Option<String>,
+    pub ghc: Option<String>,
 
     /// Tool versions (best effort): tool -> "version line"
     pub versions: BTreeMap<String, String>,
@@ -178,12 +181,18 @@ pub struct ToolchainInfo {
 
 impl ToolchainInfo {
     pub fn from_env(best_effort_versions: bool) -> Self {
+        let explicit_python = env::var("MUFFIN_TOOLCHAIN_PYTHON").ok();
+        let explicit_ocaml = env::var("MUFFIN_TOOLCHAIN_OCAML").ok();
+        let explicit_ghc = env::var("MUFFIN_TOOLCHAIN_GHC").ok();
         let mut tc = ToolchainInfo {
             cc: env::var("CC").ok(),
             cxx: env::var("CXX").ok(),
             ar: env::var("AR").ok(),
             ld: env::var("LD").ok(),
             rustc: env::var("RUSTC").ok().or_else(|| Some("rustc".to_string())),
+            python: explicit_python.clone().or_else(|| env::var("PYTHON").ok()),
+            ocaml: explicit_ocaml.clone().or_else(|| env::var("OCAMLPATH").ok()),
+            ghc: explicit_ghc.clone().or_else(|| env::var("GHC_PACKAGE_PATH").ok()),
             versions: BTreeMap::new(),
         };
 
@@ -211,6 +220,21 @@ impl ToolchainInfo {
             if let Some(t) = tc.rustc.clone() {
                 if let Some(v) = tool_version_line(&t) {
                     tc.versions.insert("rustc".to_string(), v);
+                }
+            }
+            if explicit_python.is_some() {
+                if let Some(t) = tc.python.clone() {
+                    if let Some((impl_name, ver)) = python_impl_and_version(&t) {
+                        tc.versions.insert("python".to_string(), ver);
+                        tc.versions.insert("python_impl".to_string(), impl_name);
+                    }
+                }
+            }
+            if explicit_ghc.is_some() {
+                if let Some(t) = tc.ghc.clone() {
+                    if let Some(v) = ghc_numeric_version(&t) {
+                        tc.versions.insert("ghc".to_string(), v);
+                    }
                 }
             }
         }
@@ -337,7 +361,7 @@ Usage:
 
 Flags:
   --root <path>             Workspace root (default: cwd)
-  --file <path>             Explicit Muffinfile path (skip discovery)
+  --file <path>             Explicit MuffinConfig path (skip discovery)
   --profile <name>          Profile (default: MUFFIN_PROFILE or debug)
   --target <triple>         Target triple (default: host triple best-effort)
   --emit <path>             Emit path (default: root/Muffinconfig.mff or MUFFIN_EMIT)
@@ -353,7 +377,7 @@ Flags:
 }
 
 /// Execute the configuration phase:
-/// 1) discover Muffinfile if needed
+/// 1) discover MuffinConfig if needed
 /// 2) validate minimal invariants
 /// 3) resolve into a canonical `ResolvedConfig`
 /// 4) emit `Muffinconfig.mff`
@@ -379,7 +403,7 @@ pub fn run(opts: &BuildMufOptions) -> Result<ResolvedConfig> {
     Ok(resolved)
 }
 
-/// Discover Muffinfile/muffin by scanning the root directory (bounded recursion).
+/// Discover MuffinConfig/muffin by scanning the root directory (bounded recursion).
 fn discover_muffinfile(root: &Path, opts: &BuildMufOptions) -> Result<PathBuf> {
     // Fast path: root candidates.
     for n in DEFAULT_MUFFINFILE_NAMES {
@@ -394,7 +418,7 @@ fn discover_muffinfile(root: &Path, opts: &BuildMufOptions) -> Result<PathBuf> {
         Some(p) => Ok(p),
         None => Err(BuildMufError::Validate {
             msg: format!(
-                "no Muffinfile found in {} (expected one of: {:?})",
+                "no MuffinConfig found in {} (expected one of: {:?})",
                 root.display(),
                 DEFAULT_MUFFINFILE_NAMES
             ),
@@ -475,7 +499,7 @@ fn discover_with_local_scan(root: &Path, opts: &BuildMufOptions) -> Option<PathB
 
             if md.is_file() {
                 if let Some(fname) = path.file_name().and_then(|s| s.to_str()) {
-                    if fname == "Muffinfile" || fname == "muffin" {
+                    if fname == "MuffinConfig" || fname == "muffin" {
                         return Some(path);
                     }
                 }
@@ -495,15 +519,15 @@ fn validate_inputs(root: &Path, muffinfile: &Path, opts: &BuildMufOptions) -> Re
 
     if !muffinfile.is_file() {
         return Err(BuildMufError::Validate {
-            msg: format!("Muffinfile not found: {}", muffinfile.display()),
+            msg: format!("MuffinConfig not found: {}", muffinfile.display()),
         });
     }
 
-    // In strict mode, ensure Muffinfile is under root.
+    // In strict mode, ensure MuffinConfig is under root.
     if opts.strict && muffinfile.strip_prefix(root).is_err() {
         return Err(BuildMufError::Validate {
             msg: format!(
-                "--strict: Muffinfile must be under root. root={}, file={}",
+                "--strict: MuffinConfig must be under root. root={}, file={}",
                 root.display(),
                 muffinfile.display()
             ),
@@ -515,7 +539,7 @@ fn validate_inputs(root: &Path, muffinfile: &Path, opts: &BuildMufOptions) -> Re
 
 /// Resolve workspace configuration into a canonical config snapshot.
 ///
-/// Replace this function with a real Muffinfile parser/resolver.
+/// Replace this function with a real MuffinConfig parser/resolver.
 fn resolve_workspace(root: &Path, muffinfile: &Path, opts: &BuildMufOptions) -> Result<ResolvedConfig> {
     let profile = opts
         .profile
@@ -545,8 +569,9 @@ fn resolve_workspace(root: &Path, muffinfile: &Path, opts: &BuildMufOptions) -> 
     vars.insert("muffin.offline".to_string(), opts.offline.to_string());
     vars.insert("muffin.root".to_string(), root.to_string_lossy().to_string());
     vars.insert("muffin.file".to_string(), muffinfile.to_string_lossy().to_string());
+    insert_toolchain_env_vars(&mut vars, &toolchain);
 
-    // Best-effort: read Muffinfile bytes and hash for fingerprint.
+    // Best-effort: read MuffinConfig bytes and hash for fingerprint.
     let file_bytes =
         fs::read(muffinfile).map_err(|e| io_err("read", muffinfile.to_path_buf(), e))?;
 
@@ -656,6 +681,15 @@ pub fn format_mcfg(cfg: &ResolvedConfig) -> String {
     }
     if let Some(v) = &cfg.toolchain.rustc {
         out.push_str(&format!("  rustc \"{}\"\n", escape(v)));
+    }
+    if let Some(v) = &cfg.toolchain.python {
+        out.push_str(&format!("  python \"{}\"\n", escape(v)));
+    }
+    if let Some(v) = &cfg.toolchain.ocaml {
+        out.push_str(&format!("  ocaml \"{}\"\n", escape(v)));
+    }
+    if let Some(v) = &cfg.toolchain.ghc {
+        out.push_str(&format!("  ghc \"{}\"\n", escape(v)));
     }
 
     if !cfg.toolchain.versions.is_empty() {
@@ -772,6 +806,51 @@ fn tool_version_line(tool: &str) -> Option<String> {
     }
 }
 
+fn python_impl_and_version(python: &str) -> Option<(String, String)> {
+    let script = r#"
+import platform,sys
+print(f"{platform.python_implementation()};{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
+"#;
+    let out = Command::new(python).arg("-c").arg(script).output().ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let mut parts = stdout.trim().splitn(2, ';');
+    let impl_name = parts.next()?.trim();
+    let ver = parts.next()?.trim();
+    if impl_name.is_empty() || ver.is_empty() {
+        return None;
+    }
+    Some((impl_name.to_string(), ver.to_string()))
+}
+
+fn ghc_numeric_version(ghc: &str) -> Option<String> {
+    let out = Command::new(ghc).arg("--numeric-version").output().ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let ver = stdout.trim();
+    if ver.is_empty() {
+        None
+    } else {
+        Some(ver.to_string())
+    }
+}
+
+fn insert_toolchain_env_vars(vars: &mut BTreeMap<String, String>, toolchain: &ToolchainInfo) {
+    if let Some(v) = &toolchain.python {
+        vars.entry("PYTHON".to_string()).or_insert_with(|| v.clone());
+    }
+    if let Some(v) = &toolchain.ocaml {
+        vars.entry("OCAMLPATH".to_string()).or_insert_with(|| v.clone());
+    }
+    if let Some(v) = &toolchain.ghc {
+        vars.entry("GHC_PACKAGE_PATH".to_string()).or_insert_with(|| v.clone());
+    }
+}
+
 fn compute_fingerprint(file_bytes: &[u8], profile: &str, target: &str, toolchain: &ToolchainInfo) -> String {
     // Deterministic non-cryptographic hash (FNV-1a 64-bit).
     let mut h = 0xcbf29ce484222325u64;
@@ -808,6 +887,18 @@ fn compute_fingerprint(file_bytes: &[u8], profile: &str, target: &str, toolchain
         h = mix(h, b"rustc=");
         h = mix(h, v.as_bytes());
     }
+    if let Some(v) = &toolchain.python {
+        h = mix(h, b"python=");
+        h = mix(h, v.as_bytes());
+    }
+    if let Some(v) = &toolchain.ocaml {
+        h = mix(h, b"ocaml=");
+        h = mix(h, v.as_bytes());
+    }
+    if let Some(v) = &toolchain.ghc {
+        h = mix(h, b"ghc=");
+        h = mix(h, v.as_bytes());
+    }
 
     for (k, v) in &toolchain.versions {
         h = mix(h, k.as_bytes());
@@ -825,10 +916,10 @@ fn compute_fingerprint(file_bytes: &[u8], profile: &str, target: &str, toolchain
     format!("fnv1a64:{:016x}", h)
 }
 
-/// Optional utility: generate a default config skeleton (no Muffinfile read).
+/// Optional utility: generate a default config skeleton (no MuffinConfig read).
 pub fn generate_default_mcfg(root: impl AsRef<Path>) -> ResolvedConfig {
     let root = normalize_path(root.as_ref());
-    let muffinfile = root.join("Muffinfile");
+    let muffinfile = root.join("MuffinConfig");
 
     let profile = env::var("MUFFIN_PROFILE").unwrap_or_else(|_| "debug".to_string());
     let target = env::var("MUFFIN_TARGET").unwrap_or_else(|_| host_triple_best_effort());
@@ -838,6 +929,7 @@ pub fn generate_default_mcfg(root: impl AsRef<Path>) -> ResolvedConfig {
     let mut vars = BTreeMap::new();
     vars.insert("muffin.profile".to_string(), profile.clone());
     vars.insert("muffin.target".to_string(), target.clone());
+    insert_toolchain_env_vars(&mut vars, &toolchain);
 
     let fingerprint = compute_fingerprint(b"", &profile, &target, &toolchain);
 
@@ -960,8 +1052,8 @@ mod tests {
         let dir = unique_temp_dir("muffin_build_muf");
         fs::create_dir_all(&dir).unwrap();
 
-        // create Muffinfile
-        touch(&dir.join("Muffinfile"), "workspace ...\n");
+        // create MuffinConfig
+        touch(&dir.join("MuffinConfig"), "workspace ...\n");
 
         let opts = BuildMufOptions {
             root_dir: dir.clone(),

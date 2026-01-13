@@ -5,7 +5,7 @@
 //! - deterministic directory traversal (stable ordering)
 //! - safe-ish recursion controls (max depth, symlink policy, hidden policy)
 //! - common ignore vocabulary for build/workspace tools
-//! - helpers for "find Muffinfile", "collect sources", etc.
+//! - helpers for "find MuffinConfig", "collect sources", etc.
 //!
 //! Notes:
 //! - std-only: no glob crate, no walkdir crate.

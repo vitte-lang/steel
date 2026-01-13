@@ -13,7 +13,7 @@
 //! - low-level helpers: profile, target triple, paths, toolchain, variables
 //!
 //! Non-goals:
-//! - parsing Muffinfile syntax
+//! - parsing MuffinConfig syntax
 //! - dependency resolution
 
 use std::collections::BTreeMap;
@@ -100,6 +100,9 @@ pub fn apply_defaults_to_resolved(cfg: &mut build_muf::ResolvedConfig, policy: &
     if policy.fill_common_vars {
         ensure_common_vars(&cfg.project_root, &cfg.muffinfile_path, &cfg.profile, &cfg.target, &mut cfg.vars);
     }
+
+    // Map toolchain overrides into env-style vars for downstream execution.
+    sync_toolchain_env_vars(&cfg.toolchain, &mut cfg.vars);
 }
 
 /// Ensure a config has at least these keys:
@@ -137,6 +140,27 @@ pub fn fill_toolchain_from_env(tc: &mut build_muf::ToolchainInfo) {
     }
     if tc.rustc.as_deref().map(|s| s.trim().is_empty()).unwrap_or(true) {
         tc.rustc = env::var("RUSTC").ok().or_else(|| Some("rustc".to_string()));
+    }
+    if tc.python.as_deref().map(|s| s.trim().is_empty()).unwrap_or(true) {
+        tc.python = env::var("PYTHON").ok();
+    }
+    if tc.ocaml.as_deref().map(|s| s.trim().is_empty()).unwrap_or(true) {
+        tc.ocaml = env::var("OCAMLPATH").ok();
+    }
+    if tc.ghc.as_deref().map(|s| s.trim().is_empty()).unwrap_or(true) {
+        tc.ghc = env::var("GHC_PACKAGE_PATH").ok();
+    }
+}
+
+fn sync_toolchain_env_vars(tc: &build_muf::ToolchainInfo, vars: &mut BTreeMap<String, String>) {
+    if let Some(v) = &tc.python {
+        vars.entry("PYTHON".to_string()).or_insert_with(|| v.clone());
+    }
+    if let Some(v) = &tc.ocaml {
+        vars.entry("OCAMLPATH".to_string()).or_insert_with(|| v.clone());
+    }
+    if let Some(v) = &tc.ghc {
+        vars.entry("GHC_PACKAGE_PATH".to_string()).or_insert_with(|| v.clone());
     }
 }
 

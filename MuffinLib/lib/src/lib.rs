@@ -35,12 +35,18 @@ pub mod graph;
 pub mod path;
 #[path = "platform/src/mod.rs"]
 pub mod platform;
+#[path = "gcc/src/in_tree.rs"]
+pub mod gcc;
 #[path = "span/src/mod.rs"]
 pub mod span;
 #[path = "store/src/mod.rs"]
 pub mod store;
 #[path = "tool/src/mod.rs"]
 pub mod tool;
+#[path = "ocaml/src/in_tree.rs"]
+pub mod ocaml;
+#[path = "cpython/src/in_tree.rs"]
+pub mod cpython;
 
 // MUF v4.1 lexer/parser/AST (Bracket + Dot Ops).
 #[path = "muffin/src/ast.rs"]
@@ -57,6 +63,9 @@ pub use store::{
     IndexEntry, IndexError, StoreIndex,
 };
 pub use tool::{ToolError, ToolOutput, ToolRunner, ToolSpec, ToolStatus};
+pub use gcc::{CBuildConfig, CStd, CcKind, CcTool, DetectError, GccArgs, GccDriver, GccMode, LinkUnit, CompileUnit};
+pub use ocaml::{OcamlArgs, OcamlBackend, OcamlDriver, OcamlInfo, OcamlOptLevel, OcamlOutputKind, OcamlSpec};
+pub use cpython::{PyAction, PyArgs, PyBackend, PyOptLevel, PyOutputKind, PySpec, PythonDriver, PythonImpl, PythonInfo};
 pub use muf_ast::{
     Atom as MufAtom, Block as MufBlock, BlockItem as MufBlockItem, MufFile, Number as MufNumber,
     Pos as MufPos, RefPath as MufRefPath, Span as MufSpan,

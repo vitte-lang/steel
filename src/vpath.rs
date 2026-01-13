@@ -7,7 +7,7 @@
 //! - Conversion contrôlée vers std::path::PathBuf (host path)
 //!
 //! Conçu pour:
-//! - Muffinfile / manifests (paths déclaratifs)
+//! - MuffinConfig / manifests (paths déclaratifs)
 //! - résolution de workspaces / stores / capsules
 //! - hashing stable de chemins (cache, fingerprints)
 //!

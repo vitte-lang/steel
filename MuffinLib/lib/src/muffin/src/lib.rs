@@ -1,7 +1,7 @@
 //! mcfg — Muffin Config Generator (Vitte toolchain)
 //!
 //! Rôle du crate :
-//! - ingérer un buildfile Muffin (Bakefile v2 : `Muffinfile` / `build.muf`)
+//! - ingérer un buildfile Muffin (Bakefile v2 : `MuffinConfig` / `build.muf`)
 //! - produire des artefacts de build (`.mff` global + unités `*.muff` par répertoire)
 //! - fournir des primitives stables (diag, lexer, HIR/IR, emission) pour brancher le
 //!   reste du pipeline (parser/resolver/lower/driver).
@@ -43,7 +43,7 @@ pub mod token;
 pub const MUFFIN_BAKEFILE_VERSION: u32 = 2;
 
 /// Noms de buildfiles reconnus par défaut.
-pub const DEFAULT_BUILD_FILES: [&str; 2] = ["Muffinfile", "build.muf"];
+pub const DEFAULT_BUILD_FILES: [&str; 2] = ["MuffinConfig", "build.muf"];
 
 /// Extension “unit config” (ex: `src/in/folder/_.muff`).
 pub const MUFF_UNIT_EXT: &str = "muff";
@@ -165,7 +165,7 @@ pub fn emit(plan: emit::EmitPlan, opts: emit::EmitOptions, diags: &mut diag::Dia
 /// pas forcément “dans le même commit” (parser, resolve, lowering d’artefacts).
 ///
 /// En pratique, vous brancherez un `driver` qui fait :
-/// - load Muffinfile
+/// - load MuffinConfig
 /// - lex/parse AST
 /// - resolve -> HIR
 /// - lower -> IR (dag/cache plan)

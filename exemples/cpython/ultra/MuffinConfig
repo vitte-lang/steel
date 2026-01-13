@@ -1,0 +1,4 @@
+# MuffinConfig — CPython Ultra Project (theme: library catalog simulator)
+# Used by `muffin build` for configuration/fingerprinting.
+
+workspace "cpython-ultra"

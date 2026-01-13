@@ -11,7 +11,7 @@
 //! - validate workspace-level invariants (paths under root, distinct output dirs, etc.)
 //!
 //! Non-goals (by design):
-//! - full semantic validation of the Muffinfile language
+//! - full semantic validation of the MuffinConfig language
 //! - dependency resolution correctness (owned by resolver layer)
 //!
 //! This module provides:
@@ -165,10 +165,10 @@ pub fn validate_resolved_config(cfg: &crate::build_muf::ResolvedConfig, policy: 
         );
     }
 
-    // Muffinfile invariants
+    // MuffinConfig invariants
     if !cfg.muffinfile_path.is_file() {
         r.push(
-            Diagnostic::err("CFG_MUFFINFILE_MISSING", "Muffinfile path does not exist or is not a file")
+            Diagnostic::err("CFG_MUFFINFILE_MISSING", "MuffinConfig path does not exist or is not a file")
                 .with_path(cfg.muffinfile_path.clone()),
         );
     }

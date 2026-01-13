@@ -14,6 +14,46 @@ Muffin est la couche de configuration **déclarative** du build Vitte. Il **pars
 - Mode dev via `build muffin -watch` et diagnostics `-why` / `-graph`.
 - Overrides non-invasifs via `-D KEY=VALUE` (sans modifier le buildfile).
 
+## CLI (raccourci)
+
+Commandes (details dans `doc/manifest.md`, liste rapide: `doc/manifest.md#liste-rapide-commandes`, flags: `doc/manifest.md#flags-frequents`):
+- [`build muffin`](doc/manifest.md#cmd-build-muffin)
+- [`run`](doc/manifest.md#cmd-run)
+- [`doctor`](doc/manifest.md#cmd-doctor)
+- [`cache`](doc/manifest.md#cmd-cache)
+- [`graph`](doc/manifest.md#cmd-graph)
+- [`fmt`](doc/manifest.md#cmd-fmt)
+- [`version`/`help`](doc/manifest.md#cmd-aide-version)
+
+### Flags frequents
+
+- `--profile <name>`: selection du profil (ex: `debug`, `release`).
+- `--target <triple>`: selection du target (ex: `x86_64-unknown-linux-gnu`).
+- `--emit <path>`: sortie de `Muffinconfig.mff`.
+- `--log <path>`: log d execution `run` (avec `--log-mode`).
+
+Exemples:
+```text
+muffin build muffin --profile release
+muffin build muffin --target x86_64-apple-darwin
+muffin build muffin --emit dist/Muffinconfig.mff
+muffin run --log target/run.mff --log-mode truncate --all
+```
+
+## MuffinLib: import OCaml
+
+Le backend OCaml est exposé via MuffinLib. Exemple d'import:
+
+```rust
+use MuffinLib::ocaml::{OcamlArgs, OcamlDriver, OcamlSpec};
+```
+
+## Voir aussi
+
+- `doc/manifest.md#liste-rapide-commandes`
+- `doc/manifest.md#flags-frequents`
+- `doc/manifest.md#cli-complete`
+
 ## Uniformisation totale (langages + machines)
 
 Muffin vise une **uniformisation totale** du build : même modèle, mêmes commandes et mêmes sorties logiques, quel que soit le langage (Vitte, C/C++, C#, Rust, …) et quel que soit l’environnement (machines anciennes ou récentes, OS/arch hétérogènes).
@@ -60,6 +100,8 @@ Chaque répertoire du projet peut contenir, à la racine du dossier, un fichier 
 - la **configuration locale** (paramètres effectifs, profil/target/toolchain, variables),
 - et les **règles de construction** du dossier (inputs, outputs, liaisons, exécution).
 
+Voir aussi : `doc/toolchain_detection.md`.
+
 Muffin fournit les binaires `muffin` / `Muffin` utilisés pour orchestrer ce flux.
 
 #### Agrégation (fichier maître)
@@ -99,7 +141,7 @@ Le buildfile reste générique : Muffin est capable d’orchestrer des projets V
 └─────────────────────────────────────────────────────────────┘
 
 1. CHARGEMENT
-   ├── Muffinfile (workspace + packages + profils)
+   ├── MuffinConfig (workspace + packages + profils)
    ├── Toolchains (compilateurs, linkers, outils)
    └── Targets (spécifications de build)
 
@@ -508,7 +550,7 @@ profile "debug"
 
 ## Fichiers
 
-- `muffin` ou `Muffinfile` : configuration principale.
+- `muffin` ou `MuffinConfig` : configuration principale.
 - `*.vitte` : sources du projet.
 - `Muffinconfig.mff` : configuration gelée et normalisée (artefact canonique) + trace outillable (graph, inputs, outils, empreintes), consommée par Vitte.
 - `*.muf` : buildfiles (si le projet segmente la configuration par dossier/workspace).

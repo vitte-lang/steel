@@ -1,7 +1,7 @@
 //! arscan — Artifact/manifest scanner
 //!
 //! Small, dependency-free directory scanner used to discover Muffin files
-//! (e.g. `build.muf`, `mod.muf`, `Muffinfile`, `Muffinconfig.mff`).
+//! (e.g. `build.muf`, `mod.muf`, `MuffinConfig`, `Muffinconfig.mff`).
 //!
 //! Goals
 //! - No external crates
@@ -23,10 +23,10 @@ pub enum ArtifactKind {
     BuildMuf,
     /// A module/package manifest (canonical: `mod.muf`).
     ModMuf,
-    /// Main Muffin configuration file (canonical: `Muffinfile` or `muffin`).
-    Muffinfile,
-    /// Resolved configuration (canonical: `Muffinconfig.mff`).
+    /// Main Muffin configuration file (canonical: `MuffinConfig` or `muffin`).
     MuffinConfig,
+    /// Resolved configuration (canonical: `Muffinconfig.mff`).
+    MuffinconfigMff,
     /// Legacy resolved configuration (historical: `.mcf`).
     LegacyMcf,
     /// Legacy/alt config files mentioned in ecosystem (e.g. `.mfg`).
@@ -46,8 +46,8 @@ impl ArtifactKind {
             self,
             ArtifactKind::BuildMuf
                 | ArtifactKind::ModMuf
-                | ArtifactKind::Muffinfile
                 | ArtifactKind::MuffinConfig
+                | ArtifactKind::MuffinconfigMff
                 | ArtifactKind::LegacyMcf
                 | ArtifactKind::LegacyMfg
                 | ArtifactKind::GenericMuf
@@ -279,8 +279,8 @@ fn classify_path(path: &Path) -> ArtifactKind {
     match file_name {
         "build.muf" => return ArtifactKind::BuildMuf,
         "mod.muf" => return ArtifactKind::ModMuf,
-        "Muffinfile" | "muffin" => return ArtifactKind::Muffinfile,
-        "Muffinconfig.mff" => return ArtifactKind::MuffinConfig,
+        "MuffinConfig" | "muffin" => return ArtifactKind::MuffinConfig,
+        "Muffinconfig.mff" => return ArtifactKind::MuffinconfigMff,
         "Muffinconfig.mcf" => return ArtifactKind::LegacyMcf,
         _ => {}
     }
@@ -363,7 +363,7 @@ mod tests {
 
         touch(&root.join("build.muf"), "bake ...");
         touch(&root.join("mod.muf"), "mod ...");
-        touch(&root.join("Muffinfile"), "workspace ...");
+        touch(&root.join("MuffinConfig"), "workspace ...");
         touch(&root.join("Muffinconfig.mff"), "mff 1");
 
         // Noise
@@ -390,8 +390,8 @@ mod tests {
             match a.kind {
                 ArtifactKind::BuildMuf => build_muf += 1,
                 ArtifactKind::ModMuf => mod_muf += 1,
-                ArtifactKind::Muffinfile => muffinfile += 1,
-                ArtifactKind::MuffinConfig => mcfg += 1,
+                ArtifactKind::MuffinConfig => muffinfile += 1,
+                ArtifactKind::MuffinconfigMff => mcfg += 1,
                 ArtifactKind::GenericMuf => generic_muf += 1,
                 ArtifactKind::GenericMff => generic_mff += 1,
                 _ => {}

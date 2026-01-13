@@ -15,7 +15,7 @@
 //
 // Typical usage:
 //
-//   let mut v = Validator::new("Muffinfile");
+//   let mut v = Validator::new("MuffinConfig");
 //   v.require(!name.is_empty(), "name must not be empty").at_line(12);
 //   v.check_path_exists(&path, "missing input").error();
 //   let report = v.finish();

@@ -5,7 +5,7 @@
 Muffin est organisé en **modules fonctionnels** selon le pipeline de configuration :
 
 ```
-INPUT (Muffinfile, toolchains, targets)
+INPUT (MuffinConfig, toolchains, targets)
   ↓
 [PARSER] → tokens/AST
   ↓
@@ -77,7 +77,7 @@ OUTPUT (consommé par le runner)
 
 ```
 1. LOAD
-   Muffinfile → (arscan) → tokens
+   MuffinConfig → (arscan) → tokens
                  ↓
    tokens → (read) → AST (Workspace, Packages, Profiles, Targets)
 

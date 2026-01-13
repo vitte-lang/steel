@@ -1,14 +1,14 @@
 // src/load.rs
 //
-// Muffin — load (workspace discovery + Muffinfile/build.muf ingestion)
+// Muffin — load (workspace discovery + MuffinConfig/build.muf ingestion)
 //
 // Purpose:
-// - Locate a workspace root and Muffinfile/build.muf
+// - Locate a workspace root and MuffinConfig/build.muf
 // - Load + merge configuration layers into a single in-memory Workspace
 // - Provide deterministic precedence + clear diagnostics
 //
 // This module focuses on:
-// - discovery: walk up from cwd to find Muffinfile/build.muf (or use explicit path)
+// - discovery: walk up from cwd to find MuffinConfig/build.muf (or use explicit path)
 // - reading: uses a small read helper (inline) to read UTF-8 (BOM safe)
 // - parsing: stub interface; plug your real parser/lowering pipeline
 // - merging: overlays (profile/target/env) applied deterministically
@@ -102,7 +102,7 @@ pub struct LoadCtx {
     /// env var prefix for overrides (ex: MUFFIN_)
     pub env_prefix: String,
 
-    /// if true, missing Muffinfile doesn't error (returns empty workspace)
+    /// if true, missing MuffinConfig doesn't error (returns empty workspace)
     pub allow_missing: bool,
 }
 
@@ -229,7 +229,7 @@ pub struct WorkspaceLoader {
 impl Default for WorkspaceLoader {
     fn default() -> Self {
         Self {
-            search_filenames: vec!["Muffinfile", "build.muf"],
+            search_filenames: vec!["MuffinConfig", "build.muf"],
             allow_overrides: true,
             last_wins: true,
         }
@@ -248,7 +248,7 @@ impl WorkspaceLoader {
         let muffinfile = self.resolve_muffinfile(ctx, &root)?;
         ws.muffinfile = muffinfile.clone();
 
-        // Base layer: from Muffinfile/build.muf (if any)
+        // Base layer: from MuffinConfig/build.muf (if any)
         if let Some(path) = &muffinfile {
             let text = read_text_utf8(path)?;
             let frag = parse_muffinfile(path, &text)?;
@@ -282,7 +282,7 @@ impl WorkspaceLoader {
             return Ok(p.parent().unwrap_or_else(|| Path::new(".")).to_path_buf());
         }
 
-        // Otherwise: walk up from cwd to find Muffinfile/build.muf
+        // Otherwise: walk up from cwd to find MuffinConfig/build.muf
         let mut cur = ctx.cwd.clone();
         loop {
             for name in &self.search_filenames {

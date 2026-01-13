@@ -13,11 +13,12 @@
 //! - `check [flags...]`         (best-effort validate; emits then deletes unless strict)
 //! - `print [flags...]`         (emits + prints the resolved mcfg)
 //! - `graph`                    (stub; reserved for DOT/text graph export)
-//! - `fmt`                      (stub; reserved for formatting Muffinfiles)
+//! - `fmt`                      (stub; reserved for formatting MuffinConfigs)
 
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use crate::build_muf;
 use crate::build_muf::BuildMufError;
@@ -56,6 +57,7 @@ pub enum Cmd {
     Run(run_muf::RunOptions),
 
     Doctor(DoctorOptions),
+    ToolchainDoctor(ToolchainDoctorOptions),
     Cache(CacheOptions),
 
     Graph(GraphOptions),
@@ -86,6 +88,12 @@ pub struct FmtOptions {
 #[derive(Debug, Clone, Default)]
 pub struct DoctorOptions {
     pub root_dir: Option<PathBuf>,
+    pub verbose: bool,
+    pub json: bool,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct ToolchainDoctorOptions {
     pub verbose: bool,
     pub json: bool,
 }
@@ -174,6 +182,7 @@ pub fn parse_command(args: &[String]) -> Result<Cmd> {
             Ok(Cmd::Run(o))
         }
         "doctor" => parse_doctor(&args[2..]),
+        "toolchain" => parse_toolchain(&args[2..]),
         "cache" => parse_cache(&args[2..]),
         // stubs reserved for future
         "graph" => parse_graph(&args[2..]),
@@ -200,6 +209,37 @@ fn parse_build(rest: &[String]) -> Result<Cmd> {
         other => Err(CommandError::Usage(format!(
             "unknown build target: {other}\n\n{}",
             usage_text()
+        ))),
+    }
+}
+
+fn parse_toolchain(rest: &[String]) -> Result<Cmd> {
+    if rest.is_empty() || matches!(rest.first().map(String::as_str), Some("-h" | "--help" | "help")) {
+        return Err(CommandError::Usage(toolchain_help().to_string()));
+    }
+
+    match rest[0].as_str() {
+        "doctor" => {
+            let mut o = ToolchainDoctorOptions::default();
+            let mut it = rest[1..].iter().peekable();
+            while let Some(a) = it.next() {
+                match a.as_str() {
+                    "--json" => o.json = true,
+                    "-v" | "--verbose" => o.verbose = true,
+                    "-h" | "--help" => return Err(CommandError::Usage(toolchain_help().to_string())),
+                    other => {
+                        return Err(CommandError::Usage(format!(
+                            "unknown flag: {other}\n\n{}",
+                            toolchain_help()
+                        )));
+                    }
+                }
+            }
+            Ok(Cmd::ToolchainDoctor(o))
+        }
+        other => Err(CommandError::Usage(format!(
+            "unknown toolchain command: {other}\n\n{}",
+            toolchain_help()
         ))),
     }
 }
@@ -490,6 +530,7 @@ pub fn execute(cmd: Cmd) -> Result<()> {
         }
         Cmd::Run(o) => exec_run_muf(o),
         Cmd::Doctor(o) => exec_doctor(o),
+        Cmd::ToolchainDoctor(o) => exec_toolchain_doctor(o),
         Cmd::Cache(o) => exec_cache(o),
 
         Cmd::Check(mut o) => {
@@ -579,9 +620,9 @@ fn exec_graph(o: GraphOptions) -> Result<()> {
 }
 
 fn exec_fmt(o: FmtOptions) -> Result<()> {
-    // Reserved: Muffinfile formatter.
+    // Reserved: MuffinConfig formatter.
     // Current behavior: deterministic placeholder.
-    let file = o.file.unwrap_or_else(|| PathBuf::from("Muffinfile"));
+    let file = o.file.unwrap_or_else(|| PathBuf::from("MuffinConfig"));
     if o.check_only {
         println!("fmt --check: not implemented (file={})", file.display());
     } else {
@@ -623,10 +664,11 @@ COMMANDS:
   print        Emit + print Muffinconfig.mff to stdout
   run          Execute tool steps from MuffinConfig.muf (runner)
   doctor       Diagnostics for PATH, tools, and config
+  toolchain    Toolchain diagnostics (doctor)
   cache        Cache status/clear
 
   graph        (stub) Export graph (text|dot)
-  fmt          (stub) Format Muffinfile
+  fmt          (stub) Format MuffinConfig
 
 NOTES:
   - `build muffin` performs the Configuration phase and emits Muffinconfig.mff.
@@ -653,7 +695,7 @@ USAGE:
   muffin fmt [--file <path>] [--check] [-v]
 
 FLAGS:
-  --file <path>   Muffinfile path (default: Muffinfile)
+  --file <path>   MuffinConfig path (default: MuffinConfig)
   --check         Check-only mode
   -v, --verbose   Verbose output"
 }
@@ -666,7 +708,7 @@ USAGE:
 
 FLAGS:
   --root <path>     Workspace root (default: cwd)
-  --file <path>     Explicit Muffinfile path (default: MuffinConfig.muf under root)
+  --file <path>     Explicit MuffinConfig path (default: MuffinConfig.muf under root)
   --profile <name>  Select profile (default: workspace.profile or debug)
   --toolchain <p>   Toolchain directory (overrides PATH lookup for tools)
   --bake <name>     Run a specific bake (repeatable)
@@ -686,6 +728,17 @@ USAGE:
 
 FLAGS:
   --root <path>   Workspace root (default: cwd)
+  --json          JSON output (machine-friendly)
+  -v, --verbose   Verbose output"
+}
+
+fn toolchain_help() -> &'static str {
+    "muffin toolchain doctor
+
+USAGE:
+  muffin toolchain doctor [--json] [-v]
+
+FLAGS:
   --json          JSON output (machine-friendly)
   -v, --verbose   Verbose output"
 }
@@ -826,6 +879,140 @@ fn exec_doctor(o: DoctorOptions) -> Result<()> {
     Ok(())
 }
 
+fn exec_toolchain_doctor(o: ToolchainDoctorOptions) -> Result<()> {
+    let python_override = env::var("MUFFIN_TOOLCHAIN_PYTHON").ok();
+    let python_env = env::var("PYTHON").ok();
+    let python_source = if python_override.is_some() {
+        "override"
+    } else if python_env.is_some() {
+        "env"
+    } else {
+        "path"
+    };
+    let python_exec = python_override
+        .clone()
+        .or(python_env.clone())
+        .or_else(|| find_in_path("python3").map(|p| p.display().to_string()))
+        .or_else(|| find_in_path("python").map(|p| p.display().to_string()));
+    let python_info = python_exec
+        .as_deref()
+        .and_then(|p| python_impl_and_version(p));
+
+    let ocamlc_exec = find_in_path("ocamlc").map(|p| p.display().to_string());
+    let ocamlopt_exec = find_in_path("ocamlopt").map(|p| p.display().to_string());
+    let ocamlc_version = ocamlc_exec
+        .as_deref()
+        .and_then(|p| ocaml_version(p));
+    let ocamlopt_version = ocamlopt_exec
+        .as_deref()
+        .and_then(|p| ocaml_version(p));
+
+    if o.json {
+        let mut out = String::new();
+        out.push_str("{\"python\":");
+        match (&python_exec, &python_info) {
+            (Some(path), Some((impl_name, ver))) => {
+                out.push_str("{\"ok\":true,\"path\":\"");
+                out.push_str(&json_escape(path));
+                out.push_str("\",\"implementation\":\"");
+                out.push_str(&json_escape(impl_name));
+                out.push_str("\",\"version\":\"");
+                out.push_str(&json_escape(ver));
+                out.push_str("\",\"source\":\"");
+                out.push_str(python_source);
+                out.push_str("\"}");
+            }
+            (Some(path), None) => {
+                out.push_str("{\"ok\":false,\"path\":\"");
+                out.push_str(&json_escape(path));
+                out.push_str("\",\"source\":\"");
+                out.push_str(python_source);
+                out.push_str("\"}");
+            }
+            (None, _) => out.push_str("{\"ok\":false}"),
+        }
+
+        out.push_str(",\"ocaml\":{");
+        out.push_str("\"ocamlc\":");
+        match (&ocamlc_exec, &ocamlc_version) {
+            (Some(path), Some(ver)) => {
+                out.push_str("{\"ok\":true,\"path\":\"");
+                out.push_str(&json_escape(path));
+                out.push_str("\",\"version\":\"");
+                out.push_str(&json_escape(ver));
+                out.push_str("\"}");
+            }
+            (Some(path), None) => {
+                out.push_str("{\"ok\":false,\"path\":\"");
+                out.push_str(&json_escape(path));
+                out.push_str("\"}");
+            }
+            (None, _) => out.push_str("{\"ok\":false}"),
+        }
+        out.push_str(",\"ocamlopt\":");
+        match (&ocamlopt_exec, &ocamlopt_version) {
+            (Some(path), Some(ver)) => {
+                out.push_str("{\"ok\":true,\"path\":\"");
+                out.push_str(&json_escape(path));
+                out.push_str("\",\"version\":\"");
+                out.push_str(&json_escape(ver));
+                out.push_str("\"}");
+            }
+            (Some(path), None) => {
+                out.push_str("{\"ok\":false,\"path\":\"");
+                out.push_str(&json_escape(path));
+                out.push_str("\"}");
+            }
+            (None, _) => out.push_str("{\"ok\":false}"),
+        }
+        out.push_str("}");
+
+        out.push_str("}");
+        println!("{out}");
+        return Ok(());
+    }
+
+    println!("muffin toolchain doctor");
+
+    match (&python_exec, &python_info) {
+        (Some(path), Some((impl_name, ver))) => {
+            if o.verbose {
+                println!("python: ok ({path}) {impl_name} {ver} [{python_source}]");
+            } else {
+                println!("python: ok ({impl_name} {ver})");
+            }
+        }
+        (Some(path), None) => println!("python: failed ({path})"),
+        (None, _) => println!("python: missing"),
+    }
+
+    match (&ocamlc_exec, &ocamlc_version) {
+        (Some(path), Some(ver)) => {
+            if o.verbose {
+                println!("ocamlc: ok ({path}) {ver}");
+            } else {
+                println!("ocamlc: ok ({ver})");
+            }
+        }
+        (Some(path), None) => println!("ocamlc: failed ({path})"),
+        (None, _) => println!("ocamlc: missing"),
+    }
+
+    match (&ocamlopt_exec, &ocamlopt_version) {
+        (Some(path), Some(ver)) => {
+            if o.verbose {
+                println!("ocamlopt: ok ({path}) {ver}");
+            } else {
+                println!("ocamlopt: ok ({ver})");
+            }
+        }
+        (Some(path), None) => println!("ocamlopt: failed ({path})"),
+        (None, _) => println!("ocamlopt: missing"),
+    }
+
+    Ok(())
+}
+
 fn exec_cache(o: CacheOptions) -> Result<()> {
     let root = o
         .root_dir
@@ -919,6 +1106,39 @@ fn dir_stats(path: &Path) -> Result<(u64, u64)> {
     }
 
     Ok((files, bytes))
+}
+
+fn python_impl_and_version(python: &str) -> Option<(String, String)> {
+    let script = r#"
+import platform,sys
+print(f"{platform.python_implementation()};{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}")
+"#;
+    let out = Command::new(python).arg("-c").arg(script).output().ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let mut parts = stdout.trim().splitn(2, ';');
+    let impl_name = parts.next()?.trim();
+    let ver = parts.next()?.trim();
+    if impl_name.is_empty() || ver.is_empty() {
+        return None;
+    }
+    Some((impl_name.to_string(), ver.to_string()))
+}
+
+fn ocaml_version(ocaml: &str) -> Option<String> {
+    let out = Command::new(ocaml).arg("-version").output().ok()?;
+    if !out.status.success() {
+        return None;
+    }
+    let stdout = String::from_utf8_lossy(&out.stdout);
+    let ver = stdout.trim();
+    if ver.is_empty() {
+        None
+    } else {
+        Some(ver.to_string())
+    }
 }
 
 fn find_in_path(tool: &str) -> Option<PathBuf> {

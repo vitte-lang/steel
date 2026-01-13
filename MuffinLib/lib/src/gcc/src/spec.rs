@@ -115,7 +115,7 @@ impl CSpec {
     }
 }
 
-/// Overrides optionnels (issus du Muffinfile)
+/// Overrides optionnels (issus du MuffinConfig)
 #[derive(Debug, Default, Clone)]
 pub struct CSpecOverrides {
     pub c_std: Option<CStd>,

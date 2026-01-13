@@ -15,7 +15,7 @@
 // No external deps.
 //
 // Typical usage:
-//   let txt = read_text(Path::new("Muffinfile"))?;
+//   let txt = read_text(Path::new("MuffinConfig"))?;
 //   let bytes = read_bytes_limited(Path::new("foo.bin"), 8 * 1024 * 1024)?;
 //
 // Integration:

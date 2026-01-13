@@ -24,7 +24,7 @@ pub mod driver;
 pub const MUFFIN_BAKEFILE_VERSION: u32 = 2;
 
 /// Noms de buildfiles reconnus par défaut.
-pub const DEFAULT_BUILD_FILES: [&str; 2] = ["Muffinfile", "build.muf"];
+pub const DEFAULT_BUILD_FILES: [&str; 2] = ["MuffinConfig", "build.muf"];
 
 /// Extension “unit config”.
 pub const MUFF_UNIT_EXT: &str = "muff";

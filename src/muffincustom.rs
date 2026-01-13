@@ -5,7 +5,7 @@
 // Purpose:
 // - Provide a stable extension surface for Muffin without committing to a plugin ABI yet.
 // - Centralize "custom" hooks that can be injected by:
-//   - build.muf / Muffinfile configuration
+//   - build.muf / MuffinConfig configuration
 //   - workspace policy (company CI rules, sandbox rules, registry rules)
 //   - future dynamic plugins (not implemented here)
 //

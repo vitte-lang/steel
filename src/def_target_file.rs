@@ -267,7 +267,7 @@ pub fn format_target_block(t: &TargetDef) -> String {
 
 /// Parse a target block from an extremely small line-based format.
 ///
-/// This is *not* the Muffinfile grammar. This is a utility parser for the emitted `.mff` blocks
+/// This is *not* the MuffinConfig grammar. This is a utility parser for the emitted `.mff` blocks
 /// in tests/tools, using a minimal subset:
 /// - `target "<id>"` begins a block
 /// - `kind "<k>"`, `output "<o>"`, `root "<path>"`, `name "<name>"`

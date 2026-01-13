@@ -427,7 +427,7 @@ impl Builder {
 /// Build `.mff` text deterministically.
 ///
 /// This format is intentionally simple and line-oriented.
-/// It is not the Muffinfile language.
+/// It is not the MuffinConfig language.
 pub fn build_mcfg_text(cfg: &crate::build_muf::ResolvedConfig, targets: &[TargetDef]) -> String {
     let mut out = String::new();
 
@@ -461,6 +461,15 @@ pub fn build_mcfg_text(cfg: &crate::build_muf::ResolvedConfig, targets: &[Target
     }
     if let Some(rustc) = &cfg.toolchain.rustc {
         out.push_str(&format!("  rustc \"{}\"\n", escape(rustc)));
+    }
+    if let Some(python) = &cfg.toolchain.python {
+        out.push_str(&format!("  python \"{}\"\n", escape(python)));
+    }
+    if let Some(ocaml) = &cfg.toolchain.ocaml {
+        out.push_str(&format!("  ocaml \"{}\"\n", escape(ocaml)));
+    }
+    if let Some(ghc) = &cfg.toolchain.ghc {
+        out.push_str(&format!("  ghc \"{}\"\n", escape(ghc)));
     }
 
     if !cfg.toolchain.versions.is_empty() {
@@ -597,7 +606,7 @@ mod tests {
             .as_nanos();
         root.push(format!("muffin_builder_plan_{pid}_{ts}"));
         std::fs::create_dir_all(&root).unwrap();
-        std::fs::write(root.join("Muffinfile"), "workspace ...\n").unwrap();
+        std::fs::write(root.join("MuffinConfig"), "workspace ...\n").unwrap();
 
         let mut cfg = build_muf::generate_default_mcfg(&root);
         cfg.profile = "debug".into();

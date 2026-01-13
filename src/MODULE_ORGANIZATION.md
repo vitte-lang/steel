@@ -78,7 +78,7 @@ src/
 PIPELINE VIEW
 =============
 
-Muffinfile (input)
+MuffinConfig (input)
     ↓
 [PARSER: arscan + read]
     → Tokens & AST

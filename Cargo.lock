@@ -607,6 +607,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "muffin-cpython"
+version = "0.1.0"
+dependencies = [
+ "MuffinLib",
+ "serde",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
+name = "muffin-ocaml"
+version = "0.1.0"
+dependencies = [
+ "MuffinLib",
+ "serde",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
 name = "muffin_gcc"
 version = "0.1.0"
 dependencies = [

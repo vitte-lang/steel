@@ -93,7 +93,7 @@ En mode \fB--strict\fP, l'échec de nettoyage est une erreur.
 .SS Génération
 .TP
 .B init
-Initialise un workspace minimal (racine, Muffinfile, dossiers suggérés).
+Initialise un workspace minimal (racine, MuffinConfig, dossiers suggérés).
 Accepte un \fI<path>\fP positionnel comme racine.
 
 .TP
@@ -122,7 +122,7 @@ Affiche les valeurs effectives (profil, target, root, emit).
 
 .TP
 .B fmt
-Formatter Muffinfile (stub). Options : \fB--file\fP, \fB--check\fP, \fB-v\fP.
+Formatter MuffinConfig (stub). Options : \fB--file\fP, \fB--check\fP, \fB-v\fP.
 Un \fI<path>\fP positionnel est accepté comme fichier.
 .
 .SH OPTIONS
@@ -134,7 +134,7 @@ Racine du workspace (défaut : répertoire courant).
 
 .TP
 .B --file <path>
-Muffinfile explicite (skip discovery).
+MuffinConfig explicite (skip discovery).
 
 .TP
 .B --profile <name>
@@ -184,7 +184,7 @@ Diagnostics verbeux.
 .SH FICHIERS
 .TP
 .I muffin
-Buildfile principal. Alternatives : \fIMuffinfile\fP, \fIbuild.muf\fP.
+Buildfile principal. Alternatives : \fIMuffinConfig\fP, \fIbuild.muf\fP.
 
 .TP
 .I *.muf

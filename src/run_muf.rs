@@ -5,6 +5,7 @@
 //! examples (workspace/profile/tool/bake/run/make/output).
 
 use std::collections::BTreeMap;
+use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -216,6 +217,14 @@ pub fn run(opts: &RunOptions) -> Result<(), RunError> {
             bake_run_count = bake_run_count.saturating_add(1);
             bake_duration_ms = bake_duration_ms.saturating_add(duration_ms);
             append_run_log(&log_path, &cmd_str, &output, duration_ms)?;
+            if env_flag("MUFFIN_RUN_STDOUT") {
+                if !output.stdout.is_empty() {
+                    print!("{}", String::from_utf8_lossy(&output.stdout));
+                }
+                if !output.stderr.is_empty() {
+                    eprint!("{}", String::from_utf8_lossy(&output.stderr));
+                }
+            }
 
             if !output.status.success() {
                 if !opts.dry_run {
@@ -628,6 +637,16 @@ fn resolve_muffinfile(root: &Path, explicit: Option<&Path>) -> Result<PathBuf, R
             msg: format!("missing MuffinConfig.muf in {}", root.display()),
             help: Some("pass --file <path> or create MuffinConfig.muf".into()),
         })
+    }
+}
+
+fn env_flag(name: &str) -> bool {
+    match env::var(name) {
+        Ok(v) => {
+            let v = v.trim().to_ascii_lowercase();
+            matches!(v.as_str(), "1" | "true" | "yes" | "on")
+        }
+        Err(_) => false,
     }
 }
 

@@ -2,8 +2,8 @@ use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use crate::gcc::args::{CStd, GccArgs, GccMode};
-use crate::gcc::detect::{detect_cc, CcKind, CcTool, DetectError};
+use super::args::{CStd, GccArgs};
+use super::detect::{detect_cc, CcKind, CcTool, DetectError};
 
 #[derive(Debug)]
 pub enum DriverError {

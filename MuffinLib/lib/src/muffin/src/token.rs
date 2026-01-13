@@ -646,7 +646,7 @@ mod tests {
     #[test]
     fn lex_keywords_and_endblock() {
         let mut fm = FileMap::new();
-        let fid = fm.add_file("Muffinfile", r#"muffin bake 2
+        let fid = fm.add_file("MuffinConfig", r#"muffin bake 2
 store a
   path "x"
 .end

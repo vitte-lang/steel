@@ -1,4 +1,4 @@
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -305,7 +305,7 @@ impl GccArgs {
         }
         fs::write(rsp_path, out.as_bytes())?;
 
-        Ok(vec![OsString::from("@").to_os_string().into_iter().collect::<OsString>().to_os_string().tap(|_| {})])
+        Ok(vec![OsString::at_rsp(rsp_path)])
     }
 }
 

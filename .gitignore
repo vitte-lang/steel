@@ -106,3 +106,4 @@ Thumbs.db
 
 # Rust build artifacts
 /target/
+.DS_Store

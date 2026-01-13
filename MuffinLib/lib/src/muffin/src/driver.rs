@@ -1,7 +1,7 @@
 //! mcfg driver (configuration generation) for Muffin.
 //!
 //! Rôle:
-//! - Localiser le buildfile (muffin / Muffinfile / build.muf).
+//! - Localiser le buildfile (muffin / MuffinConfig / build.muf).
 //! - Charger et valider la configuration (phase resolve).
 //! - Scanner le workspace pour trouver les sources (.vitte / .vit).
 //! - Optionnel: segmenter par répertoire et générer des fichiers `*.muff` par unité.
@@ -33,7 +33,7 @@ use crate::diag::{err_at, warn_at, DiagBag, Diagnostic, Label, RenderOptions, Se
 pub const DEFAULT_MFF_NAME: &str = "Muffinconfig.mff";
 
 /// Candidats buildfile racine (ordre de priorité).
-pub const DEFAULT_BUILDFILE_CANDIDATES: &[&str] = &["muffin", "Muffinfile", "build.muf"];
+pub const DEFAULT_BUILDFILE_CANDIDATES: &[&str] = &["muffin", "MuffinConfig", "build.muf"];
 
 /// Répertoires ignorés lors du scan.
 pub const DEFAULT_IGNORED_DIRS: &[&str] = &[

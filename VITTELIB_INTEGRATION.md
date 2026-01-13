@@ -199,7 +199,7 @@ fn test_glob_recursive() {
 ```rust
 use vittelib::glob::GlobPattern;
 
-// Parse glob patterns from Muffinfile
+// Parse glob patterns from MuffinConfig
 pub fn expand_target_sources(pattern: &str) -> Result<Vec<PathBuf>> {
     let glob = GlobPattern::new(pattern)?;
     // Scan filesystem with glob

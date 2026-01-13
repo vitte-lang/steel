@@ -8,7 +8,7 @@
 // - Offer deterministic parsing with good diagnostics.
 //
 // This is a "max" reference implementation. You can wire it to your actual Muffin syntax.
-// The parser here supports a pragmatic line-oriented format that maps well to Muffinfile.
+// The parser here supports a pragmatic line-oriented format that maps well to MuffinConfig.
 //
 // Supported format (example):
 //

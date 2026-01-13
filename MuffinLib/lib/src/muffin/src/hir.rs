@@ -1,6 +1,6 @@
 //! HIR (High-level IR) for  
 //!
-//! Objectif : représentation “résolue” du Muffinfile (Bakefile v2) + primitives
+//! Objectif : représentation “résolue” du MuffinConfig (Bakefile v2) + primitives
 //! nécessaires pour : validation, DAG, scheduling, cache, génération `.mff` / `*.muff`.
 //!
 //! Contrainte : std uniquement.
