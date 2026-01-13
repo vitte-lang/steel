@@ -1,6 +1,6 @@
 // src/rule.rs
 //
-// Flan — build rules (planning primitives)
+// Steel — build rules (planning primitives)
 //
 // Purpose:
 // - Model a "Rule" (like Makefile rule) in a modern, typed way.

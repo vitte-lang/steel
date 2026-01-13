@@ -1,22 +1,22 @@
 // src/target_file.rs
 //
-// Flan — target file specification & parsing
+// Steel — target file specification & parsing
 //
 // Purpose:
-// - Represent and parse a "target file" that describes build targets for Flan.
+// - Represent and parse a "target file" that describes build targets for Steel.
 // - Provide a stable in-memory model used by dependency resolution, job planning, and execution.
 // - Offer deterministic parsing with good diagnostics.
 //
-// This is a "max" reference implementation. You can wire it to your actual Flan syntax.
-// The parser here supports a pragmatic line-oriented format that maps well to FlanConfig.
+// This is a "max" reference implementation. You can wire it to your actual Steel syntax.
+// The parser here supports a pragmatic line-oriented format that maps well to steelconf.
 //
 // Supported format (example):
 //
-//   # target file for Flan
+//   # target file for Steel
 //   target app
 //     kind exe
-//     crate flan
-//     out  build/flan
+//     crate steel
+//     out  build/steel
 //     src  src/main.vit src/lib.vit
 //     deps runner vms
 //     defines DEBUG=1 FEATURE_X=on
@@ -470,7 +470,7 @@ mod tests {
 # target file
 target app
   kind exe
-  out build/flan
+  out build/steel
   src src/main.vit src/lib.vit
   deps runner vms
   defines DEBUG=1 FEATURE=on
@@ -484,7 +484,7 @@ target app
         let t = &tf.targets[0];
         assert_eq!(t.name, "app");
         assert_eq!(t.kind, TargetKind::Exe);
-        assert_eq!(t.out.as_deref(), Some("build/flan"));
+        assert_eq!(t.out.as_deref(), Some("build/steel"));
         assert!(t.sources.contains(&"src/main.vit".to_string()));
         assert!(t.deps.contains(&"runner".to_string()));
         assert_eq!(t.defines.get("DEBUG").map(|s| s.as_str()), Some("1"));

@@ -1,11 +1,11 @@
-// /Users/vincent/Documents/Github/flan/src/directory.rs
+// /Users/vincent/Documents/Github/steel/src/directory.rs
 //! directory — filesystem and directory utilities (std-only)
 //!
 //! Goals:
 //! - deterministic directory traversal (stable ordering)
 //! - safe-ish recursion controls (max depth, symlink policy, hidden policy)
 //! - common ignore vocabulary for build/workspace tools
-//! - helpers for "find FlanConfig", "collect sources", etc.
+//! - helpers for "find steelconf", "collect sources", etc.
 //!
 //! Notes:
 //! - std-only: no glob crate, no walkdir crate.
@@ -67,8 +67,8 @@ impl Default for WalkOptions {
             "node_modules",
             "dist",
             "build",
-            ".flan",
-            ".flan-cache",
+            ".steel",
+            ".steel-cache",
         ] {
             ignore_dirs.insert(OsString::from(n));
         }
@@ -319,8 +319,8 @@ pub fn default_ignore_dirs() -> BTreeSet<OsString> {
         "node_modules",
         "dist",
         "build",
-        ".flan",
-        ".flan-cache",
+        ".steel",
+        ".steel-cache",
     ] {
         s.insert(OsString::from(n));
     }
@@ -358,7 +358,7 @@ mod tests {
 
     #[test]
     fn walk_is_deterministic_basic() {
-        let dir = tmp("flan_dir");
+        let dir = tmp("steel_dir");
         fs::create_dir_all(dir.join("b")).unwrap();
         fs::create_dir_all(dir.join("a")).unwrap();
         fs::write(dir.join("b").join("z.txt"), "z").unwrap();

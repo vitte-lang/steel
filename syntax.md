@@ -1,20 +1,18 @@
-# Syntaxe MUF v4.1
+# Syntaxe STEEL v1
 
-Ce document resume la grammaire MUF v4.1 ("Bracket + Dot Ops", sans `.end`).
+Ce document resume la grammaire MUF v1 (blocs avec `.end`).
 
 ## Structure generale
 
 Un fichier MUF est compose de :
 
-- un shebang optionnel (ligne commencant par `#!`),
-- un BOM optionnel (`\uFEFF`),
 - un en-tete obligatoire,
-- puis une suite d'elements (lignes vides, commentaires, blocs).
+- puis une suite d'elements (blocs top-level).
 
 Forme globale :
 
 ```ebnf
-MufFile = OptShebang , OptBOM , Header , { SpacingItem } ;
+muf_file ::= WS? header NL { WS? toplevel WS? NL } WS? EOF ;
 ```
 
 ## En-tete
@@ -22,91 +20,250 @@ MufFile = OptShebang , OptBOM , Header , { SpacingItem } ;
 L'en-tete doit etre sur une ligne propre :
 
 ```
-!muf <version>
+muf <version>
 ```
 
-- `<version>` est un entier (ex: `4`).
+- `<version>` est un entier (ex: `1`).
+
+Grammaire :
+
+```ebnf
+header      ::= "muf" WS1 muf_version ;
+muf_version ::= int_lit ;
+```
 
 ## Blocs
 
-Un bloc est delimite par un en-tete de bloc et un marqueur de fermeture `..`.
+Les blocs sont delimites par un marqueur de fin `.end`.
 
-- Ouverture : `[TAG nom?]`
-- Fermeture : `..` (seul sur la ligne, espaces autorises)
-
-Les blocs peuvent etre imbriques.
-
-Exemple :
-
-```muf
-[project demo]
-  .set name "demo"
-  [build]
-    .run "make"
-  ..
-..
+```ebnf
+block     ::= block_head NL { block_stmt NL } block_end ;
+block_end ::= ".end" ;
+block_stmt ::= line_stmt | block ;
 ```
 
-## Directives
+Les blocs top-level supportes sont :
 
-Une directive commence par un point et peut prendre des arguments :
-
+```ebnf
+toplevel ::= workspace_block
+           | package_block
+           | target_block
+           | deps_block
+           | profile_block
+           | toolchain_block
+           | features_block
+           | scripts_block
+           | abi_block
+           | include_block
+           | env_block
+           | on_block
+           ;
 ```
-.op arg1 arg2 ...
+
+## Lignes et tokens
+
+```ebnf
+line_stmt ::= line_head { WS1 line_arg } ;
+line_head ::= keyword ;
+line_arg  ::= atom ;
+atom      ::= ident | string_lit | int_lit | float_lit | bool_lit ;
 ```
 
-- `op` est un identifiant (`Name`).
-- Les arguments sont des `Atom` (voir plus bas).
+## Commentaires et espace
 
-## Commentaires
+- Commentaire : commence par `#`.
+- `NL` : fin de ligne (`\n` ou `\r\n`).
+- `WS` : espace, tabulation, commentaire ou fin de ligne.
 
-Un commentaire commence par `;;` et va jusqu'a la fin de la ligne :
-
-```muf
-;; ceci est un commentaire
+```ebnf
+NL      ::= "\n" | "\r\n" ;
+WS      ::= { " " | "\t" | comment | NL } ;
+WS1     ::= ( " " | "\t" ) { " " | "\t" } ;
+comment ::= "#" { not_nl } ;
 ```
 
 ## Lexemes
 
-### Name
+```ebnf
+ident        ::= ident_start { ident_continue } ;
+ident_start  ::= "A".."Z" | "a".."z" | "_" ;
+ident_continue ::= ident_start | "0".."9" | "-" ;
 
-- Commence par une lettre (`A..Z` ou `a..z`) ou `_`.
-- Se poursuit par lettres, chiffres ou `_`.
+string_lit   ::= "\"" { string_char } "\"" ;
+string_char  ::= "\\\"" | "\\\\" | "\\n" | "\\r" | "\\t" | not_quote_not_nl ;
 
-Exemples : `name`, `_tag`, `build1`
+bool_lit     ::= "true" | "false" ;
+int_lit      ::= ["-"] digit { digit } | "0x" hex { hex } ;
+float_lit    ::= ["-"] digit { digit } "." digit { digit } ;
 
-### String
+digit        ::= "0".."9" ;
+hex          ::= digit | "a".."f" | "A".."F" ;
 
-Chaine entre guillemets doubles :
-
-- Echapements : `\"`, `\\`, `\n`, `\r`, `\t`, `\0`, `\xNN`, `\uNNNN`.
-- Pas de retour a la ligne dans une chaine.
-
-### Number
-
-- Entier : `+42`, `-7`, `0`
-- Flottant : `3.14`, `-0.5`, `1.2e3`
-
-### Ref
-
-Reference de la forme :
-
-```
-~name/name/.../name
+path_lit     ::= string_lit ;
+semver_lit   ::= string_lit ;
 ```
 
-## Espace et lignes
-
-- `WS` : espace ou tabulation.
-- `NL` : fin de ligne (`\n` ou `\r\n`).
-- Les lignes vides et les lignes de commentaire sont autorisees entre les elements.
-
-## Rappel (EBNF minimal)
+## Blocs principaux
 
 ```ebnf
-Block     = WS0 , BlockHead , WS0 , NL , { BlockItem } , WS0 , BlockClose , WS0 , NL ;
-BlockHead = "[" , WS0 , Tag , [ WS1 , Name ] , WS0 , "]" ;
-BlockClose = ".." ;
-Directive = WS0 , "." , Op , { WS1 , Atom } , WS0 , NL ;
-Atom = Ref | String | Number | Name ;
+workspace_block ::= "workspace" WS1 ident NL
+                    { workspace_stmt NL }
+                    ".end" ;
+
+workspace_stmt  ::= "members" WS1 path_lit
+                  | "default_profile" WS1 profile_name ;
+
+profile_name    ::= "dev" | "release" | ident ;
+
+package_block ::= "package" NL
+                  { package_stmt NL }
+                  ".end" ;
+
+package_stmt  ::= "name" WS1 ident
+                | "version" WS1 semver_lit
+                | "edition" WS1 int_lit
+                | "license" WS1 string_lit
+                | "description" WS1 string_lit
+                | "authors" WS1 string_lit
+                | "repository" WS1 string_lit
+                | "homepage" WS1 string_lit ;
+
+target_block ::= "target" WS1 target_kind WS1 ident NL
+                 { target_stmt NL }
+                 ".end" ;
+
+target_kind  ::= "program" | "library" | "plugin" | "tool" ;
+
+target_stmt  ::= "entry" WS1 path_lit
+               | "out" WS1 string_lit
+               | "emit" WS1 emit_kind
+               | "crate_type" WS1 crate_type
+               | "features" WS1 ident
+               | "defines" WS1 ident WS1 string_lit
+               | "link" WS1 link_kind WS1 string_lit
+               | "test" WS1 bool_lit ;
+
+emit_kind    ::= "native" | "c" | "bytecode" | "ir" ;
+crate_type   ::= "static" | "shared" ;
+link_kind    ::= "system" | "framework" | "static" | "shared" ;
+
+deps_block ::= "deps" NL
+               { dep_stmt NL }
+               ".end" ;
+
+dep_stmt  ::= dep_path | dep_git | dep_ver ;
+
+dep_path  ::= ident WS1 "path" WS1 path_lit { WS1 dep_opt } ;
+dep_git   ::= ident WS1 "git" WS1 string_lit { WS1 dep_git_opt } { WS1 dep_opt } ;
+dep_ver   ::= ident WS1 "ver" WS1 semver_lit { WS1 dep_opt } ;
+
+dep_git_opt ::= ("rev" WS1 string_lit)
+              | ("tag" WS1 string_lit)
+              | ("branch" WS1 string_lit) ;
+
+dep_opt   ::= ("optional" WS1 bool_lit)
+           | ("default_features" WS1 bool_lit)
+           | ("feature" WS1 ident) ;
+
+profile_block ::= "profile" WS1 profile_name NL
+                  { profile_stmt NL }
+                  ".end" ;
+
+profile_stmt ::= "opt" WS1 int_lit
+               | "debug" WS1 bool_lit
+               | "lto" WS1 bool_lit
+               | "strip" WS1 bool_lit
+               | "sanitize" WS1 sanitize_kind
+               | "panic" WS1 panic_kind ;
+
+sanitize_kind ::= "none" | "address" | "undefined" | "thread" ;
+panic_kind    ::= "abort" | "unwind" ;
+
+toolchain_block ::= "toolchain" NL
+                    { toolchain_stmt NL }
+                    ".end" ;
+
+toolchain_stmt ::= "backend" WS1 backend_kind
+                 | "cc" WS1 string_lit
+                 | "ar" WS1 string_lit
+                 | "ld" WS1 string_lit
+                 | "cflags" WS1 string_lit
+                 | "ldflags" WS1 string_lit
+                 | "sysroot" WS1 path_lit ;
+
+backend_kind ::= "c" | "vm" ;
+
+features_block ::= "features" NL
+                   { feature_stmt NL }
+                   ".end" ;
+
+feature_stmt ::= "define" WS1 ident
+               | "implies" WS1 ident WS1 ident ;
+
+scripts_block ::= "scripts" NL
+                  { script_stmt NL }
+                  ".end" ;
+
+script_stmt ::= "pre_build" WS1 string_lit
+              | "post_build" WS1 string_lit
+              | "pre_test" WS1 string_lit
+              | "post_test" WS1 string_lit ;
+
+abi_block ::= "abi" NL
+              { abi_stmt NL }
+              ".end" ;
+
+abi_stmt ::= "header" WS1 path_lit
+           | "namespace" WS1 ident
+           | abi_struct_block
+           | abi_fn_block ;
+
+abi_struct_block ::= "struct" WS1 ident NL
+                     { abi_field_stmt NL }
+                     ".end" ;
+
+abi_field_stmt ::= "field" WS1 ident WS1 abi_type ;
+
+abi_fn_block ::= "fn" WS1 ident WS1 "->" WS1 abi_type NL
+                 { abi_param_stmt NL }
+                 ".end" ;
+
+abi_param_stmt ::= ("in" WS1 ident WS1 abi_type)
+                 | ("out" WS1 ident WS1 abi_type) ;
+
+abi_type ::= abi_prim | abi_slice | abi_handle | abi_ptr | ident ;
+
+abi_prim  ::= "u8" | "u16" | "u32" | "u64"
+            | "i8" | "i16" | "i32" | "i64"
+            | "f32" | "f64" | "bool" ;
+
+abi_slice ::= "bytes" | "mut_bytes" ;
+abi_handle ::= "handle" ;
+abi_ptr    ::= "ptr" | "mut_ptr" ;
+
+include_block ::= "include" WS1 path_lit NL ".end" ;
+
+env_block ::= "env" NL
+              { env_stmt NL }
+              ".end" ;
+
+env_stmt ::= "set" WS1 ident WS1 string_lit ;
+
+on_block ::= "on" WS1 platform_sel NL
+             { on_stmt NL }
+             ".end" ;
+
+on_stmt ::= package_block
+          | target_block
+          | deps_block
+          | profile_block
+          | toolchain_block
+          | env_block ;
+
+platform_sel ::= ("os" WS1 os_kind)
+               | ("arch" WS1 arch_kind)
+               | ("os" WS1 os_kind WS1 "arch" WS1 arch_kind) ;
+
+os_kind   ::= "macos" | "linux" | "windows" | "freebsd" ;
+arch_kind ::= "x86_64" | "aarch64" ;
 ```

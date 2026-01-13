@@ -2,11 +2,11 @@
 
 #[cfg(test)]
 mod os_compatibility_tests {
-    use flan::os::OsAdapter;
+    use steel::os::OsAdapter;
 
     #[test]
     fn test_os_detection_runtime() {
-        let os = flan::os::get_current_os();
+        let os = steel::os::get_current_os();
         let diagnostics = os.diagnostic_info();
 
         println!("OS Diagnostics: {}", diagnostics);
@@ -19,7 +19,7 @@ mod os_compatibility_tests {
 
     #[test]
     fn test_path_separators() {
-        let os = flan::os::get_current_os();
+        let os = steel::os::get_current_os();
         let separator = os.path_separator();
 
         #[cfg(windows)]
@@ -35,53 +35,53 @@ mod os_compatibility_tests {
 
     #[test]
     fn test_architecture_detection() {
-        let os = flan::os::get_current_os();
+        let os = steel::os::get_current_os();
         let arch = os.arch();
 
         println!("Detected architecture: {:?}", arch);
         // Just verify it detects something
-        assert_ne!(arch, flan::os::Architecture::Unknown);
+        assert_ne!(arch, steel::os::Architecture::Unknown);
     }
 
     #[test]
     fn test_tier_classification() {
-        let os = flan::os::get_current_os();
+        let os = steel::os::get_current_os();
         let tier = os.tier();
 
         println!("OS Tier: {:?}", tier);
         // Verify tier is set to something reasonable
         assert!(matches!(
             tier,
-            flan::os::OsTier::Legacy
-                | flan::os::OsTier::Compatible
-                | flan::os::OsTier::Modern
-                | flan::os::OsTier::Current
+            steel::os::OsTier::Legacy
+                | steel::os::OsTier::Compatible
+                | steel::os::OsTier::Modern
+                | steel::os::OsTier::Current
         ));
     }
 
     #[test]
     fn test_feature_support_by_tier() {
-        let os = flan::os::get_current_os();
+        let os = steel::os::get_current_os();
         let tier = os.tier();
 
         // All tiers support hardlinks
         assert!(os.hardlink_support() || !os.hardlink_support()); // Tautology, just ensures method exists
 
         // Only modern and higher support symlinks
-        if tier < flan::os::OsTier::Modern {
+        if tier < steel::os::OsTier::Modern {
             // Legacy/Compatible might not support symlinks
             println!("Tier {:?} may not support symlinks", tier);
         }
 
         // Parallel jobs should be tier-dependent
-        if tier >= flan::os::OsTier::Compatible {
+        if tier >= steel::os::OsTier::Compatible {
             println!("Tier {:?} should support parallel jobs", tier);
         }
     }
 
     #[test]
     fn test_environment_variables() {
-        let os = flan::os::get_current_os();
+        let os = steel::os::get_current_os();
 
         // Test getting a standard env var
         if let Some(path) = os.get_env("PATH") {
@@ -101,7 +101,7 @@ mod os_compatibility_tests {
 
     #[test]
     fn test_temp_and_cache_dirs() {
-        let os = flan::os::get_current_os();
+        let os = steel::os::get_current_os();
 
         let temp_dir = os.temp_dir();
         assert!(
@@ -121,7 +121,7 @@ mod os_compatibility_tests {
 
     #[test]
     fn test_process_spawning() {
-        let os = flan::os::get_current_os();
+        let os = steel::os::get_current_os();
 
         // Test spawning a simple command
         #[cfg(unix)]
@@ -139,12 +139,12 @@ mod os_compatibility_tests {
 
     #[test]
     fn test_pure_rust_fallback() {
-        let fallback = flan::os::PureRustFallback;
+        let fallback = steel::os::PureRustFallback;
 
         assert_eq!(fallback.symlink_support(), false);
         assert_eq!(fallback.hardlink_support(), false);
         assert_eq!(fallback.supports_parallel_jobs(), false);
-        assert_eq!(fallback.tier(), flan::os::OsTier::Legacy);
+        assert_eq!(fallback.tier(), steel::os::OsTier::Legacy);
         assert!(fallback.has_fallback());
 
         // Fallback should still work
@@ -154,10 +154,10 @@ mod os_compatibility_tests {
 
     #[test]
     fn test_version_detection() {
-        let version = flan::os::OsVersion::default();
+        let version = steel::os::OsVersion::default();
         println!("Default version: {:?}", version);
 
-        let version2 = flan::os::OsVersion {
+        let version2 = steel::os::OsVersion {
             major: 10,
             minor: 15,
             patch: 7,
@@ -167,7 +167,7 @@ mod os_compatibility_tests {
 
     #[test]
     fn test_cpu_count_reasonable() {
-        let os = flan::os::get_current_os();
+        let os = steel::os::get_current_os();
         let cpu_count = os.cpu_count();
 
         // Sanity checks
@@ -179,7 +179,7 @@ mod os_compatibility_tests {
 
     #[test]
     fn test_diagnostic_info_format() {
-        let os = flan::os::get_current_os();
+        let os = steel::os::get_current_os();
         let diagnostics = os.diagnostic_info();
 
         // Should contain expected information

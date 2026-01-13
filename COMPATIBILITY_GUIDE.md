@@ -33,7 +33,7 @@ cargo test --features legacy
 ### Détecter les capacités du système
 
 ```rust
-use flan::os::{get_current_os, OsTier};
+use steel::os::{get_current_os, OsTier};
 
 fn main() {
     let os = get_current_os();
@@ -54,7 +54,7 @@ fn main() {
 ### Adapter le comportement au système
 
 ```rust
-use flan::os::get_current_os;
+use steel::os::get_current_os;
 
 fn build_with_optimal_parallelism() {
     let os = get_current_os();
@@ -72,15 +72,15 @@ fn build_with_optimal_parallelism() {
 ### Utiliser les chemins correctement
 
 ```rust
-use flan::os::get_current_os;
+use steel::os::get_current_os;
 use std::path::PathBuf;
 
 fn construct_path(parts: &[&str]) -> PathBuf {
     let os = get_current_os();
     let separator = os.path_separator();
     
-    // On Windows: C:\Users\Name\flan
-    // On Unix:    /home/name/flan
+    // On Windows: C:\Users\Name\steel
+    // On Unix:    /home/name/steel
     let path_str = parts.join(&separator.to_string());
     PathBuf::from(path_str)
 }
@@ -89,7 +89,7 @@ fn construct_path(parts: &[&str]) -> PathBuf {
 ### Gestion sécurisée des fichiers
 
 ```rust
-use flan::os::get_current_os;
+use steel::os::get_current_os;
 use std::fs;
 use std::path::Path;
 
@@ -116,7 +116,7 @@ fn safe_link(src: &Path, dst: &Path) -> anyhow::Result<()> {
 ### Gestion des variables d'environnement
 
 ```rust
-use flan::os::get_current_os;
+use steel::os::get_current_os;
 
 fn setup_build_env() {
     let os = get_current_os();
@@ -138,7 +138,7 @@ fn setup_build_env() {
 ### Vérifier les capacités spécifiques
 
 ```rust
-use flan::os::get_current_os;
+use steel::os::get_current_os;
 
 fn configure_features() {
     let os = get_current_os();
@@ -154,7 +154,7 @@ fn configure_features() {
     }
     
     // Unicode: assume supported on modern systems
-    if os.tier() >= flan::os::OsTier::Compatible {
+    if os.tier() >= steel::os::OsTier::Compatible {
         // Allow unicode in paths
     }
 }
@@ -163,7 +163,7 @@ fn configure_features() {
 ### Diagnostics et logging
 
 ```rust
-use flan::os::get_current_os;
+use steel::os::get_current_os;
 use log::info;
 
 fn log_system_info() {
@@ -181,9 +181,9 @@ fn log_system_info() {
 ### Mode fallback automatique
 
 ```rust
-use flan::os::{get_current_os, PureRustFallback};
+use steel::os::{get_current_os, PureRustFallback};
 
-fn get_safe_adapter() -> Box<dyn flan::os::OsAdapter> {
+fn get_safe_adapter() -> Box<dyn steel::os::OsAdapter> {
     match get_current_os().spawn_process("test", &["-f", "/tmp"]) {
         Ok(_) => get_current_os(),
         Err(_) => {
@@ -197,7 +197,7 @@ fn get_safe_adapter() -> Box<dyn flan::os::OsAdapter> {
 ### Fallback explicite
 
 ```rust
-use flan::os::{get_current_os, PureRustFallback};
+use steel::os::{get_current_os, PureRustFallback};
 
 fn use_fallback_mode() {
     let fallback = PureRustFallback;
@@ -205,7 +205,7 @@ fn use_fallback_mode() {
     // Fallback guarantees:
     assert!(!fallback.symlink_support());       // Safe: no symlinks
     assert!(!fallback.supports_parallel_jobs()); // Safe: single-threaded
-    assert_eq!(fallback.tier(), flan::os::OsTier::Legacy); // Conservative
+    assert_eq!(fallback.tier(), steel::os::OsTier::Legacy); // Conservative
     
     // Use fallback for maximum compatibility
 }
@@ -219,10 +219,10 @@ fn use_fallback_mode() {
 fn process_with_optimization() {
     let os = get_current_os();
     
-    if os.tier() >= flan::os::OsTier::Modern {
+    if os.tier() >= steel::os::OsTier::Modern {
         // Use advanced features
         process_parallel()
-    } else if os.tier() >= flan::os::OsTier::Compatible {
+    } else if os.tier() >= steel::os::OsTier::Compatible {
         // Use moderate features
         process_threaded()
     } else {
@@ -243,8 +243,8 @@ fn get_feature_flags() -> HashMap<&'static str, bool> {
     
     flags.insert("parallel", os.supports_parallel_jobs());
     flags.insert("symlinks", os.symlink_support());
-    flags.insert("unicode", os.tier() >= flan::os::OsTier::Compatible);
-    flags.insert("long_paths", os.tier() >= flan::os::OsTier::Modern);
+    flags.insert("unicode", os.tier() >= steel::os::OsTier::Compatible);
+    flags.insert("long_paths", os.tier() >= steel::os::OsTier::Modern);
     
     flags
 }
@@ -268,7 +268,7 @@ fn create_config() -> BuildConfig {
         } else {
             1
         },
-        use_cache: os.tier() >= flan::os::OsTier::Modern,
+        use_cache: os.tier() >= steel::os::OsTier::Modern,
         use_symlinks: os.symlink_support(),
     }
 }
@@ -317,4 +317,3 @@ if !os.symlink_support() {
 - [Tests d'intégrité](tests/os_compatibility.rs)
 - [API OS Adapter](src/os.rs)
 - [Détection de versions](src/posixos.rs)
-

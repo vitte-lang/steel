@@ -1,6 +1,6 @@
 // src/vmsjobs.rs
 //
-// Flan — VMS job model (minimal, std-only)
+// Steel — VMS job model (minimal, std-only)
 //
 // Purpose:
 // - Provide a small, self-contained job graph model used by vmsify/vmsfunctions.

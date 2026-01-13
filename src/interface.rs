@@ -1,6 +1,6 @@
 // src/interface.rs
 //
-// Flan — interface (public-facing core interfaces + glue)
+// Steel — interface (public-facing core interfaces + glue)
 //
 // Purpose:
 // - Define stable traits + types used across commands and subsystems:
@@ -172,7 +172,7 @@ impl std::error::Error for HostError {}
 #[derive(Debug, Clone)]
 pub struct Workspace {
     pub root: PathBuf,
-    pub flanfile: Option<PathBuf>,
+    pub steelfile: Option<PathBuf>,
     pub vars: BTreeMap<String, String>,
     pub profiles: BTreeMap<String, Profile>,
     pub targets: BTreeMap<String, Target>,
@@ -226,7 +226,7 @@ pub trait IWorkspaceLoader: Send + Sync {
 pub struct LoadContext {
     pub cwd: PathBuf,
     pub root_hint: Option<PathBuf>,
-    pub flanfile_hint: Option<PathBuf>,
+    pub steelfile_hint: Option<PathBuf>,
     pub profile: Option<String>,
     pub target: Option<String>,
     pub env_prefix: String,

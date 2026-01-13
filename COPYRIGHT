@@ -1,4 +1,4 @@
-Flan
+Steel
 Copyright (c) 2026 vitte-lang (goginx)
 
 This project and its distribution artifacts (including, but not limited to, the
@@ -23,7 +23,7 @@ Unless otherwise noted, copyright applies to all content in this repository,
 including:
 - implementation source code and headers
 - build and bootstrap tooling, scripts, and templates
-- configuration and manifest files (e.g. Flan configs, examples)
+- configuration and manifest files (e.g. Steel configs, examples)
 - documentation, specifications, and design notes
 - command-line interface help text and manpages
 - test suites, fixtures, and sample projects
@@ -53,5 +53,5 @@ Version 2.0, as described in the LICENSE file and CONTRIBUTING.md.
 
 Contact
 -------
-Project: vitte-lang / Flan
+Project: vitte-lang / Steel
 Author/Maintainer handle: goginx

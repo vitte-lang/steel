@@ -1,9 +1,9 @@
 // src/variable.rs
 //
-// Flan — variables and expansion primitives
+// Steel — variables and expansion primitives
 //
 // Purpose:
-// - Centralize variable representation used by Flan build pipeline.
+// - Centralize variable representation used by Steel build pipeline.
 // - Provide deterministic parsing/validation and safe expansion into strings.
 // - Support layered scopes (env / global / target / profile / job / local).
 // - Provide diagnostics-friendly errors (span optional).

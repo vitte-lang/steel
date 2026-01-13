@@ -57,8 +57,7 @@ impl<'a> Parser<'a> {
 
     fn parse_header_line(&mut self, line: Line) -> Result<Header, ParseError> {
         let mut ts = TokenStream::new(&line.tokens);
-        ts.expect_ident("flan")?;
-        ts.expect_ident("bake")?;
+        ts.expect_ident("muf")?;
         let version = match ts.next() {
             Some(LineToken { kind: LineTokenKind::Int(v), .. }) => v as u32,
             Some(tok) => {
@@ -78,6 +77,12 @@ impl<'a> Parser<'a> {
             return Err(ParseError {
                 message: "unexpected token after header".to_string(),
                 span: tok.span,
+            });
+        }
+        if version != 4 {
+            return Err(ParseError {
+                message: format!("unsupported MUF version {version} (expected 4)"),
+                span: line.span,
             });
         }
         Ok(Header {
@@ -345,12 +350,11 @@ impl From<Token> for LineToken {
 }
 
 fn is_header_line(line: &Line) -> bool {
-    if line.tokens.len() != 3 {
+    if line.tokens.len() != 2 {
         return false;
     }
-    matches!(&line.tokens[0].kind, LineTokenKind::Ident(s) if s == "flan")
-        && matches!(&line.tokens[1].kind, LineTokenKind::Ident(s) if s == "bake")
-        && matches!(line.tokens[2].kind, LineTokenKind::Int(_))
+    matches!(&line.tokens[0].kind, LineTokenKind::Ident(s) if s == "muf")
+        && matches!(line.tokens[1].kind, LineTokenKind::Int(_))
 }
 
 fn is_end_line(line: &Line) -> bool {
@@ -616,9 +620,9 @@ mod tests {
 
     #[test]
     fn parses_header_and_set() {
-        let src = "flan bake 2\nset profile \"debug\"\n";
+        let src = "muf 4\nset profile \"debug\"\n";
         let file = parse_muf(src).unwrap();
-        assert_eq!(file.header.as_ref().unwrap().version, 2);
+        assert_eq!(file.header.as_ref().unwrap().version, 4);
         assert_eq!(file.stmts.len(), 1);
         match &file.stmts[0] {
             Stmt::Set { key, .. } => assert_eq!(key, "profile"),

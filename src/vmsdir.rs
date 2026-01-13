@@ -1,6 +1,6 @@
 //! vmsdir.rs
 //!
-//! “VMS Dir” — utilitaires FS orientés build (workspace/build/store) pour Flan.
+//! “VMS Dir” — utilitaires FS orientés build (workspace/build/store) pour Steel.
 //!
 //! Rôles typiques:
 //! - Assurer l’existence de répertoires (build/, cache/, jobs/…)

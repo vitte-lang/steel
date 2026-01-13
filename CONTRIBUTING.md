@@ -9,11 +9,11 @@ Run the default checks before submitting:
 - build: `cargo build` (or your project build command)
 - tests: `cargo test`
 - formatting: `cargo fmt` (if Rust) and/or project formatters
-- docs/manpage: ensure `flan.1` renders with `man ./doc/flan.1`
+- docs/manpage: ensure `steel.1` renders with `man ./doc/steel.1`
 
-If the repository uses Flan to build itself, also run:
-- `flan build`
-- `flan test`
+If the repository uses Steel to build itself, also run:
+- `steel build`
+- `steel test`
 
 ## License
 

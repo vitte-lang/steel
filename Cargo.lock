@@ -3,7 +3,7 @@
 version = 3
 
 [[package]]
-name = "FlanLib"
+name = "SteelLib"
 version = "0.1.0"
 
 [[package]]
@@ -577,75 +577,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f52b00d39961fc5b2736ea853c9cc86238e165017a493d1d5c8eac6bdc4cc273"
 
 [[package]]
-name = "flan"
-version = "0.1.0"
-dependencies = [
- "FlanLib",
- "anyhow",
- "chrono",
- "clap",
- "criterion",
- "env_logger",
- "indexmap",
- "insta",
- "libc",
- "log",
- "nix",
- "num_cpus",
- "objc",
- "once_cell",
- "parking_lot",
- "regex",
- "serde",
- "serde_json",
- "serde_yaml",
- "tempfile",
- "thiserror",
- "toml",
- "walkdir",
- "winapi",
-]
-
-[[package]]
-name = "flan-cpython"
-version = "0.1.0"
-dependencies = [
- "FlanLib",
- "serde",
- "tempfile",
- "thiserror",
-]
-
-[[package]]
-name = "flan-ocaml"
-version = "0.1.0"
-dependencies = [
- "FlanLib",
- "serde",
- "tempfile",
- "thiserror",
-]
-
-[[package]]
-name = "flan_gcc"
-version = "0.1.0"
-dependencies = [
- "FlanLib",
- "anyhow",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror",
- "tracing",
- "tracing-subscriber",
- "which",
-]
-
-[[package]]
-name = "flan_platform"
-version = "0.1.0"
-
-[[package]]
 name = "nix"
 version = "0.27.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1009,6 +940,75 @@ name = "smallvec"
 version = "1.15.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "67b1b7a3b5fe4f1376887184045fcf45c69e92af734b7aaddc05fb777b6fbd03"
+
+[[package]]
+name = "steel"
+version = "0.1.0"
+dependencies = [
+ "SteelLib",
+ "anyhow",
+ "chrono",
+ "clap",
+ "criterion",
+ "env_logger",
+ "indexmap",
+ "insta",
+ "libc",
+ "log",
+ "nix",
+ "num_cpus",
+ "objc",
+ "once_cell",
+ "parking_lot",
+ "regex",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tempfile",
+ "thiserror",
+ "toml",
+ "walkdir",
+ "winapi",
+]
+
+[[package]]
+name = "steel-cpython"
+version = "0.1.0"
+dependencies = [
+ "SteelLib",
+ "serde",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
+name = "steel-ocaml"
+version = "0.1.0"
+dependencies = [
+ "SteelLib",
+ "serde",
+ "tempfile",
+ "thiserror",
+]
+
+[[package]]
+name = "steel_gcc"
+version = "0.1.0"
+dependencies = [
+ "SteelLib",
+ "anyhow",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror",
+ "tracing",
+ "tracing-subscriber",
+ "which",
+]
+
+[[package]]
+name = "steel_platform"
+version = "0.1.0"
 
 [[package]]
 name = "strsim"

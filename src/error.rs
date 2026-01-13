@@ -1,28 +1,28 @@
 use std::fmt;
 
 #[derive(Debug)]
-pub enum FlanError {
+pub enum SteelError {
     ConfigNotFound,
     ValidationFailed(String),
     CompilationFailed(String),
     IoError(std::io::Error),
 }
 
-impl fmt::Display for FlanError {
+impl fmt::Display for SteelError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            FlanError::ConfigNotFound => write!(f, "FlanConfig not found"),
-            FlanError::ValidationFailed(msg) => write!(f, "Validation failed: {}", msg),
-            FlanError::CompilationFailed(msg) => write!(f, "Compilation failed: {}", msg),
-            FlanError::IoError(e) => write!(f, "I/O error: {}", e),
+            SteelError::ConfigNotFound => write!(f, "SteelConfig not found"),
+            SteelError::ValidationFailed(msg) => write!(f, "Validation failed: {}", msg),
+            SteelError::CompilationFailed(msg) => write!(f, "Compilation failed: {}", msg),
+            SteelError::IoError(e) => write!(f, "I/O error: {}", e),
         }
     }
 }
 
-impl From<std::io::Error> for FlanError {
+impl From<std::io::Error> for SteelError {
     fn from(err: std::io::Error) -> Self {
-        FlanError::IoError(err)
+        SteelError::IoError(err)
     }
 }
 
-impl std::error::Error for FlanError {}
+impl std::error::Error for SteelError {}

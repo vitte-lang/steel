@@ -1,13 +1,13 @@
 //! vpath.rs
 //!
-//! Abstraction “Virtual Path” pour Flan:
+//! Abstraction “Virtual Path” pour Steel:
 //! - Manipulation de chemins indépendants de l’OS (séparateur '/')
 //! - Normalisation (., .., //, trailing slash)
 //! - Gestion de “root” logique (absolute vs relative)
 //! - Conversion contrôlée vers std::path::PathBuf (host path)
 //!
 //! Conçu pour:
-//! - FlanConfig / manifests (paths déclaratifs)
+//! - steelconf / manifests (paths déclaratifs)
 //! - résolution de workspaces / stores / capsules
 //! - hashing stable de chemins (cache, fingerprints)
 //!

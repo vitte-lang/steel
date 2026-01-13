@@ -1,30 +1,32 @@
-// /Users/vincent/Documents/Github/flan/src/commands.rs
+// /Users/vincent/Documents/Github/steel/src/commands.rs
 //! commands — CLI command implementations (std-only)
 //!
-//! This module provides a thin, deterministic CLI dispatcher for Flan.
+//! This module provides a thin, deterministic CLI dispatcher for Steel.
 //! It is designed to work without external crates and to keep the CLI contract
 //! stable while internal modules evolve.
 //!
 //! Supported commands (current contract):
 //! - `help` / `--help`
 //! - `version`
-//! - `build flan [flags...]`  (Configuration phase; emits Flanconfig.mff)
-//! - `resolve [flags...]`       (alias of `build flan`)
+//! - `build steel [flags...]`  (Configuration phase; emits steelconfig.mff + steel.log)
+//! - `resolve [flags...]`       (alias of `build steel`)
 //! - `check [flags...]`         (best-effort validate; emits then deletes unless strict)
-//! - `print [flags...]`         (emits + prints the resolved mcfg)
+//! - `print [flags...]`         (emits + prints the resolved config)
 //! - `graph`                    (stub; reserved for DOT/text graph export)
-//! - `fmt`                      (stub; reserved for formatting FlanConfigs)
+//! - `fmt`                      (stub; reserved for formatting steelconfs)
 
 use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use chrono::Utc;
+
 use crate::build_muf;
 use crate::build_muf::BuildMufError;
 use crate::run_muf;
 
-pub const CLI_NAME: &str = "flan";
+pub const CLI_NAME: &str = "steel";
 
 #[derive(Debug)]
 pub enum CommandError {
@@ -138,10 +140,7 @@ pub fn dispatch(args: &[String]) -> Result<()> {
 /// `args` is expected to be the full argv (including program name at index 0).
 pub fn parse_command(args: &[String]) -> Result<Cmd> {
     if args.len() <= 1 {
-        return Err(CommandError::Usage(err_msg(
-            "U001",
-            "missing command. Run `flan -help` for the list of commands.",
-        )));
+        return Err(CommandError::Usage(usage_text().to_string()));
     }
 
     let sub = args[1].as_str();
@@ -155,7 +154,7 @@ pub fn parse_command(args: &[String]) -> Result<Cmd> {
     }
 
     match sub {
-        // `build flan ...`
+        // `build steel ...`
         "build" => parse_build(&args[2..]),
         // `resolve ...` (alias)
         "resolve" => {
@@ -202,7 +201,7 @@ fn parse_build(rest: &[String]) -> Result<Cmd> {
 
     let tool = rest[0].as_str();
     match tool {
-        "flan" => {
+        "steel" => {
             let o = parse_build_args(&rest[1..])?;
             Ok(Cmd::BuildFlan(o))
         }
@@ -423,7 +422,7 @@ fn parse_run_args(rest: &[String]) -> Result<run_muf::RunOptions> {
                 let v = it.next().ok_or_else(|| {
                     CommandError::Usage("--file expects a path\n\n".to_string() + run_help())
                 })?;
-                o.flan_file = Some(PathBuf::from(v));
+                o.steel_file = Some(PathBuf::from(v));
             }
             "--profile" => {
                 let v = it.next().ok_or_else(|| {
@@ -493,7 +492,7 @@ fn parse_run_args(rest: &[String]) -> Result<run_muf::RunOptions> {
 fn map_build_error(err: BuildMufError) -> CommandError {
     match err {
         BuildMufError::Arg { msg } => {
-            if msg.contains("build flan —") {
+            if msg.contains("build steel —") {
                 CommandError::Usage(msg)
             } else {
                 CommandError::Usage(format!(
@@ -513,7 +512,7 @@ fn map_build_error(err: BuildMufError) -> CommandError {
 pub fn execute(cmd: Cmd) -> Result<()> {
     match cmd {
         Cmd::Help => {
-            println!("{}", usage_text());
+            println!("{}", help_text_with_welcome());
             Ok(())
         }
         Cmd::Version => {
@@ -521,12 +520,12 @@ pub fn execute(cmd: Cmd) -> Result<()> {
             Ok(())
         }
 
-        Cmd::BuildFlan(o) => exec_build_flan(o),
-        Cmd::Resolve(o) => exec_build_flan(o),
+        Cmd::BuildFlan(o) => exec_build_steel(o),
+        Cmd::Resolve(o) => exec_build_steel(o),
 
         Cmd::Print(mut o) => {
             o.print = true;
-            exec_build_flan(o)
+            exec_build_steel(o)
         }
         Cmd::Run(o) => exec_run_muf(o),
         Cmd::Doctor(o) => exec_doctor(o),
@@ -536,7 +535,7 @@ pub fn execute(cmd: Cmd) -> Result<()> {
         Cmd::Check(mut o) => {
             // Best-effort semantics:
             // - run the resolver
-            // - emit to a temp-ish path under `.flan-cache/check/`
+            // - emit to a temp-ish path under `.steel-cache/check/`
             // - remove after success (unless strict=false removal failures are ignored)
             let root = if o.root_dir.as_os_str().is_empty() {
                 env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
@@ -545,7 +544,7 @@ pub fn execute(cmd: Cmd) -> Result<()> {
             };
 
             let check_emit = root
-                .join(".flan-cache")
+                .join(".steel-cache")
                 .join("check")
                 .join(build_muf::DEFAULT_EMIT_NAME);
 
@@ -584,16 +583,101 @@ pub fn execute(cmd: Cmd) -> Result<()> {
     }
 }
 
-fn exec_build_flan(o: build_muf::BuildMufOptions) -> Result<()> {
-    build_muf::run(&o).map_err(|e| CommandError::Failure {
-        code: 1,
-        msg: err_msg("E001", e.to_string()),
-    })?;
-    Ok(())
+fn exec_build_steel(o: build_muf::BuildMufOptions) -> Result<()> {
+    let root = if o.root_dir.as_os_str().is_empty() {
+        env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+    } else {
+        o.root_dir.clone()
+    };
+    let log_path = build_log_path(&root);
+    let emit_path = resolve_emit_path(&root, &o);
+
+    match build_muf::run(&o) {
+        Ok(_) => {
+            let _ = write_build_log(&log_path, true, "build ok", emit_path.as_deref());
+            Ok(())
+        }
+        Err(e) => {
+            let msg = e.to_string();
+            let _ = write_build_log(&log_path, false, &msg, emit_path.as_deref());
+            Err(map_build_error(e))
+        }
+    }
+}
+
+fn build_log_path(root: &Path) -> PathBuf {
+    root.join("steel.log")
+}
+
+fn resolve_emit_path(root: &Path, o: &build_muf::BuildMufOptions) -> Option<PathBuf> {
+    if let Some(p) = &o.emit_path {
+        return Some(root_join_if_relative(root, p));
+    }
+
+    if let Ok(p) = env::var("MUFFIN_EMIT") {
+        if !p.trim().is_empty() {
+            return Some(root_join_if_relative(root, Path::new(&p)));
+        }
+    }
+
+    Some(root.join(build_muf::DEFAULT_EMIT_NAME))
+}
+
+fn write_build_log(path: &Path, ok: bool, message: &str, emit_path: Option<&Path>) -> std::io::Result<()> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)?;
+    }
+
+    let text = format_build_log(ok, message, emit_path);
+    let mut file = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)?;
+    use std::io::Write;
+    file.write_all(text.as_bytes())
+}
+
+fn format_build_log(ok: bool, message: &str, emit_path: Option<&Path>) -> String {
+    let mut out = String::new();
+    out.push_str("mff 1\n\n");
+    out.push_str("build\n");
+    out.push_str(&format!("  tool \"{}\"\n", escape_mff(CLI_NAME)));
+    out.push_str("  command \"build steel\"\n");
+    out.push_str(&format!("  ts_iso \"{}\"\n", escape_mff(&Utc::now().to_rfc3339()))); 
+    out.push_str(&format!("  ok {}\n", if ok { "true" } else { "false" }));
+    out.push_str(&format!("  message \"{}\"\n", escape_mff(message)));
+    if let Some(p) = emit_path {
+        out.push_str(&format!("  emit \"{}\"\n", escape_mff(&p.display().to_string())));
+    }
+    out.push_str(".end\n\n");
+
+    if !ok {
+        out.push_str("\nerrors\n");
+        out.push_str(&format!("  item \"{}\"\n", escape_mff(message)));
+        out.push_str(".end\n\n");
+    }
+
+    out
+}
+
+fn escape_mff(s: &str) -> String {
+    let mut o = String::with_capacity(s.len() + 8);
+    for ch in s.chars() {
+        match ch {
+            '\\' => o.push_str("\\\\"),
+            '"' => o.push_str("\\\""),
+            '\n' => o.push_str("\\n"),
+            '\r' => o.push_str("\\r"),
+            '\t' => o.push_str("\\t"),
+            c => o.push(c),
+        }
+    }
+    o
 }
 
 fn exec_run_muf(o: run_muf::RunOptions) -> Result<()> {
     run_muf::run(&o).map_err(|e| map_run_error(e))?;
+    println!("Success Build");
     Ok(())
 }
 
@@ -610,7 +694,7 @@ fn exec_graph(o: GraphOptions) -> Result<()> {
             println!("root: {}", root.display());
         }
         GraphFormat::Dot => {
-            println!("digraph flan {{");
+            println!("digraph steel {{");
             println!("  // graph export not implemented");
             println!("  root [label=\"{}\"];", escape_dot(&root.display().to_string()));
             println!("}}");
@@ -620,9 +704,9 @@ fn exec_graph(o: GraphOptions) -> Result<()> {
 }
 
 fn exec_fmt(o: FmtOptions) -> Result<()> {
-    // Reserved: FlanConfig formatter.
+    // Reserved: steelconf formatter.
     // Current behavior: deterministic placeholder.
-    let file = o.file.unwrap_or_else(|| PathBuf::from("FlanConfig"));
+    let file = o.file.unwrap_or_else(|| PathBuf::from("steelconf"));
     if o.check_only {
         println!("fmt --check: not implemented (file={})", file.display());
     } else {
@@ -641,45 +725,36 @@ fn version_string() -> String {
 fn usage_unknown(cmd: &str) -> String {
     err_msg(
         "U001",
-        format!("unknown command: {cmd}. Run `flan -help` for the list of commands."),
+        format!("unknown command: {cmd}. Run `steel -help` for the list of commands."),
     )
 }
 
 pub fn usage_text() -> &'static str {
-    "flan — Declarative configuration layer for the Flan pipeline
+    ""
+}
 
-USAGE:
-  flan <command> [args...]
+fn welcome_text() -> &'static str {
+    "Welcome Muffin
 
-COMMANDS:
-  help, -h, --help
-  version, -V, --version
+      _____ _             _
+     / ____| |           | |
+    | (___ | |_ ___  __ _| |
+     \\___ \\| __/ _ \\/ _` | |
+     ____) | ||  __/ (_| | |
+    |_____/ \\__\\___|\\__,_|_|
 
-  build flan [--root <path>] [--file <path>] [--profile <name>] [--target <triple>] [--emit <path>]
-              [--offline] [--strict] [--no-tool-fingerprint] [--include-hidden] [--follow-symlinks]
-              [--max-depth <n>] [--print] [-v]
+@Vitte_Lang_org - Muffin Version 1-2026"
+}
 
-  resolve      Alias of: build flan (emits Flanconfig.mff)
-  check        Validate best-effort (emits then deletes Flanconfig.mff under .flan-cache/check/)
-  print        Emit + print Flanconfig.mff to stdout
-  run          Execute tool steps from FlanConfig.muf (runner)
-  doctor       Diagnostics for PATH, tools, and config
-  toolchain    Toolchain diagnostics (doctor)
-  cache        Cache status/clear
-
-  graph        (stub) Export graph (text|dot)
-  fmt          (stub) Format FlanConfig
-
-NOTES:
-  - `build flan` performs the Configuration phase and emits Flanconfig.mff.
-  - Running `flan` with no args shows this help."
+fn help_text_with_welcome() -> String {
+    welcome_text().to_string()
 }
 
 fn graph_help() -> &'static str {
-    "flan graph (stub)
+    "steel graph (stub)
 
 USAGE:
-  flan graph [--root <path>] [--text|--dot] [-v]
+  steel graph [--root <path>] [--text|--dot] [-v]
 
 FLAGS:
   --root <path>   Workspace root
@@ -689,26 +764,26 @@ FLAGS:
 }
 
 fn fmt_help() -> &'static str {
-    "flan fmt (stub)
+    "steel fmt (stub)
 
 USAGE:
-  flan fmt [--file <path>] [--check] [-v]
+  steel fmt [--file <path>] [--check] [-v]
 
 FLAGS:
-  --file <path>   FlanConfig path (default: FlanConfig)
+  --file <path>   steelconf path (default: steelconf)
   --check         Check-only mode
   -v, --verbose   Verbose output"
 }
 
 fn run_help() -> &'static str {
-    "flan run — Execute tool steps from FlanConfig.muf
+    "steel run — Execute tool steps from steelconf
 
 USAGE:
-  flan run [--root <path>] [--file <path>] [--profile <name>] [--toolchain <path>] [--bake <name>] [--all] [--print] [--no-cache] [--log <path>] [--log-mode <m>] [-v]
+  steel run [--root <path>] [--file <path>] [--profile <name>] [--toolchain <path>] [--bake <name>] [--all] [--print] [--no-cache] [--log <path>] [--log-mode <m>] [-v]
 
 FLAGS:
   --root <path>     Workspace root (default: cwd)
-  --file <path>     Explicit FlanConfig path (default: FlanConfig.muf under root)
+  --file <path>     Explicit steelconf path (default: steelconf under root)
   --profile <name>  Select profile (default: workspace.profile or debug)
   --toolchain <p>   Toolchain directory (overrides PATH lookup for tools)
   --bake <name>     Run a specific bake (repeatable)
@@ -721,10 +796,10 @@ FLAGS:
 }
 
 fn doctor_help() -> &'static str {
-    "flan doctor
+    "steel doctor
 
 USAGE:
-  flan doctor [--root <path>] [--json] [-v]
+  steel doctor [--root <path>] [--json] [-v]
 
 FLAGS:
   --root <path>   Workspace root (default: cwd)
@@ -733,10 +808,10 @@ FLAGS:
 }
 
 fn toolchain_help() -> &'static str {
-    "flan toolchain doctor
+    "steel toolchain doctor
 
 USAGE:
-  flan toolchain doctor [--json] [-v]
+  steel toolchain doctor [--json] [-v]
 
 FLAGS:
   --json          JSON output (machine-friendly)
@@ -744,10 +819,10 @@ FLAGS:
 }
 
 fn cache_help() -> &'static str {
-    "flan cache
+    "steel cache
 
 USAGE:
-  flan cache <status|clear> [--root <path>] [--json] [-v]
+  steel cache <status|clear> [--root <path>] [--json] [-v]
 
 FLAGS:
   --root <path>   Workspace root (default: cwd)
@@ -816,9 +891,9 @@ fn exec_doctor(o: DoctorOptions) -> Result<()> {
     let root = o
         .root_dir
         .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
-    let config_path = root.join("FlanConfig.muf");
+    let config_path = root.join("steelconf");
 
-    let tools = ["flan", "gcc", "ar"];
+    let tools = ["steel", "gcc", "ar"];
     if o.json {
         let config_exists = config_path.exists();
         let mut out = String::new();
@@ -855,7 +930,7 @@ fn exec_doctor(o: DoctorOptions) -> Result<()> {
         return Ok(());
     }
 
-    println!("flan doctor");
+    println!("steel doctor");
     println!("root: {}", root.display());
     if config_path.exists() {
         println!("config: ok ({})", config_path.display());
@@ -972,7 +1047,7 @@ fn exec_toolchain_doctor(o: ToolchainDoctorOptions) -> Result<()> {
         return Ok(());
     }
 
-    println!("flan toolchain doctor");
+    println!("steel toolchain doctor");
 
     match (&python_exec, &python_info) {
         (Some(path), Some((impl_name, ver))) => {
@@ -1017,7 +1092,7 @@ fn exec_cache(o: CacheOptions) -> Result<()> {
     let root = o
         .root_dir
         .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
-    let cache_dir = root.join(".flan-cache");
+    let cache_dir = root.join(".steel-cache");
 
     match o.action {
         CacheAction::Status => {

@@ -1,23 +1,23 @@
 [package]
-name = "flan"
+name = "steel"
 version = "0.1.0"
 edition = "2021"
 rust-version = "1.63"
 autobins = false
 authors = ["Vitte Team"]
-description = "Flan: Declarative configuration layer for Vitte build system"
-repository = "https://github.com/vitte-lang/flan"
+description = "Steel: Declarative configuration layer for Vitte build system"
+repository = "https://github.com/vitte-lang/steel"
 license = "See COPYING"
 readme = "README.md"
 
 [workspace]
 members = [
     ".",
-    "FlanLib/lib",
-    "FlanLib/lib/src/platform",
-    "FlanLib/lib/src/gcc",
-    "FlanLib/lib/src/ocaml",
-    "FlanLib/lib/src/cpython",
+    "SteelLib/lib",
+    "SteelLib/lib/src/platform",
+    "SteelLib/lib/src/gcc",
+    "SteelLib/lib/src/ocaml",
+    "SteelLib/lib/src/cpython",
 ]
 resolver = "2"
 
@@ -45,7 +45,7 @@ env_logger = "0.11"
 chrono = "0.4"
 
 # VitteLib (utility library)
-vittelib = { path = "FlanLib/lib", package = "FlanLib" }
+vittelib = { path = "SteelLib/lib", package = "SteelLib" }
 
 # Utilities
 regex = "1.10"
@@ -78,12 +78,12 @@ criterion = "0.5"
 insta = "1.34"
 
 [lib]
-name = "flan"
+name = "steel"
 path = "src/lib.rs"
 
 [[bin]]
-name = "flan"
-path = "src/bin/flan.rs"
+name = "steel"
+path = "src/bin/steel.rs"
 
 [profile.release]
 opt-level = 3

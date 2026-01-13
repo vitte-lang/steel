@@ -1,9 +1,9 @@
-// /Users/vincent/Documents/Github/flan/src/debug.rs
+// /Users/vincent/Documents/Github/steel/src/debug.rs
 //! debug — logging, tracing, and diagnostics helpers (std-only)
 //!
 //! Goals:
 //! - deterministic and lightweight logging (no external crates)
-//! - consistent message format across Flan modules
+//! - consistent message format across Steel modules
 //! - opt-in verbosity (quiet/info/debug/trace)
 //! - small helpers for timing + scoped sections
 //!
@@ -89,7 +89,7 @@ impl Default for DebugConfig {
             level: env_level().unwrap_or(LogLevel::Info),
             color: env_color().unwrap_or(ColorMode::Auto),
             timing: env_flag("MUFFIN_TIMING"),
-            prefix: "flan",
+            prefix: "steel",
         }
     }
 }

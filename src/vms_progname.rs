@@ -1,6 +1,6 @@
-// C:\Users\gogin\Documents\GitHub\flan\src\vms_progname.rs
+// C:\Users\gogin\Documents\GitHub\steel\src\vms_progname.rs
 //
-// Flan — VMS (Virtual Flan System) utilities
+// Steel — VMS (Virtual Steel System) utilities
 // Program name resolution (human-friendly progname) for diagnostics/logging.
 //
 // Goals:
@@ -69,7 +69,7 @@ impl Default for ProgNameOptions {
         Self {
             env_key: PROGNAME_ENV,
             env_fallbacks: PROGNAME_ENV_FALLBACKS,
-            default_name: "flan",
+            default_name: "steel",
             force_lowercase: false,
             strip_exe_extension: true,
             normalize_whitespace: true,
@@ -139,7 +139,7 @@ pub fn resolve_progname_with(
     }
 }
 
-/// Resolve progname using a path (useful when embedding Flan as a lib).
+/// Resolve progname using a path (useful when embedding Steel as a lib).
 pub fn resolve_progname_from_path(path: &Path, opts: &ProgNameOptions) -> ProgName {
     if let Some(s) = path_to_progname(path, opts) {
         ProgName {
@@ -157,10 +157,10 @@ pub fn resolve_progname_from_path(path: &Path, opts: &ProgNameOptions) -> ProgNa
 /// Convert argv0 to progname (basenames, sanitize).
 pub fn argv0_to_progname(argv0: &OsStr, opts: &ProgNameOptions) -> Option<String> {
     // argv0 might be:
-    // - "flan"
-    // - "./flan"
-    // - "/usr/bin/flan"
-    // - "C:\...\flan.exe"
+    // - "steel"
+    // - "./steel"
+    // - "/usr/bin/steel"
+    // - "C:\...\steel.exe"
     // - quoted or odd; we treat as path-like and take basename.
     let p = Path::new(argv0);
     let raw = p.as_os_str().to_string_lossy();
@@ -394,25 +394,25 @@ mod tests {
 
     #[test]
     fn env_override_wins() {
-        let env_kv = vec![kv("MUFFIN_PROGNAME", "My Flan")];
+        let env_kv = vec![kv("MUFFIN_PROGNAME", "My Steel")];
         let pn = resolve_progname_with(&env_kv, Some(OsStr::new("ignored")), &ProgNameOptions::default());
         assert_eq!(pn.source, ProgNameSource::Env);
-        assert_eq!(pn.display, "My Flan");
+        assert_eq!(pn.display, "My Steel");
     }
 
     #[test]
     fn env_override_sanitizes_quotes_and_ws() {
-        let env_kv = vec![kv("MUFFIN_PROGNAME", "  \"flan dev\"  ")];
+        let env_kv = vec![kv("MUFFIN_PROGNAME", "  \"steel dev\"  ")];
         let pn = resolve_progname_with(&env_kv, None, &ProgNameOptions::default());
-        assert_eq!(pn.display, "flan dev");
+        assert_eq!(pn.display, "steel dev");
     }
 
     #[test]
     fn argv0_basename_unix() {
         let env_kv: Vec<(OsString, OsString)> = vec![];
-        let pn = resolve_progname_with(&env_kv, Some(OsStr::new("/usr/bin/flan")), &ProgNameOptions::default());
+        let pn = resolve_progname_with(&env_kv, Some(OsStr::new("/usr/bin/steel")), &ProgNameOptions::default());
         assert_eq!(pn.source, ProgNameSource::Argv0);
-        assert_eq!(pn.display, "flan");
+        assert_eq!(pn.display, "steel");
     }
 
     #[test]
@@ -420,18 +420,18 @@ mod tests {
         let env_kv: Vec<(OsString, OsString)> = vec![];
         let pn = resolve_progname_with(
             &env_kv,
-            Some(OsStr::new(r"C:\Tools\Flan.EXE")),
+            Some(OsStr::new(r"C:\Tools\Steel.EXE")),
             &ProgNameOptions::default(),
         );
-        assert_eq!(pn.display, "Flan");
+        assert_eq!(pn.display, "Steel");
     }
 
     #[test]
     fn strip_exe_ext_only() {
-        assert_eq!(strip_exe_ext("flan.exe"), "flan");
-        assert_eq!(strip_exe_ext("flan.EXE"), "flan");
-        assert_eq!(strip_exe_ext("flan.exex"), "flan.exex");
-        assert_eq!(strip_exe_ext("flan"), "flan");
+        assert_eq!(strip_exe_ext("steel.exe"), "steel");
+        assert_eq!(strip_exe_ext("steel.EXE"), "steel");
+        assert_eq!(strip_exe_ext("steel.exex"), "steel.exex");
+        assert_eq!(strip_exe_ext("steel"), "steel");
     }
 
     #[test]
@@ -449,15 +449,15 @@ mod tests {
 
     #[test]
     fn format_prefix_helpers() {
-        assert_eq!(format_prefixed("flan", "oops"), "flan: oops");
-        assert_eq!(format_component_prefixed("flan", "vms", "oops"), "flan[vms]: oops");
+        assert_eq!(format_prefixed("steel", "oops"), "steel: oops");
+        assert_eq!(format_component_prefixed("steel", "vms", "oops"), "steel[vms]: oops");
         assert_eq!(format_component_prefixed("", "vms", "oops"), "[vms] oops");
     }
 
     #[test]
     fn derive_child_progname_basic() {
         let opts = ProgNameOptions::default();
-        assert_eq!(derive_child_progname("flan", "build", &opts), "flan build");
-        assert_eq!(derive_child_progname("", "build", &opts), "flan build");
+        assert_eq!(derive_child_progname("steel", "build", &opts), "steel build");
+        assert_eq!(derive_child_progname("", "build", &opts), "steel build");
     }
 }

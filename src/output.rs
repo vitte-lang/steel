@@ -1,9 +1,9 @@
 // src/output.rs
 //
-// Flan — output / logging / console rendering
+// Steel — output / logging / console rendering
 //
 // Purpose:
-// - Provide a centralized output layer for Flan:
+// - Provide a centralized output layer for Steel:
 //   - structured events (info/warn/error/debug/trace)
 //   - colored terminal rendering (ANSI), with auto-disable
 //   - progress + spinners (optional, minimal, no external deps)

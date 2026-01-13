@@ -1,10 +1,10 @@
-// C:\Users\gogin\Documents\GitHub\flan\src\version.rs
+// C:\Users\gogin\Documents\GitHub\steel\src\version.rs
 //
-// Flan — versioning primitives
+// Steel — versioning primitives
 //
 // Goals:
 // - Single source of truth for: crate version, build metadata, git info, target triple.
-// - Provide a stable `VersionInfo` payload for `flan --version`, diagnostics banners, logs.
+// - Provide a stable `VersionInfo` payload for `steel --version`, diagnostics banners, logs.
 // - Support reproducible builds: metadata can be injected via env vars by CI.
 // - Zero/low dependencies: no semver crate required (we keep it lightweight).
 //
@@ -237,7 +237,7 @@ impl VersionInfo {
         self.name = self.name.trim().to_string();
         self.version = self.version.trim().to_string();
         if self.name.is_empty() {
-            self.name = "flan".to_string();
+            self.name = "steel".to_string();
         }
         if self.version.is_empty() {
             self.version = "0.0.0".to_string();
@@ -256,7 +256,7 @@ impl VersionInfo {
         self.hostname = self.hostname.take().and_then(non_empty);
     }
 
-    /// Short string: "flan 1.2.3 (abc1234 dirty)" or "flan 1.2.3".
+    /// Short string: "steel 1.2.3 (abc1234 dirty)" or "steel 1.2.3".
     pub fn format_short(&self) -> String {
         let mut s = format!("{} {}", self.name, self.version);
 
@@ -318,7 +318,7 @@ impl VersionInfo {
     }
 
     /// A single-line "UA-like" string, useful for HTTP headers / registry calls.
-    /// Example: "flan/1.2.3 (x86_64-unknown-linux-gnu; release; abc1234)"
+    /// Example: "steel/1.2.3 (x86_64-unknown-linux-gnu; release; abc1234)"
     pub fn format_user_agent(&self) -> String {
         let mut s = format!("{}/{}", self.name, self.version);
 
@@ -434,13 +434,13 @@ mod tests {
     #[test]
     fn format_short_includes_sha_dirty() {
         let mut vi = VersionInfo::from_compile_time();
-        vi.name = "flan".to_string();
+        vi.name = "steel".to_string();
         vi.version = "1.2.3".to_string();
         vi.git_sha = Some("abc1234def".to_string());
         vi.git_dirty = Some(true);
         vi.sanitize();
         let s = vi.format_short();
-        assert!(s.contains("flan 1.2.3"));
+        assert!(s.contains("steel 1.2.3"));
         assert!(s.contains("abc1234"));
         assert!(s.contains("dirty"));
     }
@@ -448,14 +448,14 @@ mod tests {
     #[test]
     fn format_user_agent_contains_bits() {
         let mut vi = VersionInfo::from_compile_time();
-        vi.name = "flan".to_string();
+        vi.name = "steel".to_string();
         vi.version = "1.2.3".to_string();
         vi.target = Some("x86_64-unknown-linux-gnu".to_string());
         vi.profile = Some("release".to_string());
         vi.git_sha = Some("abc1234def".to_string());
         vi.sanitize();
         let ua = vi.format_user_agent();
-        assert!(ua.starts_with("flan/1.2.3"));
+        assert!(ua.starts_with("steel/1.2.3"));
         assert!(ua.contains("x86_64-unknown-linux-gnu"));
         assert!(ua.contains("release"));
         assert!(ua.contains("abc1234"));

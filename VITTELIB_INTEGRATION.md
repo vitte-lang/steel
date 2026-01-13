@@ -60,7 +60,7 @@ use std::path::PathBuf;
 
 let pattern = GlobPattern::new("src/**/*.rs").unwrap();
 
-assert!(pattern.matches(&PathBuf::from("src/bin/flan.rs")));
+assert!(pattern.matches(&PathBuf::from("src/bin/steel.rs")));
 assert!(pattern.matches(&PathBuf::from("src/utils/helpers.rs")));
 assert!(!pattern.matches(&PathBuf::from("src/main.txt")));
 ```
@@ -69,9 +69,9 @@ assert!(!pattern.matches(&PathBuf::from("src/main.txt")));
 - `nocase` — Case-insensitive matching (default: false)
 - `no_hidden` — Skip files starting with `.` (default: false)
 
-## Usage in Flan
+## Usage in Steel
 
-### In src/bin/flan.rs
+### In src/bin/steel.rs
 
 ```rust
 use vittelib::glob::GlobPattern;
@@ -187,19 +187,19 @@ Example test:
 #[test]
 fn test_glob_recursive() {
     let pattern = GlobPattern::new("src/**/*.rs").unwrap();
-    assert!(pattern.matches(&PathBuf::from("src/bin/flan.rs")));
+    assert!(pattern.matches(&PathBuf::from("src/bin/steel.rs")));
     assert!(pattern.matches(&PathBuf::from("src/a/b/c.rs")));
 }
 ```
 
-## Integration with Flan modules
+## Integration with Steel modules
 
 ### In parser/reader
 
 ```rust
 use vittelib::glob::GlobPattern;
 
-// Parse glob patterns from FlanConfig
+// Parse glob patterns from SteelConfig
 pub fn expand_target_sources(pattern: &str) -> Result<Vec<PathBuf>> {
     let glob = GlobPattern::new(pattern)?;
     // Scan filesystem with glob
@@ -247,4 +247,4 @@ Possible additions:
 - `regex` — Pattern compilation and matching
 - `anyhow` — Error handling
 
-Both are already used by Flan core, so no additional bloat.
+Both are already used by Steel core, so no additional bloat.

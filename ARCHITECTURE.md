@@ -1,11 +1,11 @@
-# Architecture interne - Flan
+# Architecture interne - Steel
 
 ## Vue d'ensemble
 
-Flan est organisé en **modules fonctionnels** selon le pipeline de configuration :
+Steel est organisé en **modules fonctionnels** selon le pipeline de configuration :
 
 ```
-INPUT (FlanConfig, toolchains, targets)
+INPUT (SteelConfig, toolchains, targets)
   ↓
 [PARSER] → tokens/AST
   ↓
@@ -13,7 +13,7 @@ INPUT (FlanConfig, toolchains, targets)
   ↓
 [RESOLVER] → resolved configuration
   ↓
-[GENERATOR] → Flanconfig.mcfg
+[GENERATOR] → Steelconfig.mcfg
   ↓
 OUTPUT (consommé par le runner)
 ```
@@ -38,10 +38,10 @@ OUTPUT (consommé par le runner)
 
 ### Generator (`generator::*`)
 - **interface.rs** — Abstraction runtime (I/O, filesystem)
-- **output.rs** — Sérialisation en Flanconfig.mcfg, export graphes
+- **output.rs** — Sérialisation en Steelconfig.mcfg, export graphes
 
 ### Model (`model::*`)
-- **flanint.rs** — Internal data structures (Workspace, Package, Profile, Target, Toolchain)
+- **steelint.rs** — Internal data structures (Workspace, Package, Profile, Target, Toolchain)
 - **def_target_file.rs** — Target file definitions
 - **rule.rs** — Rule model and implicit rules
 
@@ -73,11 +73,11 @@ OUTPUT (consommé par le runner)
 
 ## Flux de données
 
-### Phase 1 : Configuration (build flan)
+### Phase 1 : Configuration (build steel)
 
 ```
 1. LOAD
-   FlanConfig → (arscan) → tokens
+   SteelConfig → (arscan) → tokens
                  ↓
    tokens → (read) → AST (Workspace, Packages, Profiles, Targets)
 
@@ -100,13 +100,13 @@ OUTPUT (consommé par le runner)
          ConfigResolved
 
 4. GENERATE
-   ConfigResolved → (output) → Flanconfig.mcfg
+   ConfigResolved → (output) → Steelconfig.mcfg
                                + exports (DOT, JSON, etc.)
 ```
 
 ### Phase 2 : Construction (execution)
 
-Le runner lit Flanconfig.mcfg et :
+Le runner lit Steelconfig.mcfg et :
 - Construit le DAG des règles
 - Résout les dépendances de fichiers
 - Exécute l'ordre topologique
@@ -116,7 +116,7 @@ Le runner lit Flanconfig.mcfg et :
 
 ### Séparation Déclaratif/Exécutif
 
-- **Flan** (déclaratif) : *Ce qu'on veut construire*
+- **Steel** (déclaratif) : *Ce qu'on veut construire*
   - Config normalisée et validée
   - Pas de détails d'exécution (pas de flags compilateur réels, pas d'ordre d'exécution)
 
@@ -124,7 +124,7 @@ Le runner lit Flanconfig.mcfg et :
   - DAG, parallélisation, cache
   - Détails d'exécution isolés
 
-### Flanconfig.mcfg comme contrat
+### Steelconfig.mcfg comme contrat
 
 - Configuration **gelée** (immutable après génération)
 - **Normalisée** (plus d'ambiguïté)
@@ -172,7 +172,7 @@ Le runner lit Flanconfig.mcfg et :
 
 1. Implémenter dans `commands.rs`
 2. Ajouter enum variant dans CLI
-3. Router dans `src/bin/flan.rs`
+3. Router dans `src/bin/steel.rs`
 
 ### Ajouter un nouveau type de target
 

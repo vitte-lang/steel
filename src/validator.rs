@@ -1,9 +1,9 @@
 // src/validator.rs
 //
-// Flan — validation primitives
+// Steel — validation primitives
 //
 // Purpose:
-// - Provide a small, deterministic validation framework used across Flan.
+// - Provide a small, deterministic validation framework used across Steel.
 // - Validate config, manifests, paths, identifiers, target specs, tool definitions, etc.
 // - Aggregate issues as diagnostics-friendly structures (warnings/errors with optional spans).
 //
@@ -15,7 +15,7 @@
 //
 // Typical usage:
 //
-//   let mut v = Validator::new("FlanConfig");
+//   let mut v = Validator::new("SteelConfig");
 //   v.require(!name.is_empty(), "name must not be empty").at_line(12);
 //   v.check_path_exists(&path, "missing input").error();
 //   let report = v.finish();

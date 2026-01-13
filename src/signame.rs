@@ -1,6 +1,6 @@
-// C:\Users\gogin\Documents\GitHub\flan\src\signame.rs
+// C:\Users\gogin\Documents\GitHub\steel\src\signame.rs
 //
-// Flan — signal naming and normalization
+// Steel — signal naming and normalization
 //
 // Purpose:
 // - Provide a stable mapping between OS signals and names, for diagnostics/logging.

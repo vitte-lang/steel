@@ -1,14 +1,14 @@
-// /Users/vincent/Documents/Github/flan/src/gettext.rs
+// /Users/vincent/Documents/Github/steel/src/gettext.rs
 //! gettext — i18n message catalogs (std-only, deterministic)
 //!
-//! This module implements a pragmatic, toolchain-friendly i18n layer for Flan.
+//! This module implements a pragmatic, toolchain-friendly i18n layer for Steel.
 //! It is "gettext-inspired" (keyed messages, domains, locale fallback), but does NOT
 //! parse GNU .mo files.
 //!
 //! Design goals:
 //! - std-only (no deps)
 //! - deterministic load + lookup (BTreeMap/BTreeSet)
-//! - explicit domains (flan/runner/etc.)
+//! - explicit domains (steel/runner/etc.)
 //! - locale negotiation with fallback chain (fr-FR -> fr -> default)
 //! - minimal plural support (ngettext-like) without external rule engines
 //! - placeholder formatting `{name}` and `{0}` positional
@@ -53,7 +53,7 @@ use std::sync::{OnceLock, RwLock};
 pub type Domain = String;
 pub type Locale = String;
 
-pub const DEFAULT_DOMAIN: &str = "flan";
+pub const DEFAULT_DOMAIN: &str = "steel";
 
 /// Plural categories (subset aligned to CLDR names).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -92,7 +92,7 @@ impl PluralForm {
 }
 
 /// Minimal plural rules.
-/// In practice Flan messages rarely need full CLDR; this is enough to be correct-ish
+/// In practice Steel messages rarely need full CLDR; this is enough to be correct-ish
 /// for common locales. You can extend rules later without breaking the API.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PluralRule {
@@ -574,9 +574,9 @@ pub fn plural_rule_for_locale(locale: &str) -> PluralRule {
 /// - <dir>/default/<domain>.txt
 ///
 /// Example:
-///   i18n/fr-FR/flan.txt
-///   i18n/fr/flan.txt
-///   i18n/default/flan.txt
+///   i18n/fr-FR/steel.txt
+///   i18n/fr/steel.txt
+///   i18n/default/steel.txt
 pub fn load_bundle_from_dir(dir: impl AsRef<Path>, preferred_locale: Option<&str>, domain_files: &[(&str, &str)]) -> std::io::Result<CatalogBundle> {
     let dir = dir.as_ref();
 
@@ -812,13 +812,13 @@ mod tests {
         let mut c = Catalog::new();
         c.load_str(
             r#"
-            flan.hello = Hello
+            steel.hello = Hello
             runner.hello|button = Run
             runner.hello|menu = Run action
         "#,
         );
 
-        assert_eq!(c.lookup("flan", "hello", None), Some("Hello"));
+        assert_eq!(c.lookup("steel", "hello", None), Some("Hello"));
         assert_eq!(c.lookup("runner", "hello", Some("button")), Some("Run"));
         assert_eq!(c.lookup("runner", "hello", Some("menu")), Some("Run action"));
         // ctx fallback to None not present -> None
@@ -830,8 +830,8 @@ mod tests {
         let mut c = Catalog::with_locale(Some("en".into()));
         c.load_str(
             r#"
-            flan.files[one] = {n} file
-            flan.files[other] = {n} files
+            steel.files[one] = {n} file
+            steel.files[other] = {n} files
         "#,
         );
 
@@ -862,7 +862,7 @@ mod tests {
         let _ = load_bundle_from_dir(
             PathBuf::from("i18n"),
             Some("fr-FR"),
-            &[("flan", "flan.txt"), ("runner", "runner.txt")],
+            &[("steel", "steel.txt"), ("runner", "runner.txt")],
         );
     }
 }

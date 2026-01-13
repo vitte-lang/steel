@@ -1,6 +1,6 @@
 //! warning.rs
 //!
-//! Système de diagnostics (warnings/notes/aide) pour Flan.
+//! Système de diagnostics (warnings/notes/aide) pour Steel.
 //!
 //! Objectifs:
 //! - Représentation stable: code + sévérité + message + spans + hints
@@ -340,7 +340,7 @@ impl<P: SourceProvider> DiagnosticSink for StderrSink<P> {
     }
 }
 
-/// Batch + stats (utile pour “build flan”).
+/// Batch + stats (utile pour “build steel”).
 #[derive(Debug, Default)]
 pub struct DiagReport {
     pub warnings: usize,
@@ -662,7 +662,7 @@ fn render_span<W: Write, P: SourceProvider>(
 }
 
 fn build_caret_line(line_text: &str, start_col_1: usize, end_col_1: usize) -> String {
-    // Colonnes 1-based (UTF-8: approximation by char count, “compiler-grade” suffisant pour Flan).
+    // Colonnes 1-based (UTF-8: approximation by char count, “compiler-grade” suffisant pour Steel).
     let start = start_col_1.saturating_sub(1);
     let end = end_col_1.saturating_sub(1).max(start + 1);
 

@@ -1,20 +1,20 @@
-<a id="flan-manifest-documentation-complete"></a>
-# Flan Manifest (documentation complete)
+<a id="steel-manifest-documentation-complete"></a>
+# Steel Manifest (documentation complete)
 
-Ce document est une reference exhaustive sur Flan dans ce depot. Il couvre la CLI, les formats, la syntaxe MUF, les regles de resolution, les logs et les conventions effectives dans le code source.
+Ce document est une reference exhaustive sur Steel dans ce depot. Il couvre la CLI, les formats, la syntaxe MUF, les regles de resolution, les logs et les conventions effectives dans le code source.
 
 <a id="1-vision-et-modele-mental"></a>
 ## 1. Vision et modele mental
 
-Flan est la couche **de configuration declarative** du build. Il:
+Steel est la couche **de configuration declarative** du build. Il:
 - parse et valide des fichiers MUF,
 - resolve les selections (profil/target) et les valeurs derivees,
-- emet un artefact canonique **Flanconfig.mff**,
+- emet un artefact canonique **steelconfig.mff**,
 - fournit un runner minimal pour executer des bakes declaratifs.
 
 Le pipeline est scinde en deux phases:
-1) **Configuration** (build flan) -> produit Flanconfig.mff.
-2) **Execution** (run) -> interprete FlanConfig.muf pour executer des outils.
+1) **Configuration** (build steel) -> produit steelconfig.mff.
+2) **Execution** (run) -> interprete steelconf pour executer des outils.
 
 Cette separation garantit la reproductibilite: la configuration figee peut etre relue, versionnee et comparee.
 
@@ -27,15 +27,15 @@ Cette separation garantit la reproductibilite: la configuration figee peut etre 
 - **Bake**: unite de travail dans un DAG, definie par des sources, des runs et un output.
 - **Run**: etape d execution d un tool, qui transforme des inputs en outputs.
 - **MUF**: format declaratif (fichier texte) base sur blocs et directives.
-- **MFF**: format resolu (fichier texte stable) emis par `build flan`.
+- **MFF**: format resolu (fichier texte stable) emis par `build steel`.
 
-<a id="flanlib-backends"></a>
-## 2.1 FlanLib (backends)
+<a id="steellib-backends"></a>
+## 2.1 SteelLib (backends)
 
-Flan expose des backends via la crate FlanLib. Exemple d import OCaml:
+Steel expose des backends via la crate SteelLib. Exemple d import OCaml:
 
 ```rust
-use FlanLib::ocaml::{OcamlArgs, OcamlDriver, OcamlSpec};
+use SteelLib::ocaml::{OcamlArgs, OcamlDriver, OcamlSpec};
 ```
 
 Backends disponibles (liste rapide):
@@ -50,16 +50,16 @@ Backends disponibles (liste rapide):
 <a id="3-1-entrees"></a>
 ### 3.1 Entrees
 
-- `FlanConfig` ou `flan`: fichier de configuration cherche par `build flan`.
-- `FlanConfig.muf`: fichier MUF attendu par `flan run` si `--file` n est pas fourni (alias: `FlanConfg`).
-- Note migration: `Flanfile` a ete renomme en `FlanConfig`. Renommer vos fichiers existants si besoin.
+- `steelconf` ou `steel`: fichier de configuration cherche par `build steel`.
+- `steelconf`: fichier MUF attendu par `steel run` si `--file` n est pas fourni (alias: `steelconf`).
+- Note migration: `Steelfile` a ete renomme en `steelconf`. Renommer vos fichiers existants si besoin.
 
 <a id="3-2-sorties"></a>
 ### 3.2 Sorties
 
-- `Flanconfig.mff`: artefact resolu emis par `build flan` (nom par defaut).
-- `.flan-cache/`: cache de configuration (check, stats, etc.).
-- `target/flan_run_<timestamp>.mff`: log d execution du runner (par defaut).
+- `steelconfig.mff`: artefact resolu emis par `build steel` (nom par defaut).
+- `.steel-cache/`: cache de configuration (check, stats, etc.).
+- `target/steel_run_<timestamp>.mff`: log d execution du runner (par defaut).
 
 <a id="3-3-dossiers-conventionnels"></a>
 ### 3.3 Dossiers conventionnels
@@ -73,14 +73,14 @@ Backends disponibles (liste rapide):
 
 <a id="liste-rapide-commandes"></a>
 Liste rapide (toutes les commandes):
-- [`build flan`](#42-build-flan-configuration) (alias: `resolve`, `check`, `print`) — ex: `flan build flan --profile debug --target x86_64-unknown-linux-gnu`
-- [`run`](#43-run-execution) — ex: `flan run --file MinConfig.muf --all`
-- [`doctor`](#44-doctor) — ex: `flan doctor --json`
-- [`cache`](#45-cache) — ex: `flan cache status`
-- [`graph`](#46-graph-stub) — ex: `flan graph --dot`
-- [`fmt`](#47-fmt-stub) — ex: `flan fmt --file FlanConfig --check`
-- [`version`](#41-aide-et-version) — ex: `flan --version`
-- [`help`](#41-aide-et-version) — ex: `flan help`
+- [`build steel`](#42-build-steel-configuration) (alias: `resolve`, `check`, `print`) — ex: `steel build steel --profile debug --target x86_64-unknown-linux-gnu`
+- [`run`](#43-run-execution) — ex: `steel run --file MinConfig.muf --all`
+- [`doctor`](#44-doctor) — ex: `steel doctor --json`
+- [`cache`](#45-cache) — ex: `steel cache status`
+- [`graph`](#46-graph-stub) — ex: `steel graph --dot`
+- [`fmt`](#47-fmt-stub) — ex: `steel fmt --file steelconf --check`
+- [`version`](#41-aide-et-version) — ex: `steel --version`
+- [`help`](#41-aide-et-version) — ex: `steel help`
 
 <a id="flags-frequents"></a>
 ### Flags frequents (profil/target/emit/log)
@@ -92,12 +92,12 @@ Ces flags apparaissent dans plusieurs commandes; ils sont censes rester stables.
 
 - Selection du profil de configuration (ex: `debug`, `release`).
 - Defaut: `debug` (ou `MUFFIN_PROFILE` si defini).
-- Utilise par: `build flan`, `run`.
+- Utilise par: `build steel`, `run`.
 
 Exemples:
 ```
-flan build flan --profile release
-flan run --profile debug --all
+steel build steel --profile release
+steel run --profile debug --all
 ```
 
 <a id="target-triple"></a>
@@ -105,50 +105,50 @@ flan run --profile debug --all
 
 - Selection du target de build (ex: `x86_64-unknown-linux-gnu`).
 - Defaut: host best-effort (ou `MUFFIN_TARGET` si defini).
-- Utilise par: `build flan`.
+- Utilise par: `build steel`.
 
 Exemples:
 ```
-flan build flan --target x86_64-apple-darwin
+steel build steel --target x86_64-apple-darwin
 ```
 
 <a id="emit-path"></a>
 #### `--emit <path>`
 
-- Chemin de sortie pour `Flanconfig.mff`.
-- Defaut: `Flanconfig.mff` a la racine (ou `MUFFIN_EMIT` si defini).
-- Utilise par: `build flan`.
+- Chemin de sortie pour `steelconfig.mff`.
+- Defaut: `steelconfig.mff` a la racine (ou `MUFFIN_EMIT` si defini).
+- Utilise par: `build steel`.
 
 Exemples:
 ```
-flan build flan --emit dist/Flanconfig.mff
+steel build steel --emit dist/steelconfig.mff
 ```
 
 <a id="log-path-et-log-mode"></a>
 #### `--log <path>` (et `--log-mode`)
 
 - Chemin de log pour l execution `run`.
-- Defaut: `target/flan_run_<timestamp>.mff`.
+- Defaut: `target/steel_run_<timestamp>.mff`.
 - `--log-mode` accepte `append` ou `truncate`.
 - Utilise par: `run`.
 
 Exemples:
 ```
-flan run --log target/run.mff --log-mode truncate --all
+steel run --log target/run.mff --log-mode truncate --all
 ```
 
 <a id="cmd-aide-version"></a>
 ### 4.1 Aide et version
 
-- `flan help` / `flan -h` / `flan --help`
-- `flan version` / `flan -V` / `flan --version`
+- `steel help` / `steel -h` / `steel --help`
+- `steel version` / `steel -V` / `steel --version`
 
-<a id="cmd-build-flan"></a>
-### 4.2 build flan (configuration)
+<a id="cmd-build-steel"></a>
+### 4.2 build steel (configuration)
 
 Commande principale:
 ```
-flan build flan [--root <path>] [--file <path>] [--profile <name>] [--target <triple>]
+steel build steel [--root <path>] [--file <path>] [--profile <name>] [--target <triple>]
                    [--emit <path>] [--offline] [--strict] [--no-tool-fingerprint]
                    [--include-hidden] [--follow-symlinks] [--max-depth <n>]
                    [--print] [-v]
@@ -156,26 +156,26 @@ flan build flan [--root <path>] [--file <path>] [--profile <name>] [--target <tr
 
 Semantique:
 - parse / valide / resolve la configuration,
-- emet `Flanconfig.mff` (ou `--emit` / `MUFFIN_EMIT`),
+- emet `steelconfig.mff` (ou `--emit` / `MUFFIN_EMIT`),
 - `--print` affiche le fichier resolu sur stdout.
 
 Aliases:
-- `flan resolve` : alias de `build flan`.
-- `flan check`   : emit dans `.flan-cache/check/` puis supprime (best effort).
-- `flan print`   : emit + print.
+- `steel resolve` : alias de `build steel`.
+- `steel check`   : emit dans `.steel-cache/check/` puis supprime (best effort).
+- `steel print`   : emit + print.
 
 <a id="cmd-run"></a>
 ### 4.3 run (execution)
 
 ```
-flan run [--root <path>] [--file <path>] [--profile <name>]
+steel run [--root <path>] [--file <path>] [--profile <name>]
            [--toolchain <path>] [--bake <name>] [--all]
            [--print] [--no-cache]
            [--log <path>] [--log-mode <append|truncate>] [-v]
 ```
 
 Semantique:
-- lit un fichier MUF (par defaut `FlanConfig.muf`),
+- lit un fichier MUF (par defaut `steelconf`),
 - selectionne les bakes a executer,
 - construit les commandes et execute les tools.
 
@@ -183,7 +183,7 @@ Semantique:
 ### 4.4 doctor
 
 ```
-flan doctor [--root <path>] [--json] [-v]
+steel doctor [--root <path>] [--json] [-v]
 ```
 
 - diagnostics de presence du fichier de config et des tools.
@@ -192,17 +192,17 @@ flan doctor [--root <path>] [--json] [-v]
 ### 4.5 cache
 
 ```
-flan cache <status|clear> [--root <path>] [--json] [-v]
+steel cache <status|clear> [--root <path>] [--json] [-v]
 ```
 
-- `status`: taille/nb fichiers de `.flan-cache`.
+- `status`: taille/nb fichiers de `.steel-cache`.
 - `clear`: suppression du cache.
 
 <a id="cmd-graph"></a>
 ### 4.6 graph (stub)
 
 ```
-flan graph [--root <path>] [--text|--dot] [-v]
+steel graph [--root <path>] [--text|--dot] [-v]
 ```
 
 - comportement stub: sortie deterministe et placeholder.
@@ -211,7 +211,7 @@ flan graph [--root <path>] [--text|--dot] [-v]
 ### 4.7 fmt (stub)
 
 ```
-flan fmt [--file <path>] [--check] [-v]
+steel fmt [--file <path>] [--check] [-v]
 ```
 
 - comportement stub: placeholder.
@@ -225,25 +225,25 @@ flan fmt [--file <path>] [--check] [-v]
 - `3`: erreur d execution d outil.
 - `4`: erreur I/O.
 
-<a id="5-resolution-et-discovery-build-flan"></a>
-## 5. Resolution et discovery (build flan)
+<a id="5-resolution-et-discovery-build-steel"></a>
+## 5. Resolution et discovery (build steel)
 
 <a id="5-1-racine-du-workspace"></a>
 ### 5.1 Racine du workspace
 
 - par defaut: repertoire courant.
-- `--root <path>` ou argument positionnel apres `build flan`.
+- `--root <path>` ou argument positionnel apres `build steel`.
 
-<a id="5-2-recherche-de-flanfile"></a>
-### 5.2 Recherche de FlanConfig
+<a id="5-2-recherche-de-steelfile"></a>
+### 5.2 Recherche de steelconf
 
 Ordre:
-1) `FlanConfig` ou `flan` dans la racine.
+1) `steelconf` ou `steel` dans la racine.
 2) scan DFS deterministe sous la racine, avec tri lexicographique.
 
 Regles de scan:
 - profondeur max: `--max-depth` (defaut 16).
-- dossiers ignores: `.git`, `.hg`, `.svn`, `target`, `node_modules`, `dist`, `build`, `.flan`, `.flan-cache`.
+- dossiers ignores: `.git`, `.hg`, `.svn`, `target`, `node_modules`, `dist`, `build`, `.steel`, `.steel-cache`.
 - si `--include-hidden` n est pas fourni, les fichiers/dirs caches sont ignores.
 - si `--follow-symlinks` est actif, on suit les symlinks.
 - `--strict` fait echouer si un acces FS echoue ou si le fichier est hors root.
@@ -266,13 +266,13 @@ Regles de scan:
   - `MUFFIN_TOOLCHAIN_PYTHON`, `MUFFIN_TOOLCHAIN_OCAML`, `MUFFIN_TOOLCHAIN_GHC`
 - `--no-tool-fingerprint` desactive `tool --version`.
 - fingerprint deterministe (FNV-1a 64-bit) sur:
-  - bytes du FlanConfig,
+  - bytes du steelconf,
   - profile + target,
   - outils et versions.
 - `MUFFIN_FINGERPRINT_TIME=1` ajoute un sel temporel (non deterministe).
 
-<a id="6-format-flanconfig-mff-mff-v1"></a>
-## 6. Format Flanconfig.mff (mff v1)
+<a id="6-format-steelconfig-mff-mff-v1"></a>
+## 6. Format steelconfig.mff (mff v1)
 
 <a id="6-1-header"></a>
 ### 6.1 Header
@@ -287,7 +287,7 @@ mff 1
 ```
 project
   root "/path/to/root"
-  flanfile "/path/to/FlanConfig"
+  steelfile "/path/to/steelconf"
 .end
 
 select
@@ -298,7 +298,7 @@ select
 paths
   build "/path/to/root/build"
   dist "/path/to/root/dist"
-  cache "/path/to/root/.flan-cache"
+  cache "/path/to/root/.steel-cache"
 .end
 
 toolchain
@@ -317,11 +317,11 @@ toolchain
 .end
 
 vars
-  set "flan.profile" "debug"
-  set "flan.target" "x86_64-unknown-linux-gnu"
-  set "flan.offline" "false"
-  set "flan.root" "/path/to/root"
-  set "flan.file" "/path/to/FlanConfig"
+  set "steel.profile" "debug"
+  set "steel.target" "x86_64-unknown-linux-gnu"
+  set "steel.offline" "false"
+  set "steel.root" "/path/to/root"
+  set "steel.file" "/path/to/steelconf"
 .end
 
 fingerprint
@@ -336,10 +336,10 @@ Notes:
 <a id="6-3-schemas-machine-readables-ide-ci"></a>
 ### 6.3 Schemas machine-readables (IDE/CI)
 
-- `flan.graph.json/1` (export DAG) : `schemas/flan.graph.json.schema.json`
-- `flan.decompile.report` (mff report JSON) : `schemas/flan.decompile.report.schema.json`
-- `flan.fingerprints.json/1` (sidecar fingerprints) : `schemas/flan.fingerprints.json.schema.json`
-- Grammaire MUF : `assets/grammar/flan.ebnf`
+- `steel.graph.json/1` (export DAG) : `schemas/steel.graph.json.schema.json`
+- `steel.decompile.report` (mff report JSON) : `schemas/steel.decompile.report.schema.json`
+- `steel.fingerprints.json/1` (sidecar fingerprints) : `schemas/steel.fingerprints.json.schema.json`
+- Grammaire MUF : `assets/grammar/steel.ebnf`
 
 <a id="7-format-muf-v4-1"></a>
 ## 7. Format MUF (v4.1)
@@ -465,7 +465,7 @@ Priorite:
 <a id="10-1-emplacement"></a>
 ### 10.1 Emplacement
 
-- par defaut: `target/flan_run_<timestamp>.mff`.
+- par defaut: `target/steel_run_<timestamp>.mff`.
 - `--log <path>` surcharge l emplacement.
 - `--log-mode truncate` recree le fichier avant execution.
 
@@ -474,9 +474,9 @@ Priorite:
 
 ```
 [log meta]
-format "flan-runlog-1"
-tool "flan"
-version "flan <version>"
+format "steel-runlog-1"
+tool "steel"
+version "steel <version>"
 ts_iso "<RFC3339>"
 ..
 
@@ -516,7 +516,7 @@ ts_iso "<RFC3339>"
 !muf 4
 
 [workspace]
-  .set name "flan-example-c"
+  .set name "steel-example-c"
   .set root "."
   .set target_dir "target"
   .set profile "debug"
@@ -553,16 +553,16 @@ ts_iso "<RFC3339>"
 
 ```
 # configuration
-flan build flan --root . --file FlanConfig --profile debug --target x86_64-unknown-linux-gnu
-flan print --root .
+steel build steel --root . --file steelconf --profile debug --target x86_64-unknown-linux-gnu
+steel print --root .
 
 # execution
-flan run --root . --file FlanConfig.muf --bake app
-flan run --root . --all --print
+steel run --root . --file steelconf --bake app
+steel run --root . --all --print
 ```
 
-<a id="12-3-exemples-flanconfig-muff-c-c-et-ocaml"></a>
-### 12.3 Exemples FlanConfig.muff (C/C++/OCaml)
+<a id="12-3-exemples-steelconfig-muff-c-c-et-ocaml"></a>
+### 12.3 Exemples steelconf (C/C++/OCaml)
 
 #### C (binaire simple)
 
@@ -1430,16 +1430,16 @@ int main() {
 - `error[IO01]`: erreur I/O.
 
 Conseils:
-- verifier `--root` et l existence de `FlanConfig` ou `FlanConfig.muf`.
+- verifier `--root` et l existence de `steelconf` ou `steelconf`.
 - utiliser `--profile` ou `workspace.profile`.
 - activer `-v` pour des diagnostics.
 
 <a id="14-roadmap-cibles-plausibles"></a>
 ## 14. Roadmap (cibles plausibles)
 
-- Implementer `flan graph` avec export `text|dot|json` depuis le DAG resolu.
-- Implementer `flan fmt` (normalisation des blocs/directives).
-- Remplacer la resolution minimale de `build flan` par un parser MUF complet.
+- Implementer `steel graph` avec export `text|dot|json` depuis le DAG resolu.
+- Implementer `steel fmt` (normalisation des blocs/directives).
+- Remplacer la resolution minimale de `build steel` par un parser MUF complet.
 - Etendre le runner a d autres blocs (targets, toolchains, exports, plans).
 - Exposer un format `.mff` de run log stable et versionne.
 
@@ -1451,8 +1451,8 @@ M1 - CLI et outputs:
 - fmt --check + format deterministe
 
 M2 - Configuration complete:
-- parse MUF complet dans `build flan`
-- emission `Flanconfig.mff` basee sur le modele resolu
+- parse MUF complet dans `build steel`
+- emission `steelconfig.mff` basee sur le modele resolu
 
 M3 - Runner et outillage:
 - support targets/toolchains/exports/plans
@@ -1462,14 +1462,14 @@ M3 - Runner et outillage:
 ## 15. Limitations et etat actuel
 
 - `graph` et `fmt` sont des stubs (placeholder deterministe).
-- le resolver de `build flan` est minimal (pas de parse MUF complet).
+- le resolver de `build steel` est minimal (pas de parse MUF complet).
 - le runner supporte un sous-ensemble de MUF (workspace/profile/tool/bake/run).
 
 <a id="16-glossaire-rapide"></a>
 ## 16. Glossaire rapide
 
 - **MUF**: format declaratif source.
-- **MFF**: format resolu, stable, emet par `build flan`.
+- **MFF**: format resolu, stable, emet par `build steel`.
 - **Bake**: noeud du graphe d execution.
 - **Run**: etape d execution d un tool.
 - **Toolchain**: ensemble des executables (cc/ld/ar/rustc).
@@ -1479,7 +1479,7 @@ M3 - Runner et outillage:
 
 Cette section est un guide long format qui suit un projet fictif de A a Z.
 Elle reutilise les concepts de la reference et les illustre avec un chemin
-concret: ecrire un FlanConfig, generer un MFF, puis executer.
+concret: ecrire un steelconf, generer un MFF, puis executer.
 
 <a id="17-1-objectif-et-plan-du-tuto"></a>
 ### 17.1 Objectif et plan du tuto
@@ -1494,7 +1494,7 @@ Plan:
 2) declarer les tools
 3) declarer les bakes
 4) declarer les profiles
-5) executer avec `flan run`
+5) executer avec `steel run`
 6) utiliser la configuration resolue `.mff`
 
 <a id="17-2-arborescence-initiale"></a>
@@ -1502,7 +1502,7 @@ Plan:
 
 ```
 myproj/
-  FlanConfig
+  steelconf
   src/
     lib/
       lib.c
@@ -1588,7 +1588,7 @@ Le nom `cc` est logique, il n est pas lie a la commande systeme.
 ### 17.7 Execution
 
 ```
-flan run --root . --file FlanConfig --bake app
+steel run --root . --file steelconf --bake app
 ```
 
 Le runner va:
@@ -1600,10 +1600,10 @@ Le runner va:
 ### 17.8 Premiere configuration resolue
 
 ```
-flan build flan --root . --file FlanConfig --profile debug
+steel build steel --root . --file steelconf --profile debug
 ```
 
-Cela produit `Flanconfig.mff`. C est une photo stable de votre config.
+Cela produit `steelconfig.mff`. C est une photo stable de votre config.
 
 <a id="18-tutoriel-profiles-et-variantes"></a>
 ## 18. Tutoriel: profiles et variantes
@@ -1630,7 +1630,7 @@ Et adapter le run:
 ### 18.2 Selection du profile
 
 ```
-flan run --profile release --bake app
+steel run --profile release --bake app
 ```
 
 La selection `--profile` surcharge `workspace.profile`.
@@ -1721,8 +1721,8 @@ Une strategie simple:
 <a id="20-3-version-et-fingerprint"></a>
 ### 20.3 Version et fingerprint
 
-Le build `flan build` calcule un fingerprint stable:
-- contenu du FlanConfig
+Le build `steel build` calcule un fingerprint stable:
+- contenu du steelconf
 - profil/target
 - versions des tools
 
@@ -1802,7 +1802,7 @@ Ce log sert a diagnostiquer les commandes et la duree.
 ### 23.2 Forcer un log fixe
 
 ```
-flan run --log target/runlog.mff --log-mode truncate
+steel run --log target/runlog.mff --log-mode truncate
 ```
 
 <a id="23-3-lecture-rapide-du-log"></a>
@@ -1829,7 +1829,7 @@ Si output est plus recent, il skip.
 ### 24.2 Desactiver le cache
 
 ```
-flan run --no-cache
+steel run --no-cache
 ```
 
 <a id="24-3-regles-pour-un-build-fiable"></a>
@@ -1846,7 +1846,7 @@ flan run --no-cache
 ### 25.1 Graph text
 
 ```
-flan graph --text
+steel graph --text
 ```
 
 Dans le futur, cette commande montrera les bakes et dependances.
@@ -1855,13 +1855,13 @@ Dans le futur, cette commande montrera les bakes et dependances.
 ### 25.2 Graph dot
 
 ```
-flan graph --dot > graph.dot
+steel graph --dot > graph.dot
 ```
 
 <a id="25-3-json-de-graphe"></a>
 ### 25.3 JSON de graphe
 
-Le schema cible est `schemas/flan.graph.json.schema.json`.
+Le schema cible est `schemas/steel.graph.json.schema.json`.
 Utiliser ce format pour IDE/CI.
 
 <a id="26-tutoriel-diagnostics-et-qualite"></a>
@@ -1879,13 +1879,13 @@ Utiliser ce format pour IDE/CI.
 
 ```
 error[P001]: invalid token
-  at FlanConfig:12:3
+  at steelconf:12:3
 ```
 
 <a id="26-3-conseils-pour-debug"></a>
 ### 26.3 Conseils pour debug
 
-- utiliser `flan print`
+- utiliser `steel print`
 - isoler un bake via `--bake`
 - activer `-v`
 
@@ -1896,15 +1896,15 @@ error[P001]: invalid token
 ### 27.1 CI
 
 Dans un pipeline:
-1) `flan build flan --print > Flanconfig.mff`
-2) archiver `Flanconfig.mff`
-3) executer `flan run`
+1) `steel build steel --print > steelconfig.mff`
+2) archiver `steelconfig.mff`
+3) executer `steel run`
 
 <a id="27-2-ide"></a>
 ### 27.2 IDE
 
 L IDE peut:
-- lire `Flanconfig.mff`
+- lire `steelconfig.mff`
 - afficher le DAG via `graph.json`
 - naviguer dans les sources
 
@@ -1919,7 +1919,7 @@ Utiliser les schemas pour valider la sortie machine-readable.
 Exemple typique:
 ```
 root/
-  FlanConfig
+  steelconf
   src/
     lib/
     app/
@@ -1968,12 +1968,12 @@ Utiliser `--log` et inspecter la commande.
 <a id="30-2-rappel-des-chemins-par-defaut"></a>
 ### 30.2 Rappel des chemins par defaut
 
-- `FlanConfig` a la racine
-- `Flanconfig.mff` en sortie
+- `steelconf` a la racine
+- `steelconfig.mff` en sortie
 - `target/` pour logs runner
 
-<a id="30-3-exemple-de-flanfile-complet"></a>
-### 30.3 Exemple de FlanConfig complet
+<a id="30-3-exemple-de-steelfile-complet"></a>
+### 30.3 Exemple de steelconf complet
 
 ```
 !muf 4
@@ -2036,7 +2036,7 @@ Utiliser `--log` et inspecter la commande.
 - build en `release`
 - executer tests
 - verifier outputs dans `dist/`
-- archiver `Flanconfig.mff`
+- archiver `steelconfig.mff`
 
 <a id="31-tutoriel-structure-multi-modules"></a>
 ## 31. Tutoriel: structure multi-modules
@@ -2048,7 +2048,7 @@ Objectif: organiser un projet avec plusieurs libs et un binaire final.
 
 ```
 root/
-  FlanConfig
+  steelconf
   src/
     core/
       core.c
@@ -2114,7 +2114,7 @@ Utiliser `target/out` pour les sorties immediates, puis `dist/` pour publier.
 <a id="32-2-copier-vers-dist"></a>
 ### 32.2 Copier vers dist
 
-Flan ne fait pas la copie automatiquement. On peut ajouter un bake:
+Steel ne fait pas la copie automatiquement. On peut ajouter un bake:
 ```
 [bake dist]
   .needs app
@@ -2149,7 +2149,7 @@ Le JSON est pratique pour:
 <a id="33-2-graph-json"></a>
 ### 33.2 Graph JSON
 
-Le schema cible est `flan.graph.json/1`.
+Le schema cible est `steel.graph.json/1`.
 Le fichier est stable et deterministe.
 
 <a id="33-3-validation"></a>
@@ -2169,7 +2169,7 @@ Le header `mff 1` fixe la version du format.
 ### 34.2 Utiliser MFF en CI
 
 ```
-flan build flan --print > Flanconfig.mff
+steel build steel --print > steelconfig.mff
 ```
 
 Puis archiver l artefact. Cela permet:
@@ -2187,7 +2187,7 @@ Comme c est deterministe, un diff git est lisible et utile.
 <a id="35-1-erreurs-de-parse"></a>
 ### 35.1 Erreurs de parse
 
-Si MUF est invalide, la phase `build flan` renvoie des diagnostics.
+Si MUF est invalide, la phase `build steel` renvoie des diagnostics.
 
 <a id="35-2-erreurs-de-run"></a>
 ### 35.2 Erreurs de run
@@ -2247,8 +2247,8 @@ Le cache est simple mais efficace pour des projets moyens.
 ### 37.2 Tests par profile
 
 ```
-flan run --profile debug --bake test
-flan run --profile release --bake test
+steel run --profile debug --bake test
+steel run --profile release --bake test
 ```
 
 <a id="37-3-tests-en-ci"></a>
@@ -2262,8 +2262,8 @@ Automatiser la sequence:
 <a id="38-tutoriel-conventions-d-equipe"></a>
 ## 38. Tutoriel: conventions d equipe
 
-<a id="38-1-style-flanfile"></a>
-### 38.1 Style FlanConfig
+<a id="38-1-style-steelfile"></a>
+### 38.1 Style steelconf
 
 Recommandations:
 - un bloc par ligne de responsabilite
@@ -2273,7 +2273,7 @@ Recommandations:
 <a id="38-2-lint-humain"></a>
 ### 38.2 Lint humain
 
-Avant `flan fmt`, etablir une convention d equipe.
+Avant `steel fmt`, etablir une convention d equipe.
 
 <a id="38-3-revisions"></a>
 ### 38.3 Revisions
@@ -2310,7 +2310,7 @@ Les blocs et directives ont ete concus pour etre etendus sans casser la compatib
 ### 40.1 Checklists par phase
 
 Configuration:
-- FlanConfig valide
+- steelconf valide
 - profiles definis
 - tools resolus
 
@@ -2385,7 +2385,7 @@ Objectif: montrer un pipeline en deux etapes avec outputs intermediaires.
 <a id="42-1-c-ocaml-conceptuel"></a>
 ### 42.1 C + OCaml (conceptuel)
 
-Flan peut orchestrer plusieurs tools:
+Steel peut orchestrer plusieurs tools:
 - `ocamlc`
 - `gcc`
 
@@ -2520,7 +2520,7 @@ Les outputs intermediaires doivent etre dans `target/out`.
 <a id="46-2-nettoyage"></a>
 ### 46.2 Nettoyage
 
-`flan cache clear` supprime les caches, pas les outputs.
+`steel cache clear` supprime les caches, pas les outputs.
 Utiliser un script externe pour nettoyer `target/`.
 
 <a id="46-3-regle-d-or"></a>
@@ -2531,25 +2531,25 @@ Ne pas melanger sources et outputs.
 <a id="47-tutoriel-cli-approfondie"></a>
 ## 47. Tutoriel: CLI approfondie
 
-<a id="47-1-flan-build"></a>
-### 47.1 Flan build
+<a id="47-1-steel-build"></a>
+### 47.1 Steel build
 
 ```
-flan build flan --root . --file FlanConfig --profile debug --target x86_64-unknown-linux-gnu
+steel build steel --root . --file steelconf --profile debug --target x86_64-unknown-linux-gnu
 ```
 
-<a id="47-2-flan-print"></a>
-### 47.2 Flan print
+<a id="47-2-steel-print"></a>
+### 47.2 Steel print
 
 ```
-flan print --root . --file FlanConfig
+steel print --root . --file steelconf
 ```
 
-<a id="47-3-flan-check"></a>
-### 47.3 Flan check
+<a id="47-3-steel-check"></a>
+### 47.3 Steel check
 
 ```
-flan check --root . --file FlanConfig
+steel check --root . --file steelconf
 ```
 
 <a id="48-tutoriel-audit-de-config"></a>
@@ -2566,7 +2566,7 @@ flan check --root . --file FlanConfig
 ### 48.2 Comparer deux MFF
 
 ```
-diff Flanconfig.mff other/Flanconfig.mff
+diff steelconfig.mff other/steelconfig.mff
 ```
 
 <a id="48-3-metriques-simples"></a>
@@ -2584,8 +2584,8 @@ Nombre de bakes, nombre de sources, taille du log.
 2) en faire des bakes
 3) stabiliser les paths
 
-<a id="49-2-exemple-makefile-flan"></a>
-### 49.2 Exemple Makefile -> Flan
+<a id="49-2-exemple-makefile-steel"></a>
+### 49.2 Exemple Makefile -> Steel
 
 ```
 gcc -c src/main.c -o target/out/main.o
@@ -2615,7 +2615,7 @@ Devient:
 <a id="50-conclusion-du-guide"></a>
 ## 50. Conclusion du guide
 
-Flan vise:
+Steel vise:
 - un format declaratif stable
 - une separation claire entre configuration et execution
 - des artefacts deterministes
@@ -2629,8 +2629,8 @@ Ce guide peut etre etendu en fonction de l evolution du runner et des schemas.
 ### 51.1 Documenter le build
 
 Ajouter un court README:
-- comment lancer `flan build`
-- comment lancer `flan run`
+- comment lancer `steel build`
+- comment lancer `steel run`
 - quels outputs attendre
 
 <a id="51-2-exemples-reproduisibles"></a>
@@ -2641,7 +2641,7 @@ Fournir un exemple minimal qui compile sans configuration externe.
 <a id="51-3-mettre-a-jour"></a>
 ### 51.3 Mettre a jour
 
-Synchroniser la doc avec les changements du FlanConfig.
+Synchroniser la doc avec les changements du steelconf.
 
 <a id="52-tutoriel-projets-multi-binaries"></a>
 ## 52. Tutoriel: projets multi-binaries
@@ -2673,15 +2673,15 @@ Synchroniser la doc avec les changements du FlanConfig.
 ### 52.2 Execution ciblee
 
 ```
-flan run --bake app_one
-flan run --bake app_two
+steel run --bake app_one
+steel run --bake app_two
 ```
 
 <a id="52-3-execution-globale"></a>
 ### 52.3 Execution globale
 
 ```
-flan run --all
+steel run --all
 ```
 
 <a id="53-tutoriel-organisation-par-dossiers"></a>
@@ -2691,14 +2691,14 @@ flan run --all
 ### 53.1 Convention de root
 
 Le root doit contenir:
-- FlanConfig
+- steelconf
 - sources
 - dossier target
 
 <a id="53-2-sous-projets"></a>
 ### 53.2 Sous-projets
 
-Si plusieurs projets cohabitent, preferer un FlanConfig par projet.
+Si plusieurs projets cohabitent, preferer un steelconf par projet.
 
 <a id="53-3-eviter-les-chemins-absolus"></a>
 ### 53.3 Eviter les chemins absolus
@@ -2773,8 +2773,8 @@ Inspecter le log:
 - `cmd`
 - `status`
 
-<a id="56-3-reproduire-hors-flan"></a>
-### 56.3 Reproduire hors Flan
+<a id="56-3-reproduire-hors-steel"></a>
+### 56.3 Reproduire hors Steel
 
 Copier la commande et l executer manuellement pour isoler l erreur.
 
@@ -2836,7 +2836,7 @@ Supprimer `target/` avant une release propre.
 <a id="59-3-archive-finale"></a>
 ### 59.3 Archive finale
 
-Archiver `dist/` et `Flanconfig.mff`.
+Archiver `dist/` et `steelconfig.mff`.
 
 <a id="60-annexes-additionnelles"></a>
 ## 60. Annexes additionnelles
@@ -2846,7 +2846,7 @@ Archiver `dist/` et `Flanconfig.mff`.
 
 ```
 root/
-  FlanConfig
+  steelconf
   src/
   include/
   assets/
@@ -2857,10 +2857,10 @@ root/
 <a id="60-2-commandes-essentielles"></a>
 ### 60.2 Commandes essentielles
 
-- `flan build flan`
-- `flan run`
-- `flan print`
-- `flan check`
+- `steel build steel`
+- `steel run`
+- `steel print`
+- `steel check`
 
 <a id="60-3-rappel"></a>
 ### 60.3 Rappel
@@ -2916,20 +2916,20 @@ Toujours utiliser des paths relatifs au root.
 <a id="63-2-normalisation"></a>
 ### 63.2 Normalisation
 
-Flan normalise les chemins avec `/`.
+Steel normalise les chemins avec `/`.
 
 <a id="63-3-depots-multiples"></a>
 ### 63.3 Depots multiples
 
-Si un sous-projet est un submodule, preferer un FlanConfig separé.
+Si un sous-projet est un submodule, preferer un steelconf separé.
 
 <a id="64-tutoriel-edition-collaborative"></a>
 ## 64. Tutoriel: edition collaborative
 
-<a id="64-1-revue-de-flanfile"></a>
-### 64.1 Revue de FlanConfig
+<a id="64-1-revue-de-steelfile"></a>
+### 64.1 Revue de steelconf
 
-Considerer le FlanConfig comme du code critique.
+Considerer le steelconf comme du code critique.
 
 <a id="64-2-historique"></a>
 ### 64.2 Historique
@@ -2939,7 +2939,7 @@ Les diffs sur MUF sont lisibles et utiles.
 <a id="64-3-validation-ci"></a>
 ### 64.3 Validation CI
 
-Executer `flan check` en CI.
+Executer `steel check` en CI.
 
 <a id="65-tutoriel-logs-et-audit-long-terme"></a>
 ## 65. Tutoriel: logs et audit long terme
@@ -2957,7 +2957,7 @@ Comparer les logs pour detecter des regressions de commandes.
 <a id="65-3-tracabilite"></a>
 ### 65.3 Traçabilite
 
-Associer un log a une version de FlanConfig.
+Associer un log a une version de steelconf.
 
 <a id="66-tutoriel-build-reproductible"></a>
 ## 66. Tutoriel: build reproductible
@@ -2975,7 +2975,7 @@ Utiliser des toolchains versionnees.
 <a id="66-3-mff-comme-preuve"></a>
 ### 66.3 MFF comme preuve
 
-Archiver `Flanconfig.mff` avec l artefact final.
+Archiver `steelconfig.mff` avec l artefact final.
 
 <a id="67-tutoriel-integrer-des-scripts"></a>
 ## 67. Tutoriel: integrer des scripts
@@ -3013,8 +3013,8 @@ Limiter les scripts pour conserver la reproductibilite.
 ### 68.1 Deux targets
 
 ```
-flan build flan --target x86_64-unknown-linux-gnu
-flan build flan --target aarch64-unknown-linux-gnu
+steel build steel --target x86_64-unknown-linux-gnu
+steel build steel --target aarch64-unknown-linux-gnu
 ```
 
 <a id="68-2-outputs-separes"></a>
@@ -3025,7 +3025,7 @@ Utiliser `target/${target}` pour separer les artefacts.
 <a id="68-3-verifier-les-diffs"></a>
 ### 68.3 Verifier les diffs
 
-Comparer les `Flanconfig.mff` par target.
+Comparer les `steelconfig.mff` par target.
 
 <a id="69-tutoriel-maintenir-le-guide"></a>
 ## 69. Tutoriel: maintenir le guide
@@ -3070,15 +3070,15 @@ Fin du guide et de la reference.
 <a id="71-tutoriel-discipline-de-versioning"></a>
 ## 71. Tutoriel: discipline de versioning
 
-<a id="71-1-versionner-le-flanfile"></a>
-### 71.1 Versionner le FlanConfig
+<a id="71-1-versionner-le-steelfile"></a>
+### 71.1 Versionner le steelconf
 
-Toujours committer le FlanConfig avec le code source.
+Toujours committer le steelconf avec le code source.
 
 <a id="71-2-versionner-le-mff"></a>
 ### 71.2 Versionner le MFF
 
-Archiver `Flanconfig.mff` pour les builds importants.
+Archiver `steelconfig.mff` pour les builds importants.
 
 <a id="71-3-tagger-les-releases"></a>
 ### 71.3 Tagger les releases
@@ -3244,18 +3244,18 @@ Eviter les changements cassants dans les conventions internes.
 <a id="80-1-commandes-resumees"></a>
 ### 80.1 Commandes resumees
 
-- build: `flan build flan`
-- run: `flan run --bake app`
-- print: `flan print`
+- build: `steel build steel`
+- run: `steel run --bake app`
+- print: `steel print`
 
 <a id="80-2-artefacts"></a>
 ### 80.2 Artefacts
 
-- `Flanconfig.mff`
+- `steelconfig.mff`
 - logs runner
 - outputs `target/out`
 
 <a id="80-3-dernier-rappel"></a>
 ### 80.3 Dernier rappel
 
-Flan privilegie la stabilite et la lisibilite des configurations.
+Steel privilegie la stabilite et la lisibilite des configurations.

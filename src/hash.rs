@@ -1,6 +1,6 @@
 // src/hash.rs
 //
-// Flan — hash (stable hashing + fingerprints)
+// Steel — hash (stable hashing + fingerprints)
 //
 // Purpose:
 // - Provide fast, dependency-free hashing primitives used for:

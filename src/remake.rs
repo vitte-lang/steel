@@ -1,6 +1,6 @@
 // src/remake.rs
 //
-// Flan — remake / incremental rebuild engine (planner-side)
+// Steel — remake / incremental rebuild engine (planner-side)
 //
 // Purpose:
 // - Decide what needs to be rebuilt, given a set of rules, their dependencies, and a cache DB.

@@ -1,10 +1,10 @@
 // Module: read
 // src/read.rs
 //
-// Flan — robust file reading utilities
+// Steel — robust file reading utilities
 //
 // Purpose:
-// - Centralize file/stream reading logic used across Flan.
+// - Centralize file/stream reading logic used across Steel.
 // - Provide consistent behavior for:
 //   - reading UTF-8 text with BOM handling
 //   - reading bytes
@@ -15,7 +15,7 @@
 // No external deps.
 //
 // Typical usage:
-//   let txt = read_text(Path::new("FlanConfig"))?;
+//   let txt = read_text(Path::new("steelconf"))?;
 //   let bytes = read_bytes_limited(Path::new("foo.bin"), 8 * 1024 * 1024)?;
 //
 // Integration:

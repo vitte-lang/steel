@@ -1,6 +1,6 @@
 // src/shuffle.rs
 //
-// Flan — shuffle utilities
+// Steel — shuffle utilities
 //
 // Purpose:
 // - Provide deterministic and non-deterministic shuffling helpers.

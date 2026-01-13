@@ -1,8 +1,8 @@
-# Flan
+# Steel
 
-![Flan](https://img.shields.io/badge/Flan-config-orange)
+![Steel](https://img.shields.io/badge/Steel-config-orange)
 
-Flan est la couche de configuration **déclarative** du build Vitte. Il **parse**, **valide** et **résout** un workspace (packages, profils, toolchains, targets), puis **génère un artefact de configuration stable** `Flanconfig.mff` (Flanconfig). Cet artefact est ensuite **consommé par Vitte** pour appliquer les règles de construction et exécuter les étapes de compilation de manière déterministe.
+Steel est la couche de configuration **déclarative** du build Vitte. Il **parse**, **valide** et **résout** un workspace (packages, profils, toolchains, targets), puis **génère un artefact de configuration stable** `steel.log`. Cet artefact est ensuite **consommé par Vitte** pour appliquer les règles de construction et exécuter les étapes de compilation de manière déterministe.
 
 
 ## Points forts
@@ -11,13 +11,13 @@ Flan est la couche de configuration **déclarative** du build Vitte. Il **parse*
 - Résolution déterministe et sorties facilement outillables.
 - Portabilité multi-OS/arch et profils explicites.
 - Introspection via commandes `print` et export de graphes.
-- Mode dev via `build flan -watch` et diagnostics `-why` / `-graph`.
+- Mode dev via `build steel -watch` et diagnostics `-why` / `-graph`.
 - Overrides non-invasifs via `-D KEY=VALUE` (sans modifier le buildfile).
 
 ## CLI (raccourci)
 
 Commandes (details dans `doc/manifest.md`, liste rapide: `doc/manifest.md#liste-rapide-commandes`, flags: `doc/manifest.md#flags-frequents`):
-- [`build flan`](doc/manifest.md#cmd-build-flan)
+- [`build steel`](doc/manifest.md#cmd-build-steel)
 - [`run`](doc/manifest.md#cmd-run)
 - [`doctor`](doc/manifest.md#cmd-doctor)
 - [`cache`](doc/manifest.md#cmd-cache)
@@ -29,23 +29,23 @@ Commandes (details dans `doc/manifest.md`, liste rapide: `doc/manifest.md#liste-
 
 - `--profile <name>`: selection du profil (ex: `debug`, `release`).
 - `--target <triple>`: selection du target (ex: `x86_64-unknown-linux-gnu`).
-- `--emit <path>`: sortie de `Flanconfig.mff`.
+- `--emit <path>`: sortie de `steel.log`.
 - `--log <path>`: log d execution `run` (avec `--log-mode`).
 
 Exemples:
 ```text
-flan build flan --profile release
-flan build flan --target x86_64-apple-darwin
-flan build flan --emit dist/Flanconfig.mff
-flan run --log target/run.mff --log-mode truncate --all
+steel build steel --profile release
+steel build steel --target x86_64-apple-darwin
+steel build steel --emit dist/steel.log
+steel run --log target/run.mff --log-mode truncate --all
 ```
 
-## FlanLib: import OCaml
+## SteelLib: import OCaml
 
-Le backend OCaml est exposé via FlanLib. Exemple d'import:
+Le backend OCaml est exposé via SteelLib. Exemple d'import:
 
 ```rust
-use FlanLib::ocaml::{OcamlArgs, OcamlDriver, OcamlSpec};
+use SteelLib::ocaml::{OcamlArgs, OcamlDriver, OcamlSpec};
 ```
 
 ## Voir aussi
@@ -56,11 +56,11 @@ use FlanLib::ocaml::{OcamlArgs, OcamlDriver, OcamlSpec};
 
 ## Uniformisation totale (langages + machines)
 
-Flan vise une **uniformisation totale** du build : même modèle, mêmes commandes et mêmes sorties logiques, quel que soit le langage (Vitte, C/C++, C#, Rust, …) et quel que soit l’environnement (machines anciennes ou récentes, OS/arch hétérogènes).
+Steel vise une **uniformisation totale** du build : même modèle, mêmes commandes et mêmes sorties logiques, quel que soit le langage (Vitte, C/C++, C#, Rust, …) et quel que soit l’environnement (machines anciennes ou récentes, OS/arch hétérogènes).
 
 - **Langage-agnostique** : l’intégration se fait via des **tools déclaratifs** (compile/link/archive/test/package), connectés dans un graphe typé.
 - **Machine-agnostique** : l’exécution est pilotée par des **targets** (triples OS/arch) et des politiques stables (paths normalisés, cache, sandbox).
-- **Contrat unique** : la configuration est gelée dans `Flanconfig.mff` et consommée ensuite de manière déterministe.
+- **Contrat unique** : la configuration est gelée dans `steel.log` et consommée ensuite de manière déterministe.
 - **Reproductibilité** : cache content-addressed + empreinte toolchain + policy capsule.
 - **Observabilité** : diagnostics et introspection (`print`, `-why`, `-graph`) pour outiller CI, IDE et scripts.
 
@@ -70,24 +70,24 @@ L’objectif est de pouvoir orchestrer des projets **mono-langage** comme des pr
 
 Le pipeline est volontairement scindé en deux phases : **Configuration** puis **Construction**.
 
-   **Configuration** — `build flan`
+   **Configuration** — `build steel`
    - Charge la config (workspace/packages/profils/targets/toolchains)
    - Valide la cohérence (contraintes, chemins, compatibilités)
    - Résout les valeurs (defaults, héritages, overrides)
-   - **Émet** `Flanconfig.mff` (artefact canonique)
+   - **Émet** `steel.log` (artefact canonique)
 
 
 ## Architecture
 
 ### Principe : « Freeze then Build »
 
-- `build flan` = **configure** : validation + résolution + **gel** de la configuration.
+- `build steel` = **configure** : validation + résolution + **gel** de la configuration.
 - `build vitte` = **build** : orchestration des étapes + production des artefacts.
 
 
 ### Détection de reconstruction (incrémental)
 
-Au cœur du pipeline, **Flan** calcule automatiquement **ce qui doit être reconstruit**.
+Au cœur du pipeline, **Steel** calcule automatiquement **ce qui doit être reconstruit**.
 
 
 
@@ -102,7 +102,7 @@ Chaque répertoire du projet peut contenir, à la racine du dossier, un fichier 
 
 Voir aussi : `doc/toolchain_detection.md`.
 
-Flan fournit les binaires `flan` / `Flan` utilisés pour orchestrer ce flux.
+Steel fournit les binaires `steel` / `Steel` utilisés pour orchestrer ce flux.
 
 #### Agrégation (fichier maître)
 
@@ -110,7 +110,7 @@ Par défaut, l’ensemble des fichiers `main.muff` présents dans les sous-répe
 
 #### Configuration gelée et artefacts
 
-Lors de la phase de configuration, `flan` / `Flan` peut **générer un fichier `.mff`** (configuration gelée) destiné à une compilation globale. Cette configuration est ensuite utilisée pour produire des artefacts binaires Vitte :
+Lors de la phase de configuration, `steel` / `Steel` peut **générer un fichier `.mff`** (configuration gelée) destiné à une compilation globale. Cette configuration est ensuite utilisée pour produire des artefacts binaires Vitte :
 
 - **`.va`** : sortie de bibliothèque statique (si le dossier ou la target déclare une librairie),
 - **`.vo`** : sortie de compilation standard (artefact de compilation),
@@ -123,25 +123,25 @@ Les fichiers de compilation produisent typiquement des binaires **`.vo`**.
 La construction d’un dossier (ou du workspace via `master.muff`) s’effectue en exécutant le plan principal, par exemple :
 
 ```text
-Flan build main.muff
+Steel build main.muff
 ```
 
-Le build génère les sorties dans un répertoire d’artefacts **par dossier** (par convention `./.flan/` ou `./.muff/` selon la configuration), tant qu’aucune erreur n’est détectée pendant la compilation.
+Le build génère les sorties dans un répertoire d’artefacts **par dossier** (par convention `./.steel/` ou `./.muff/` selon la configuration), tant qu’aucune erreur n’est détectée pendant la compilation.
 
 #### Projets multi-outils
 
-Le buildfile reste générique : Flan est capable d’orchestrer des projets Vitte et des projets mixtes via des **tools** déclaratifs (par exemple pour C/C++/C#/Rust), tant que les toolchains et les étapes (compile/link/archive/package) sont décrites de manière explicite.
+Le buildfile reste générique : Steel est capable d’orchestrer des projets Vitte et des projets mixtes via des **tools** déclaratifs (par exemple pour C/C++/C#/Rust), tant que les toolchains et les étapes (compile/link/archive/package) sont décrites de manière explicite.
 
 ### Flux de traitement
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │                    PHASE CONFIGURATION                      │
-│                      (build flan)                         │
+│                      (build steel)                         │
 └─────────────────────────────────────────────────────────────┘
 
 1. CHARGEMENT
-   ├── FlanConfig (workspace + packages + profils)
+   ├── steelconf (workspace + packages + profils)
    ├── Toolchains (compilateurs, linkers, outils)
    └── Targets (spécifications de build)
 
@@ -159,14 +159,14 @@ Le buildfile reste générique : Flan est capable d’orchestrer des projets Vit
    └── Résolution des dépendances transitives
 
 4. ÉMISSION
-   └── Flanconfig.mff (configuration gelée et normalisée)
+   └── steel.log (configuration gelée et normalisée)
 
 ┌─────────────────────────────────────────────────────────────┐
 │                    PHASE CONSTRUCTION                       │
 │                      (build vitte)                          │
 └─────────────────────────────────────────────────────────────┘
 
-Vitte lit Flanconfig.mff et :
+Vitte lit steel.log et :
   ├── Construit le DAG des étapes
   ├── Résout les dépendances de fichiers
   ├── Exécute l'ordre topologique
@@ -176,7 +176,7 @@ Vitte lit Flanconfig.mff et :
 ### Composants principaux
 
 #### Parser (`arscan.rs`, `read.rs`)
-- Analyse lexicale et syntaxique des fichiers Flan
+- Analyse lexicale et syntaxique des fichiers Steel
 - Constructs de blocs (workspace, package, profile, target, etc.)
 - Gestion des commentaires et du formatage
 
@@ -218,7 +218,7 @@ Vitte lit Flanconfig.mff et :
 
 ### Responsabilités de chaque couche
 
-**Flan** (Déclaratif)
+**Steel** (Déclaratif)
 - *Ce qu'on veut construire*, *comment* (profils), *pour qui* (targets)
 - Séparation claire entre configuration et exécution
 - Validation et cohérence
@@ -228,7 +228,7 @@ Vitte lit Flanconfig.mff et :
 - Isolation des détails d'exécution (compilateur, flags réels)
 - Diagnostics de performance et débogage
 
-**Flanconfig.mff** (Contrat)
+**steel.log** (Contrat)
 - Configuration **gelée** et **normalisée**
 - Contient tout ce que Vitte doit savoir pour construire
 - Invalidation automatique du cache en cas de changement
@@ -242,9 +242,9 @@ Vitte orchestre la phase **construction** à partir de la configuration gelée :
 - Exécution **déterministe** (ordre topologique) avec **incrémental** et **cache**
 - Diagnostics outillables : « pourquoi ça rebuild ? », « qui dépend de quoi ? »
 
-### Contrat `Flanconfig.muf`
+### Contrat `steelconf`
 
-`Flanconfig.muf` contient une configuration **normalisée** et **explicite** (plus d’implicite côté build). Exemples de champs attendus :
+`steelconf` contient une configuration **normalisée** et **explicite** (plus d’implicite côté build). Exemples de champs attendus :
 
 - version de schéma (`mcfg 1`),
 - host/target (OS/arch/triple),
@@ -260,11 +260,11 @@ Vitte orchestre la phase **construction** à partir de la configuration gelée :
 ### Build
 
 ```text
-build flan [<plan>] [flags] [-- <args>]
+build steel [<plan>] [flags] [-- <args>]
 ```
 
-- `build flan` : exécute le **plan par défaut** (ex: `default`).
-- `build flan <plan>` : exécute un **plan nommé** (ex: `release`, `ci`, `package`).
+- `build steel` : exécute le **plan par défaut** (ex: `default`).
+- `build steel <plan>` : exécute un **plan nommé** (ex: `release`, `ci`, `package`).
 
 #### Flags de build
 
@@ -281,22 +281,22 @@ build flan [<plan>] [flags] [-- <args>]
 Exemples :
 
 ```text
-build flan
-build flan release
-build flan -all
-build flan -debug
-build flan -release -j 16
-build flan -D profile=release -D target=x86_64-apple-darwin
-build flan -why app.exe
-build flan -graph=dot
-build flan -watch
+build steel
+build steel release
+build steel -all
+build steel -debug
+build steel -release -j 16
+build steel -D profile=release -D target=x86_64-apple-darwin
+build steel -why app.exe
+build steel -graph=dot
+build steel -watch
 ```
 
 ### Validation / émission
 
 - `check` : valide la configuration sans exécuter la construction.
   - options usuelles : `--profile <name>`, `--target <name>`, `--emit <path>`
-- `resolve` : résout et **génère** `Flanconfig.mff` (équivalent fonctionnel à `build flan` côté configuration).
+- `resolve` : résout et **génère** `steel.log` (équivalent fonctionnel à `build steel` côté configuration).
   - options usuelles : `--emit <path>`, `--profile <name>`, `--target <name>`
 
 Exemples :
@@ -304,7 +304,7 @@ Exemples :
 ```text
 check
 check --profile debug
-resolve --emit ./Flanconfig.mff
+resolve --emit ./steel.log
 ```
 
 ### Introspection
@@ -312,7 +312,7 @@ resolve --emit ./Flanconfig.mff
 - `print <scope>` : affiche une vue résolue (format texte/JSON selon implémentation).
   - scopes typiques : `workspace`, `packages`, `targets`, `profiles`, `toolchains`, `vars`, `plans`, `exports`
 - `graph [--format <text|dot|json>]` : export du graphe (sans build).
-- `why <artifact|ref>` : diagnostic « pourquoi ça rebuild ? » (alias possible de `build flan -why`).
+- `why <artifact|ref>` : diagnostic « pourquoi ça rebuild ? » (alias possible de `build steel -why`).
 
 Exemples :
 
@@ -325,7 +325,7 @@ why vittec_driver::vittec
 
 ### Décompilation (audit de build)
 
-Flan expose une commande de **décompilation** orientée audit : elle permet de relire un artefact de configuration gelée **`.mff`** (ou un buildfile **`.muff`**) et de reconstituer une vue complète du projet : architecture, graphe, inputs/outputs, outils utilisés et paramètres.
+Steel expose une commande de **décompilation** orientée audit : elle permet de relire un artefact de configuration gelée **`.mff`** (ou un buildfile **`.muff`**) et de reconstituer une vue complète du projet : architecture, graphe, inputs/outputs, outils utilisés et paramètres.
 
 - `decompile <project.mff>` : affiche l’architecture du build (DAG), la liste des fichiers, les ports, les toolchains et l’ensemble des valeurs résolues.
 - `decompile <main.muff>` : affiche la configuration et les règles telles qu’elles seront gelées (vue normalisée), sans exécuter la construction.
@@ -333,10 +333,10 @@ Flan expose une commande de **décompilation** orientée audit : elle permet de 
 Exemples :
 
 ```text
-flan decompile projet.mff
-flan decompile src/module/main.muff
-flan decompile projet.mff --format json
-flan decompile projet.mff --graph dot
+steel decompile projet.mff
+steel decompile src/module/main.muff
+steel decompile projet.mff --format json
+steel decompile projet.mff --graph dot
 ```
 
 Un fichier **`.mff`** enregistre la configuration **normalisée** et la **trace de compilation** (inputs, globs développés, règles, outils, arguments, empreintes). Il garantit une configuration uniforme sur toutes les machines.
@@ -348,12 +348,12 @@ Un buildfile **`.muff`** (ou un ensemble de `main.muff`) peut également être d
 - les bibliothèques/plugins référencés,
 - les sorties attendues.
 
-Limite : la reconstruction effective des binaires dépend de la **disponibilité** et de la **compatibilité** des toolchains (langages compilés, versions, targets). Flan fournit la description complète ; la machine doit disposer des compilateurs/outils compatibles pour reproduire les artefacts.
+Limite : la reconstruction effective des binaires dépend de la **disponibilité** et de la **compatibilité** des toolchains (langages compilés, versions, targets). Steel fournit la description complète ; la machine doit disposer des compilateurs/outils compatibles pour reproduire les artefacts.
 
 ### Maintenance
 
-- `fmt [<file>]` : formate un fichier Flan.
-- `clean` : purge cache + artefacts (alias possible de `build flan -clean`).
+- `fmt [<file>]` : formate un fichier Steel.
+- `clean` : purge cache + artefacts (alias possible de `build steel -clean`).
 - `cache <cmd>` : gestion du store/cache.
   - `cache stats` : statistiques.
   - `cache gc` : nettoyage.
@@ -372,7 +372,7 @@ doctor
 ### Divers
 
 - `help [<cmd>]` : aide globale ou par sous-commande.
-- `version` : version de Flan.
+- `version` : version de Steel.
 
 ### Options globales (toutes commandes)
 
@@ -381,7 +381,7 @@ doctor
 
 ### Exemples multi-OS (Linux / macOS / Windows / BSD / Solaris)
 
-> Objectif : exécuter les commandes `build flan ...` de façon identique sur toutes les plateformes. Les étapes ci-dessous installent uniquement les utilitaires de base et supposent que `flan` et `vitte` sont disponibles dans le projet (ou dans le `PATH`).
+> Objectif : exécuter les commandes `build steel ...` de façon identique sur toutes les plateformes. Les étapes ci-dessous installent uniquement les utilitaires de base et supposent que `steel` et `vitte` sont disponibles dans le projet (ou dans le `PATH`).
 
 #### Linux (Debian/Ubuntu)
 
@@ -390,9 +390,9 @@ sudo apt update
 sudo apt install -y git ca-certificates curl
 
 # build
-build flan
-build flan -all
-build flan -debug
+build steel
+build steel -all
+build steel -debug
 ```
 
 #### Linux (Fedora/RHEL)
@@ -400,8 +400,8 @@ build flan -debug
 ```bash
 sudo dnf install -y git ca-certificates curl
 
-build flan
-build flan -release -j 16
+build steel
+build steel -release -j 16
 ```
 
 #### Linux (Arch)
@@ -409,7 +409,7 @@ build flan -release -j 16
 ```bash
 sudo pacman -S --needed git ca-certificates curl
 
-build flan -all
+build steel -all
 ```
 
 #### macOS (Homebrew)
@@ -417,8 +417,8 @@ build flan -all
 ```bash
 brew install git
 
-build flan
-build flan -watch
+build steel
+build steel -watch
 ```
 
 #### Windows (PowerShell)
@@ -429,13 +429,13 @@ build flan -watch
 # winget install --id OpenJS.NodeJS.LTS -e   # si ton projet en a besoin
 
 # Exécution
-build flan
-build flan -all
-build flan -why app.exe
+build steel
+build steel -all
+build steel -why app.exe
 ```
 
 Notes Windows :
-- Si `build` n’est pas une commande globale, exécuter depuis la racine du projet via `./flan` (si présent) ou ajouter le binaire au `PATH`.
+- Si `build` n’est pas une commande globale, exécuter depuis la racine du projet via `./steel` (si présent) ou ajouter le binaire au `PATH`.
 - En CI Windows, privilégier `--color never` et `--json` pour l’outillage.
 
 #### FreeBSD
@@ -443,8 +443,8 @@ Notes Windows :
 ```sh
 sudo pkg install -y git ca_root_nss
 
-build flan
-build flan -graph=dot
+build steel
+build steel -graph=dot
 ```
 
 #### OpenBSD
@@ -452,7 +452,7 @@ build flan -graph=dot
 ```sh
 doas pkg_add git
 
-build flan
+build steel
 ```
 
 #### NetBSD
@@ -461,7 +461,7 @@ build flan
 # pkgin (si configuré)
 # sudo pkgin install git ca-certificates
 
-build flan
+build steel
 ```
 
 #### Solaris / illumos (OpenIndiana)
@@ -469,14 +469,14 @@ build flan
 ```sh
 pfexec pkg install developer/versioning/git
 
-build flan
-build flan -release
+build steel
+build steel -release
 ```
 
 Conseils cross-OS :
-- Utiliser des chemins relatifs dans les buildfiles (`./dist`, `./.flan/cache`) pour limiter les divergences.
-- Si un fichier `flan` est un script, vérifier le bit exécutable (`chmod +x flan`) et utiliser des fins de lignes LF.
-- Pour l’outillage, préférer `flan print ... --json`, `flan graph --format ...`, `flan why ...`.
+- Utiliser des chemins relatifs dans les buildfiles (`./dist`, `./.steel/cache`) pour limiter les divergences.
+- Si un fichier `steel` est un script, vérifier le bit exécutable (`chmod +x steel`) et utiliser des fins de lignes LF.
+- Pour l’outillage, préférer `steel print ... --json`, `steel graph --format ...`, `steel why ...`.
 
 ## Langage MUF (v4.1)
 
@@ -486,9 +486,9 @@ Le format MUF est versionné. La version actuelle est **v4.1**.
 - Blocs : `[tag name?] ... ..`
 - Directives : `.op arg1 arg2 ...`
 - Commentaires : `;; ...`
-- Grammaire EBNF : `assets/grammar/flan.ebnf`
+- Grammaire EBNF : `assets/grammar/steel.ebnf`
 
-## Format du fichier Flan (aperçu)
+## Format du fichier Steel (aperçu)
 
 Exemple MUF v4.1 (blocs + `..`) :
 
@@ -516,7 +516,7 @@ Exemple MUF v4.1 (blocs + `..`) :
 ..
 ```
 
-## Format `Flanconfig.mff` (apercu)
+## Format `steel.log` (apercu)
 
 ```text
 mff 1
@@ -541,21 +541,21 @@ profile "debug"
 
 ## Variables d'environnement
 
-- `MUFFIN_FILE` : chemin du fichier Flan.
+- `MUFFIN_FILE` : chemin du fichier Steel.
 - `MUFFIN_PROFILE` : profil par défaut.
-- `MUFFIN_EMIT` : chemin par défaut de `Flanconfig.mff`.
+- `MUFFIN_EMIT` : chemin par défaut de `steel.log`.
 - `MUFFIN_OFFLINE` : active le mode offline.
 - `VITTE_BUILD` : chemin explicite vers le driver `build`.
-- `PATH` : s’assurer que `flan` et `vitte` sont accessibles (ou utiliser `./flan` depuis la racine).
+- `PATH` : s’assurer que `steel` et `vitte` sont accessibles (ou utiliser `./steel` depuis la racine).
 
 ## Fichiers
 
-- `flan` ou `FlanConfig` : configuration principale.
+- `steel` ou `steelconf` : configuration principale.
 - `*.vitte` : sources du projet.
-- `Flanconfig.mff` : configuration gelée et normalisée (artefact canonique) + trace outillable (graph, inputs, outils, empreintes), consommée par Vitte.
+- `steel.log` : configuration gelée et normalisée (artefact canonique) + trace outillable (graph, inputs, outils, empreintes), consommée par Vitte.
 - `*.muf` : buildfiles (si le projet segmente la configuration par dossier/workspace).
 - `*.muff` : configurations segmentées par répertoire (optionnel, générées ou maintenues selon le mode).
-- `flan/main.muff` : point d’ancrage de configuration/build (nom configurable, optionnel).
+- `steel/main.muff` : point d’ancrage de configuration/build (nom configurable, optionnel).
 - Artefacts de build (selon targets/plateformes) : `*.vo` (Vitte compilation), `*.va` (Vitte librairie statique), `*.o` / `*.obj` (C/C++ objets), `*.a` / `*.lib` (archives statiques), `*.so` / `*.dylib` / `*.dll` (librairies partagées), `*.exe` (exécutables Windows).
 
 ## Documentation
@@ -569,21 +569,21 @@ profile "debug"
 - [docs/reference/formats/index.md](docs/reference/formats/index.md) — Formats + versioning
 - [ARCHITECTURE.md](ARCHITECTURE.md) — Détails internes, pipeline, modules
 - [src/MODULE_ORGANIZATION.md](src/MODULE_ORGANIZATION.md) — Organisation des fichiers source
-- Manpage: [doc/flan.1](doc/flan.1)
+- Manpage: [doc/steel.1](doc/steel.1)
 
 ## Licence
 
 Voir `COPYING`.
 
-# Flan
+# Steel
 
-![Flan](https://img.shields.io/badge/Flan-config-orange)
+![Steel](https://img.shields.io/badge/Steel-config-orange)
 
-Flan est le **compilateur de configuration** du build Vitte.
+Steel est le **compilateur de configuration** du build Vitte.
 
-- **Entrée** : un seul fichier à la racine du dépôt : **`FlanConfig.muff`**.
-- **Sortie** : un **binaire universel** de configuration **`FlanConfig.mub`** (Universal Binary Config), identique d’une machine à l’autre.
-- **Consommateur** : **Vitte** lit `FlanConfig.mub` pour exécuter le build (DAG, cache, incrémental) de manière déterministe.
+- **Entrée** : un seul fichier à la racine du dépôt : **`steelconf`**.
+- **Sortie** : un **binaire universel** de configuration **`steelconf.mub`** (Universal Binary Config), identique d’une machine à l’autre.
+- **Consommateur** : **Vitte** lit `steelconf.mub` pour exécuter le build (DAG, cache, incrémental) de manière déterministe.
 
 L’objectif : **un modèle unique**, **un workflow unique**, **un artefact unique**.
 
@@ -598,9 +598,9 @@ Le build a besoin d’une configuration **gelée** (plus d’implicites) :
 - l’empreinte toolchain/policy pour l’invalidation cache,
 - un graphe exécutable (ports `inputs → outputs`).
 
-`FlanConfig.mub` est cette barrière contractuelle entre :
+`steelconf.mub` est cette barrière contractuelle entre :
 
-- **déclaratif** (Flan) : ce qu’on veut construire,
+- **déclaratif** (Steel) : ce qu’on veut construire,
 - **exécutable** (Vitte) : comment on le construit.
 
 ---
@@ -610,12 +610,12 @@ Le build a besoin d’une configuration **gelée** (plus d’implicites) :
 1) **Configurer (freeze)**
 
 ```text
-build flan
+build steel
 ```
 
-- lit `FlanConfig.muff`
+- lit `steelconf`
 - valide + résout
-- émet `FlanConfig.mub`
+- émet `steelconf.mub`
 
 2) **Construire (build)**
 
@@ -623,7 +623,7 @@ build flan
 build vitte
 ```
 
-- lit `FlanConfig.mub`
+- lit `steelconf.mub`
 - exécute le DAG (compile/link/test/package)
 - gère incrémental + cache
 
@@ -634,14 +634,14 @@ build vitte
 ### Configuration
 
 ```text
-build flan [flags]
+build steel [flags]
 ```
 
 Flags usuels :
 
 - `-debug` / `-release`
 - `-j <n>` : parallélisme
-- `-D KEY=VALUE` : override sans modifier `FlanConfig.muff`
+- `-D KEY=VALUE` : override sans modifier `steelconf`
 - `-why <ref>` : diagnostic d’invalidation
 - `-graph[=text|dot|json]` : export graphe
 - `-watch` : mode dev
@@ -649,14 +649,14 @@ Flags usuels :
 ### Introspection
 
 ```text
-flan print <scope>
-flan graph [--format <text|dot|json>]
-flan why <ref>
+steel print <scope>
+steel graph [--format <text|dot|json>]
+steel why <ref>
 ```
 
 ---
 
-## Format du fichier `FlanConfig.muff` (aperçu)
+## Format du fichier `steelconf` (aperçu)
 
 Le fichier est orienté blocs, lisible, et conçu pour être **résolu** puis **gelé**.
 
@@ -700,29 +700,29 @@ Le fichier est orienté blocs, lisible, et conçu pour être **résolu** puis **
 
 ## Fichiers
 
-- **`FlanConfig.muff`** : source de configuration (unique, à la racine).
-- **`FlanConfig.mub`** : binaire universel de configuration gelée (artefact canonique).
+- **`steelconf`** : source de configuration (unique, à la racine).
+- **`steelconf.mub`** : binaire universel de configuration gelée (artefact canonique).
 - Artefacts Vitte (selon targets) : `*.vo`, `*.va`, exécutables, etc.
 
 ---
 
 ## Notes de compatibilité
 
-- Le binaire `FlanConfig.mub` est conçu pour être **portable** (endianness/versions gérées par en-tête + schéma).
-- Pour outiller CI/IDE, Flan peut exposer en plus des exports `--json`/`--dot`, mais **Vitte ne dépend que de `FlanConfig.mub`**.
+- Le binaire `steelconf.mub` est conçu pour être **portable** (endianness/versions gérées par en-tête + schéma).
+- Pour outiller CI/IDE, Steel peut exposer en plus des exports `--json`/`--dot`, mais **Vitte ne dépend que de `steelconf.mub`**.
 
 ---
 
 ## Licence
 
 Voir `COPYING`.
-# Flan
+# Steel
 
-![Flan](https://img.shields.io/badge/Flan-config-orange)
+![Steel](https://img.shields.io/badge/Steel-config-orange)
 
-Flan est la **configuration déclarative** du build Vitte.
+Steel est la **configuration déclarative** du build Vitte.
 
-- **Entrée** : un seul fichier à la racine du dépôt : **`FlanConfig.muff`**.
+- **Entrée** : un seul fichier à la racine du dépôt : **`steelconf`**.
 - **Sortie** : un dossier **`target/`** créé à la racine (artefacts + configuration résolue).
 - **Consommateur** : **Vitte** lit la configuration résolue depuis `target/` et exécute le build de manière déterministe.
 
@@ -735,10 +735,10 @@ Le workflow est volontairement en 2 phases :
 1) **Configurer (freeze)**
 
 ```text
-build flan
+build steel
 ```
 
-- parse + valide `FlanConfig.muff`
+- parse + valide `steelconf`
 - résout profiles/targets/toolchains/variables
 - **matérialise** une configuration stable dans `target/`
 
@@ -756,11 +756,11 @@ build vitte
 
 ## Layout généré dans `target/`
 
-Par défaut, Flan crée (ou met à jour) une arborescence standard :
+Par défaut, Steel crée (ou met à jour) une arborescence standard :
 
 ```text
 target/
-  flan/
+  steel/
     config.mub
     graph.json
     fingerprints.json
@@ -781,9 +781,9 @@ target/
 
 Notes :
 
-- `target/flan/config.mub` : **binaire universel** de configuration résolue (portable, versionné).
-- `target/flan/graph.json` : export outillable du DAG (CI/IDE).
-- `target/flan/fingerprints.json` : empreintes toolchain/policy pour l’invalidation.
+- `target/steel/config.mub` : **binaire universel** de configuration résolue (portable, versionné).
+- `target/steel/graph.json` : export outillable du DAG (CI/IDE).
+- `target/steel/fingerprints.json` : empreintes toolchain/policy pour l’invalidation.
 
 ---
 
@@ -792,14 +792,14 @@ Notes :
 ### Configuration
 
 ```text
-build flan [flags]
+build steel [flags]
 ```
 
 Flags usuels :
 
 - `-debug` / `-release`
 - `-j <n>` : parallélisme
-- `-D KEY=VALUE` : override sans modifier `FlanConfig.muff`
+- `-D KEY=VALUE` : override sans modifier `steelconf`
 - `-why <ref>` : diagnostic d’invalidation
 - `-graph[=text|dot|json]` : export graphe
 - `-watch` : mode dev
@@ -807,14 +807,14 @@ Flags usuels :
 ### Introspection
 
 ```text
-flan print <scope>
-flan graph [--format <text|dot|json>]
-flan why <ref>
+steel print <scope>
+steel graph [--format <text|dot|json>]
+steel why <ref>
 ```
 
 ---
 
-## Format minimal de `FlanConfig.muff` (aperçu)
+## Format minimal de `steelconf` (aperçu)
 
 ```text
 !muf 4
@@ -856,7 +856,7 @@ flan why <ref>
 
 ## Fichiers
 
-- **`FlanConfig.muff`** : source de configuration (unique).
+- **`steelconf`** : source de configuration (unique).
 - **`target/`** : **racine canonique** de toutes les sorties (config résolue + build + cache + outputs).
 
 ---
@@ -864,16 +864,16 @@ flan why <ref>
 ## Licence
 
 Voir `COPYING`.
-# Flan
+# Steel
 
-![Flan](https://img.shields.io/badge/Flan-config-orange)
+![Steel](https://img.shields.io/badge/Steel-config-orange)
 
-Flan est la couche de configuration **déclarative** du build Vitte.
+Steel est la couche de configuration **déclarative** du build Vitte.
 
-- **Entrée** : un seul fichier à la racine du dépôt : **`FlanConfig.muff`**.
+- **Entrée** : un seul fichier à la racine du dépôt : **`steelconf`**.
 - **Sortie** : un dossier **`target/`** créé à la racine (config résolue + build + cache + outputs).
-- **Contrat universel** : `target/flan/config.mub` (**binaire universel** de configuration résolue).
-- **Consommateur** : **Vitte** lit `target/flan/config.mub` et exécute le build de manière déterministe.
+- **Contrat universel** : `target/steel/config.mub` (**binaire universel** de configuration résolue).
+- **Consommateur** : **Vitte** lit `target/steel/config.mub` et exécute le build de manière déterministe.
 
 ---
 
@@ -882,12 +882,12 @@ Flan est la couche de configuration **déclarative** du build Vitte.
 1) **Configurer (freeze)**
 
 ```text
-build flan
+build steel
 ```
 
-- parse + valide `FlanConfig.muff`
+- parse + valide `steelconf`
 - résout profiles/targets/toolchains/variables
-- matérialise la configuration stable dans `target/flan/config.mub`
+- matérialise la configuration stable dans `target/steel/config.mub`
 
 2) **Construire (build)**
 
@@ -895,7 +895,7 @@ build flan
 build vitte
 ```
 
-- lit `target/flan/config.mub`
+- lit `target/steel/config.mub`
 - exécute le DAG (compile/link/test/package)
 - gère incrémental + cache
 
@@ -905,7 +905,7 @@ build vitte
 
 ```text
 target/
-  flan/
+  steel/
     config.mub
     graph.json
     fingerprints.json
@@ -937,14 +937,14 @@ Notes :
 ### Configuration
 
 ```text
-build flan [flags]
+build steel [flags]
 ```
 
 Flags usuels :
 
 - `-debug` / `-release`
 - `-j <n>` : parallélisme
-- `-D KEY=VALUE` : override sans modifier `FlanConfig.muff`
+- `-D KEY=VALUE` : override sans modifier `steelconf`
 - `-why <ref>` : diagnostic d’invalidation
 - `-graph[=text|dot|json]` : export graphe
 - `-watch` : mode dev
@@ -952,14 +952,14 @@ Flags usuels :
 ### Introspection
 
 ```text
-flan print <scope>
-flan graph [--format <text|dot|json>]
-flan why <ref>
+steel print <scope>
+steel graph [--format <text|dot|json>]
+steel why <ref>
 ```
 
 ---
 
-## Format minimal de `FlanConfig.muff` (aperçu)
+## Format minimal de `steelconf` (aperçu)
 
 ```text
 !muf 4
@@ -1001,9 +1001,9 @@ flan why <ref>
 
 ## Fichiers
 
-- **`FlanConfig.muff`** : source de configuration (unique).
+- **`steelconf`** : source de configuration (unique).
 - **`target/`** : racine canonique de toutes les sorties.
-- **`target/flan/config.mub`** : contrat universel consommé par Vitte.
+- **`target/steel/config.mub`** : contrat universel consommé par Vitte.
 
 ---
 

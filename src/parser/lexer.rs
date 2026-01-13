@@ -75,10 +75,28 @@ impl<'a> Lexer<'a> {
             return self.next_token();
         }
 
-        if is_ident_start(ch) {
-            let mut ident = String::new();
-            ident.push(ch);
+        if ch == '!' {
             self.bump_char();
+            let Some(next) = self.peek_char() else {
+                return Err(LexError {
+                    message: "unexpected '!'".to_string(),
+                    span: Span { start, end: self.pos() },
+                });
+            };
+            if !is_ident_start(next) {
+                return Err(LexError {
+                    message: "expected identifier after '!'".to_string(),
+                    span: Span { start, end: self.pos() },
+                });
+            }
+        }
+
+        if is_ident_start(ch) || ch == '!' {
+            let mut ident = String::new();
+            if ch != '!' {
+                ident.push(ch);
+                self.bump_char();
+            }
             while let Some(c) = self.peek_char() {
                 if is_ident_part(c) {
                     ident.push(c);

@@ -1,6 +1,6 @@
 // src/misc.rs
 //
-// Flan — misc (shared small utilities)
+// Steel — misc (shared small utilities)
 //
 // Purpose:
 // - Centralize tiny, dependency-free helpers used across the codebase.

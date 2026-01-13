@@ -2,7 +2,7 @@
 
 ## Vue d'ensemble
 
-Flan doit supporter :
+Steel doit supporter :
 - **Anciens OS** : Windows XP/Vista, macOS 10.9+, CentOS 6, RHEL 7
 - **Nouveaux OS** : Windows 11, macOS 13+, Ubuntu 22.04+, Fedora 38+
 - **Architectures** : x86_64, ARM64, i686, PowerPC
@@ -269,8 +269,8 @@ required-features = ["testing"]
 // tests/os_compatibility.rs
 #[cfg(test)]
 mod tests {
-    use flan::os::*;
-    use flan::platform::detection::*;
+    use steel::os::*;
+    use steel::platform::detection::*;
 
     #[test]
     fn test_os_detection() {

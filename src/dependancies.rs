@@ -1,7 +1,7 @@
-// /Users/vincent/Documents/Github/flan/src/dependancies.rs
+// /Users/vincent/Documents/Github/steel/src/dependancies.rs
 //! dependancies — dependency graph validation + utilities (std-only)
 //!
-//! This module focuses on *graph-level* invariants used by Flan:
+//! This module focuses on *graph-level* invariants used by Steel:
 //! - cycle detection
 //! - topological ordering (deterministic)
 //! - missing nodes detection

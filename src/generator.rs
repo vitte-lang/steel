@@ -1,6 +1,6 @@
 // src/generator.rs
 //
-// Flan — generator (emit files, response files, manifests, graphs)
+// Steel — generator (emit files, response files, manifests, graphs)
 //
 // Purpose:
 // - Convert internal models (Workspace, Rule, Plan, JobsReport) into artifacts:
@@ -57,7 +57,7 @@ fn io_err(path: &Path, op: &'static str, e: io::Error) -> GenError {
 #[derive(Debug, Clone)]
 pub struct Workspace {
     pub root: PathBuf,
-    pub flanfile: Option<PathBuf>,
+    pub steelfile: Option<PathBuf>,
     pub vars: BTreeMap<String, String>,
     pub tools: BTreeMap<String, Tool>,
     pub rules: BTreeMap<String, Rule>,
@@ -156,7 +156,7 @@ fn quote_rsp(s: &str) -> String {
 
 pub fn gen_dot(ws: &Workspace) -> String {
     let mut out = String::new();
-    out.push_str("digraph flan {\n");
+    out.push_str("digraph steel {\n");
     out.push_str("  rankdir=LR;\n");
     out.push_str("  node [shape=box];\n");
 
@@ -306,8 +306,8 @@ pub fn gen_workspace_json(ws: &Workspace) -> Json {
     let mut obj = BTreeMap::new();
     obj.insert("root".to_string(), Json::Str(norm_path(&ws.root)));
     obj.insert(
-        "flanfile".to_string(),
-        match &ws.flanfile {
+        "steelfile".to_string(),
+        match &ws.steelfile {
             Some(p) => Json::Str(norm_path(p)),
             None => Json::Null,
         },
@@ -407,7 +407,7 @@ mod tests {
     fn dot_emits_graph() {
         let mut ws = Workspace {
             root: PathBuf::from("."),
-            flanfile: None,
+            steelfile: None,
             vars: BTreeMap::new(),
             tools: BTreeMap::new(),
             rules: BTreeMap::new(),
@@ -444,7 +444,7 @@ mod tests {
         );
 
         let dot = gen_dot(&ws);
-        assert!(dot.contains("digraph flan"));
+        assert!(dot.contains("digraph steel"));
         assert!(dot.contains("\"a\" -> \"b\""));
     }
 

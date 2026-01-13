@@ -1,13 +1,13 @@
 // src/remote-cstms.rs
 //
-// Flan — Remote CSTMS (Custom Schemes / Transports)
+// Steel — Remote CSTMS (Custom Schemes / Transports)
 //
 // Purpose:
 // - Provide a small routing layer for "remote" URIs with custom schemes.
 // - Keep call sites stable: they talk to a single RemoteClient, which can resolve:
 //     - http/https   (delegated to another RemoteClient, e.g. remote_stub or real http client)
 //     - file://      (local filesystem reads)
-//     - muf://       (flan pseudo scheme; maps to registry/ref paths)
+//     - muf://       (steel pseudo scheme; maps to registry/ref paths)
 //     - env://       (read from environment variables; useful for CI injection)
 // - Dependency-free, async-friendly without async-trait.
 //
@@ -104,7 +104,7 @@ impl Default for RemoteOptions {
     fn default() -> Self {
         Self {
             offline: true,
-            user_agent: Some("flan-remote-cstms/0".to_string()),
+            user_agent: Some("steel-remote-cstms/0".to_string()),
             default_timeout: Duration::from_secs(30),
         }
     }
@@ -512,7 +512,7 @@ fn is_env_key(s: &str) -> bool {
 
 /* ============================== muf:// handler ============================== */
 
-/// muf:// is a Flan pseudo-scheme for registry-like addressing.
+/// muf:// is a Steel pseudo-scheme for registry-like addressing.
 /// This handler rewrites muf://... into a base URL + path.
 ///
 /// Example:
@@ -739,7 +739,7 @@ impl StubHttpRemote {
         Self {
             opts: RemoteOptions {
                 offline: true,
-                user_agent: Some("flan-http-stub/0".to_string()),
+                user_agent: Some("steel-http-stub/0".to_string()),
                 default_timeout: Duration::from_secs(30),
             },
         }

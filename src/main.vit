@@ -1,8 +1,8 @@
-# main.vit — Flan (Vitte) — MAX
+# main.vit — Steel (Vitte) — MAX
 #
-# CLI entrypoint for Flan:
-# - `build flan` : validate workspace config and emit Flanconfig (.mcf)
-# - `build`  : validate workspace config and emit Flanconfig (.mcf)
+# CLI entrypoint for Steel:
+# - `build steel` : validate workspace config and emit steelconfig.mff + steel.log
+# - `build`  : validate workspace config and emit steelconfig.mff + steel.log
 #
 # This file wires:
 # - argument parsing
@@ -19,15 +19,15 @@
 # - This is "maximum" but still a clean, production-grade CLI skeleton.
 # -----------------------------------------------------------------------------
 
-mod flan/main
+mod steel/main
 
 use std/string
 use std/result
 
-use flan/interface
-use flan/loadapi
-use flan/debug
-use flan/config
+use steel/interface
+use steel/loadapi
+use steel/debug
+use steel/config
 
 export all
 
@@ -46,7 +46,7 @@ const EXIT_FAIL: i32 = 1
 enum CmdKind
   Help
   Version
-  Validate           # build flan (default)
+  Validate           # build steel (default)
   ListTargets
   PrintMcf
   PrintResolved
@@ -87,7 +87,7 @@ fn main(argv: list[str]) -> i32
 
   let rr: result::Result[Cli, str] = parse_cli(argv)
   if result::is_err(rr)
-    eprint("flan: " + result::unwrap_err(rr) + "\n")
+    eprint("steel: " + result::unwrap_err(rr) + "\n")
     eprint(usage_text())
     ret EXIT_USAGE
   .end
@@ -203,13 +203,13 @@ fn cmd_print_mcf(rt: interface::Runtime, cli: Cli) -> i32
   let res: loadapi::LoadApiResult = result::unwrap(rr)
 
   if res.mcf_path == ""
-    eprint("flan: mcf not emitted\n")
+    eprint("steel: mcf not emitted\n")
     ret EXIT_FAIL
   .end
 
   let rr_txt: interface::IoRes[str] = rt.fs.read_text(rt.fs.ctx, res.mcf_path)
   if result::is_err(rr_txt)
-    eprint("flan: cannot read mcf: " + res.mcf_path + "\n")
+    eprint("steel: cannot read mcf: " + res.mcf_path + "\n")
     ret EXIT_FAIL
   .end
   print(result::unwrap(rr_txt))
@@ -263,7 +263,7 @@ fn parse_cli(argv: list[str]) -> result::Result[Cli, str]
   .end
 
   # subcommand style:
-  # flan help|version|validate|list-targets|print-mcf|print-resolved
+  # steel help|version|validate|list-targets|print-mcf|print-resolved
   let head: str = args[0]
   if head == "help" || head == "-h" || head == "--help"
     c.cmd = CmdKind::Help
@@ -443,10 +443,10 @@ fn escape_json(s: str) -> str
 
 fn usage_text() -> str
   let mut out: str = ""
-  out = out + "flan — build configuration validator\n"
+  out = out + "steel — build configuration validator\n"
   out = out + "\n"
   out = out + "USAGE:\n"
-  out = out + "  flan [command] [options]\n"
+  out = out + "  steel [command] [options]\n"
   out = out + "\n"
   out = out + "COMMANDS:\n"
   out = out + "  validate           Validate workspace and emit .mcf (default)\n"
@@ -467,13 +467,13 @@ fn usage_text() -> str
   out = out + "  --json              JSON output\n"
   out = out + "\n"
   out = out + "INTEGRATION:\n"
-  out = out + "  build flan        calls: flan validate\n"
+  out = out + "  build steel        calls: steel validate\n"
   ret out
 .end
 
 fn version_text() -> str
   # static placeholder; real project reads from manifest/version module
-  ret "flan 0.1.0 (vitte)\n"
+  ret "steel 0.1.0 (vitte)\n"
 .end
 
 # -----------------------------------------------------------------------------

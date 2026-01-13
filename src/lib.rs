@@ -1,7 +1,7 @@
-//! Flan: Declarative configuration layer for Vitte build system
+//! Steel: Declarative configuration layer for Vitte build system
 //!
-//! Flan parses, validates, and resolves a workspace configuration (packages, profiles,
-//! toolchains, targets), then generates a stable configuration artifact `Flanconfig.mff`.
+//! Steel parses, validates, and resolves a workspace configuration (packages, profiles,
+//! toolchains, targets), then generates a stable configuration artifact `Steelconfig.mff`.
 //!
 //! # Architecture
 //!
@@ -11,10 +11,10 @@
 //!
 //! # Modules
 //!
-//! - `parser` — Lexical and syntactic analysis of Flan files
+//! - `parser` — Lexical and syntactic analysis of Steel files
 //! - `validator` — Coherence checking and constraint validation
 //! - `resolver` — Profile inheritance, variable interpolation, dependency resolution
-//! - `generator` — Serialization to Flanconfig.mff and exports
+//! - `generator` — Serialization to Steelconfig.mff and exports
 //! - `model` — Core data structures (Workspace, Package, Profile, Target, Toolchain)
 //! - `interface` — Runtime abstraction and CLI interface
 //! - `commands` — CLI command implementations
@@ -23,7 +23,7 @@
 // PARSER MODULE
 // ============================================================================
 
-/// Lexical and syntactic analysis of Flan files
+/// Lexical and syntactic analysis of Steel files
 pub mod parser;
 
 // ============================================================================
@@ -44,7 +44,7 @@ pub mod resolver {
 
 /// Core data structures: Workspace, Package, Profile, Target, Toolchain
 pub mod model {
-    pub use crate::flanint;        // Flan internal API
+    pub use crate::steelint;       // Steel internal API
     pub use crate::def_target_file;  // Target file definitions
     pub use crate::rule;             // Rule model
 }
@@ -71,7 +71,7 @@ pub mod cli {
     pub use crate::interface;        // CLI interface
 }
 
-// Minimal MUF runner (exec tools from FlanConfig.muf)
+// Minimal MUF runner (exec tools from SteelConfig.muf)
 pub mod run_muf;
 
 // ============================================================================
@@ -120,7 +120,7 @@ pub mod platform {
 // ============================================================================
 
 pub use crate::loadapi::*;     // Main public API (parse, resolve, emit)
-pub use crate::build_muf::*;   // Build flan command
+pub use crate::build_muf::*;   // Build steel command
 
 // Leaf modules.
 pub mod arscan;
@@ -146,8 +146,8 @@ pub mod job;
 pub mod load;
 pub mod loadapi;
 pub mod misc;
-pub mod flancustom;
-pub mod flanint;
+pub mod steelcustom;
+pub mod steelint;
 pub mod os;
 pub mod output;
 pub mod posixos;
@@ -180,4 +180,4 @@ pub use compiler::Compiler;
 pub use validator::Validator;
 pub use builder::Builder;
 pub use generator::Generator;
-pub use error::FlanError;
+pub use error::SteelError;

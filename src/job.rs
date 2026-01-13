@@ -1,6 +1,6 @@
 // src/jobs.rs
 //
-// Flan — jobs (scheduler, execution plan, worker pool)
+// Steel — jobs (scheduler, execution plan, worker pool)
 //
 // Purpose:
 // - Execute build "jobs" produced by the planner (remake/graph).

@@ -1,6 +1,6 @@
 // src/strcache.rs
 //
-// Flan — string interning / string cache
+// Steel — string interning / string cache
 //
 // Purpose:
 // - Provide a fast, deterministic string cache for repeated identifiers/paths/keys.
@@ -26,7 +26,7 @@
 //
 // Notes:
 // - This is not a perfect "string interner" for long-lived global state. It's intended as
-//   a component inside Flan planning/execution where cache lifetime is bounded.
+//   a component inside Steel planning/execution where cache lifetime is bounded.
 
 #![allow(dead_code)]
 

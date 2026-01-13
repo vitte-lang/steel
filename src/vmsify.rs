@@ -1,6 +1,6 @@
 //! vmsify.rs
 //!
-//! “VMSify” — transformation d’artefacts Flan (manifest / config) en jobs VMS.
+//! “VMSify” — transformation d’artefacts Steel (manifest / config) en jobs VMS.
 //!
 //! Objectifs:
 //! - API pure (pas de FS obligatoire), mais support FS si fourni
@@ -13,7 +13,7 @@
 //!
 //! Intégration attendue:
 //! - config.rs / default.rs: lecture de .mff
-//! - flan commands: “build flan” => vmsify(config) => runner.run2(graph, targets)
+//! - steel commands: “build steel” => vmsify(config) => runner.run2(graph, targets)
 //!
 //! NOTE: ce module définit des “IR” minimaux pour rester autonome.
 //! Dans ton repo, tu peux remplacer ces IR par tes structs réelles de config.
@@ -81,7 +81,7 @@ impl std::error::Error for VmsifyError {}
 
 /// “IR” minimal d’entrée: configuration globale.
 #[derive(Debug, Clone)]
-pub struct FlanConfigIR {
+pub struct SteelconfIr {
     pub workspace_root: PathBuf,
     pub build_dir: PathBuf,
     pub profiles: BTreeMap<String, ProfileIR>,
@@ -90,7 +90,7 @@ pub struct FlanConfigIR {
     pub targets: BTreeMap<String, TargetIR>,
 }
 
-impl FlanConfigIR {
+impl SteelconfIr {
     pub fn new(workspace_root: impl Into<PathBuf>) -> Self {
         let root = workspace_root.into();
         Self {
@@ -191,7 +191,7 @@ impl Vmsified {
 
 /// Convertit toute la config en JobGraph.
 /// - Retourne mapping target->job.
-pub fn vmsify_config(cfg: &FlanConfigIR, ctx: &RunContext, opts: &VmsifyOptions) -> Result<Vmsified, VmsifyError> {
+pub fn vmsify_config(cfg: &SteelconfIr, ctx: &RunContext, opts: &VmsifyOptions) -> Result<Vmsified, VmsifyError> {
     let mut out = Vmsified::empty();
 
     // bootstrap
@@ -206,9 +206,9 @@ pub fn vmsify_config(cfg: &FlanConfigIR, ctx: &RunContext, opts: &VmsifyOptions)
     // profile env
     let profile_env = selected_profile_env(cfg)?;
 
-    // targets Flan
+    // targets Steel
     for (name, t) in &cfg.targets {
-        let jid = JobId::new(format!("flan:{}", name));
+        let jid = JobId::new(format!("steel:{}", name));
         if out.graph.jobs.contains_key(&jid) {
             return Err(VmsifyError::DuplicateJob(jid.0));
         }
@@ -225,14 +225,14 @@ pub fn vmsify_config(cfg: &FlanConfigIR, ctx: &RunContext, opts: &VmsifyOptions)
  * ===================== */
 
 fn target_to_job(
-    cfg: &FlanConfigIR,
+    cfg: &SteelconfIr,
     opts: &VmsifyOptions,
     profile_env: &BTreeMap<String, String>,
     name: &str,
     t: &TargetIR,
     bootstrap_jobs: &[JobId],
 ) -> Result<Job, VmsifyError> {
-    let jid = JobId::new(format!("flan:{}", name));
+    let jid = JobId::new(format!("steel:{}", name));
     let mut job = Job::new(jid.clone(), format!("Target: {}", t.name));
     job.allow_failure = t.allow_failure;
 
@@ -241,9 +241,9 @@ fn target_to_job(
         job.deps.insert(b.clone());
     }
     for d in &t.deps {
-        // On suppose que les deps sont des targets Flan par défaut.
+        // On suppose que les deps sont des targets Steel par défaut.
         // Si tu veux d'autres namespaces, fais un resolver plus riche.
-        job.deps.insert(JobId::new(format!("flan:{}", d)));
+        job.deps.insert(JobId::new(format!("steel:{}", d)));
     }
 
     // cwd
@@ -265,7 +265,7 @@ fn target_to_job(
 
     // tags
     if opts.add_tags {
-        job.tags.insert("flan".to_string());
+        job.tags.insert("steel".to_string());
         for tag in &t.tags {
             job.tags.insert(tag.clone());
         }
@@ -292,7 +292,7 @@ fn target_to_job(
 }
 
 fn step_to_jobstep(
-    cfg: &FlanConfigIR,
+    cfg: &SteelconfIr,
     opts: &VmsifyOptions,
     profile_env: &BTreeMap<String, String>,
     t: &TargetIR,
@@ -405,7 +405,7 @@ fn step_to_jobstep(
  * ===================== */
 
 fn make_bootstrap_jobs(
-    cfg: &FlanConfigIR,
+    cfg: &SteelconfIr,
     ctx: &RunContext,
     opts: &VmsifyOptions,
 ) -> Result<Vec<Job>, VmsifyError> {
@@ -441,7 +441,7 @@ fn make_bootstrap_jobs(
  * Path resolution
  * ===================== */
 
-fn resolve_vpath_to_host(cfg: &FlanConfigIR, p: &VPath) -> Result<PathBuf, VmsifyError> {
+fn resolve_vpath_to_host(cfg: &SteelconfIr, p: &VPath) -> Result<PathBuf, VmsifyError> {
     // Règle: root = workspace_root ; cwd = workspace_root
     // Dans un modèle “capsule/store”, root pourrait être store_root.
     let root = cfg.workspace_root.as_path();
@@ -453,7 +453,7 @@ fn resolve_vpath_to_host(cfg: &FlanConfigIR, p: &VPath) -> Result<PathBuf, Vmsif
  * Profile selection
  * ===================== */
 
-fn selected_profile_env(cfg: &FlanConfigIR) -> Result<BTreeMap<String, String>, VmsifyError> {
+fn selected_profile_env(cfg: &SteelconfIr) -> Result<BTreeMap<String, String>, VmsifyError> {
     let mut env = BTreeMap::new();
     let sel = match &cfg.selected_profile {
         Some(s) => s.clone(),
@@ -512,11 +512,11 @@ mod tests {
 
     #[test]
     fn vmsify_basic_target() {
-        let mut cfg = FlanConfigIR::new(".");
+        let mut cfg = SteelconfIr::new(".");
         cfg.targets.insert(
-            "flan".to_string(),
+            "steel".to_string(),
             TargetIR {
-                name: "flan".to_string(),
+                name: "steel".to_string(),
                 deps: vec![],
                 steps: vec![TargetStepIR::Log {
                     level: LogLevel::Info,
@@ -534,14 +534,14 @@ mod tests {
         let v = vmsify_config(&cfg, &ctx, &opts).unwrap();
 
         assert!(!v.graph.jobs.is_empty());
-        assert!(v.targets.contains_key("flan"));
-        let jid = v.targets.get("flan").unwrap();
+        assert!(v.targets.contains_key("steel"));
+        let jid = v.targets.get("steel").unwrap();
         assert!(v.graph.jobs.contains_key(jid));
     }
 
     #[test]
     fn vmsify_and_run_dry() {
-        let mut cfg = FlanConfigIR::new(".");
+        let mut cfg = SteelconfIr::new(".");
         cfg.targets.insert(
             "a".to_string(),
             TargetIR {
@@ -562,7 +562,7 @@ mod tests {
         let opts = VmsifyOptions::default();
         let v = vmsify_config(&cfg, &ctx, &opts).unwrap();
 
-        let jid = JobId::new("flan:a".to_string());
+        let jid = JobId::new("steel:a".to_string());
         assert!(v.graph.jobs.contains_key(&jid));
     }
 
