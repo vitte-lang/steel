@@ -3,7 +3,7 @@ import sys
 
 from app.state import AppState
 from core.data import seed_catalog
-from coreic import status_line
+from core.logic import status_line
 
 
 def main() -> int:

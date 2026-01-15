@@ -311,6 +311,12 @@ pub fn parse_target_file_str(input: &str, opts: &ParseOptions) -> Result<TargetF
             "args" => {
                 t.args.extend(split_list(value));
             }
+            "tool" => {
+                t.meta.insert("tool".to_string(), value.to_string());
+            }
+            "cmd" => {
+                t.meta.insert("cmd".to_string(), value.to_string());
+            }
             "defines" => {
                 for kv in split_list(value) {
                     let (k, v) = split_kv(&kv).ok_or_else(|| TargetFileError::Parse {

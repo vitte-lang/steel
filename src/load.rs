@@ -34,7 +34,7 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use crate::parser::ast::{File as MufFile, Line, LineTokenKind, Stmt, Value};
-use crate::parser::parse_muf;
+use crate::parser::{parse_muf, ParseError};
 
 /* ============================== errors/diagnostics ============================== */
 
@@ -467,9 +467,42 @@ fn strip_utf8_bom(bytes: &[u8]) -> &[u8] {
 fn parse_steelfile(path: &Path, text: &str) -> Result<WorkspaceFragment, LoadError> {
     let ast = parse_muf(text).map_err(|e| LoadError::Parse {
         path: path.to_path_buf(),
-        message: format!("{} at {}:{}", e.message, e.span.start.line, e.span.start.col),
+        message: format_parse_error(text, &e),
     })?;
     lower_muf_ast(path, &ast)
+}
+
+fn format_parse_error(text: &str, err: &ParseError) -> String {
+    let line_no = err.span.start.line;
+    let col_no = err.span.start.col;
+    let line = text.lines().nth(line_no.saturating_sub(1)).unwrap_or("");
+    let display_line = line.replace('\t', "    ");
+    let caret_pos = visual_col(line, col_no).saturating_sub(1);
+    let mut caret = String::new();
+    caret.push_str(&" ".repeat(caret_pos));
+    caret.push('^');
+    format!(
+        "{}\n  --> {}:{}\n   |\n{:4} | {}\n   | {}\nhelp: see syntax.md for MUF syntax",
+        err.message, line_no, col_no, line_no, display_line, caret
+    )
+}
+
+fn visual_col(line: &str, col_no: usize) -> usize {
+    if col_no <= 1 {
+        return 1;
+    }
+    let mut col = 1;
+    for ch in line.chars() {
+        if col >= col_no {
+            break;
+        }
+        if ch == '\t' {
+            col += 4;
+        } else {
+            col += 1;
+        }
+    }
+    col
 }
 
 fn lower_muf_ast(path: &Path, ast: &MufFile) -> Result<WorkspaceFragment, LoadError> {

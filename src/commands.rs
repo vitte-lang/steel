@@ -8,8 +8,9 @@
 //! Supported commands (current contract):
 //! - `help` / `--help`
 //! - `version`
-//! - `build steel [flags...]`  (Configuration phase; emits steelconfig.mff + steel.log)
-//! - `resolve [flags...]`       (alias of `build steel`)
+//! - `build [flags...]`         (Configuration phase; emits steelconfig.mff + steel.log)
+//! - `build steel [flags...]`   (legacy alias)
+//! - `resolve [flags...]`       (alias of `build`)
 //! - `check [flags...]`         (best-effort validate; emits then deletes unless strict)
 //! - `print [flags...]`         (emits + prints the resolved config)
 //! - `graph`                    (stub; reserved for DOT/text graph export)
@@ -24,7 +25,9 @@ use chrono::Utc;
 
 use crate::build_muf;
 use crate::build_muf::BuildMufError;
+use crate::ninja;
 use crate::run_muf;
+use crate::target_file;
 
 pub const CLI_NAME: &str = "steel";
 
@@ -57,6 +60,7 @@ pub enum Cmd {
     Check(build_muf::BuildMufOptions),
     Print(build_muf::BuildMufOptions),
     Run(run_muf::RunOptions),
+    Ninja(NinjaOptions),
 
     Doctor(DoctorOptions),
     ToolchainDoctor(ToolchainDoctorOptions),
@@ -84,6 +88,15 @@ pub enum GraphFormat {
 pub struct FmtOptions {
     pub file: Option<PathBuf>,
     pub check_only: bool,
+    pub verbose: bool,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct NinjaOptions {
+    pub root_dir: Option<PathBuf>,
+    pub targets_path: Option<PathBuf>,
+    pub emit_path: Option<PathBuf>,
+    pub print: bool,
     pub verbose: bool,
 }
 
@@ -140,7 +153,9 @@ pub fn dispatch(args: &[String]) -> Result<()> {
 /// `args` is expected to be the full argv (including program name at index 0).
 pub fn parse_command(args: &[String]) -> Result<Cmd> {
     if args.len() <= 1 {
-        return Err(CommandError::Usage(usage_text().to_string()));
+        let mut o = build_muf::BuildMufOptions::default();
+        o.steel_file = Some(PathBuf::from("steelconf"));
+        return Ok(Cmd::BuildFlan(o));
     }
 
     let sub = args[1].as_str();
@@ -180,41 +195,44 @@ pub fn parse_command(args: &[String]) -> Result<Cmd> {
             let o = parse_run_args(&args[2..])?;
             Ok(Cmd::Run(o))
         }
+        "ninja" => parse_ninja(&args[2..]),
         "doctor" => parse_doctor(&args[2..]),
         "toolchain" => parse_toolchain(&args[2..]),
         "cache" => parse_cache(&args[2..]),
         // stubs reserved for future
         "graph" => parse_graph(&args[2..]),
         "fmt" => parse_fmt(&args[2..]),
-        other => Err(CommandError::Usage(usage_unknown(other))),
+        other => Err(usage_unknown(other)),
     }
 }
 
 fn parse_build(rest: &[String]) -> Result<Cmd> {
     if matches!(rest.first().map(String::as_str), Some("-h" | "--help" | "help")) {
-        return Err(CommandError::Usage(usage_text().to_string()));
+        return Err(usage_err("U005", "build help", usage_text()));
     }
     if rest.is_empty() {
-        // `build` alone => help
-        return Err(CommandError::Usage(usage_text().to_string()));
+        return Err(CommandError::Usage(build_missing_target_msg()));
     }
 
     let tool = rest[0].as_str();
     match tool {
-        "steel" => {
-            let o = parse_build_args(&rest[1..])?;
+        "steelconf" => {
+            if rest.len() > 1 {
+                return Err(CommandError::Usage(build_unknown_target_msg("flags not allowed")));
+            }
+            let mut args = Vec::with_capacity(2);
+            args.push("--file".to_string());
+            args.push(rest[0].clone());
+            let o = parse_build_args(&args)?;
             Ok(Cmd::BuildFlan(o))
         }
-        other => Err(CommandError::Usage(format!(
-            "unknown build target: {other}\n\n{}",
-            usage_text()
-        ))),
+        other => Err(CommandError::Usage(build_unknown_target_msg(other))),
     }
 }
 
 fn parse_toolchain(rest: &[String]) -> Result<Cmd> {
     if rest.is_empty() || matches!(rest.first().map(String::as_str), Some("-h" | "--help" | "help")) {
-        return Err(CommandError::Usage(toolchain_help().to_string()));
+        return Err(usage_err("U005", "toolchain help", toolchain_help()));
     }
 
     match rest[0].as_str() {
@@ -225,21 +243,23 @@ fn parse_toolchain(rest: &[String]) -> Result<Cmd> {
                 match a.as_str() {
                     "--json" => o.json = true,
                     "-v" | "--verbose" => o.verbose = true,
-                    "-h" | "--help" => return Err(CommandError::Usage(toolchain_help().to_string())),
+                    "-h" | "--help" => return Err(usage_err("U005", "toolchain help", toolchain_help())),
                     other => {
-                        return Err(CommandError::Usage(format!(
-                            "unknown flag: {other}\n\n{}",
-                            toolchain_help()
-                        )));
+                        return Err(usage_err(
+                            "U002",
+                            format!("unknown flag: {other}"),
+                            toolchain_help(),
+                        ));
                     }
                 }
             }
             Ok(Cmd::ToolchainDoctor(o))
         }
-        other => Err(CommandError::Usage(format!(
-            "unknown toolchain command: {other}\n\n{}",
-            toolchain_help()
-        ))),
+        other => Err(usage_err(
+            "U002",
+            format!("unknown toolchain command: {other}"),
+            toolchain_help(),
+        )),
     }
 }
 
@@ -250,28 +270,30 @@ fn parse_graph(rest: &[String]) -> Result<Cmd> {
     while let Some(a) = it.next() {
         match a.as_str() {
             "--root" => {
-                let v = it.next().ok_or_else(|| {
-                    CommandError::Usage("--root expects a path\n\n".to_string() + usage_text())
-                })?;
+                let v = it
+                    .next()
+                    .ok_or_else(|| usage_err("U002", "--root expects a path", usage_text()))?;
                 o.root_dir = Some(PathBuf::from(v));
             }
             "--dot" => o.format = GraphFormat::Dot,
             "--text" => o.format = GraphFormat::Text,
             "-v" | "--verbose" => o.verbose = true,
-            "-h" | "--help" => return Err(CommandError::Usage(graph_help().to_string())),
+            "-h" | "--help" => return Err(usage_err("U005", "graph help", graph_help())),
             x if x.starts_with('-') => {
-                return Err(CommandError::Usage(format!(
-                    "unknown flag: {x}\n\n{}",
-                    graph_help()
-                )))
+                return Err(usage_err(
+                    "U002",
+                    format!("unknown flag: {x}"),
+                    graph_help(),
+                ))
             }
             other => {
                 // positional root (single)
                 if o.root_dir.is_some() {
-                    return Err(CommandError::Usage(format!(
-                        "unexpected argument: {other}\n\n{}",
-                        graph_help()
-                    )));
+                    return Err(usage_err(
+                        "U002",
+                        format!("unexpected argument: {other}"),
+                        graph_help(),
+                    ));
                 }
                 o.root_dir = Some(PathBuf::from(other));
             }
@@ -288,23 +310,24 @@ fn parse_fmt(rest: &[String]) -> Result<Cmd> {
     while let Some(a) = it.next() {
         match a.as_str() {
             "--file" => {
-                let v = it.next().ok_or_else(|| {
-                    CommandError::Usage("--file expects a path\n\n".to_string() + fmt_help())
-                })?;
+                let v = it
+                    .next()
+                    .ok_or_else(|| usage_err("U002", "--file expects a path", fmt_help()))?;
                 o.file = Some(PathBuf::from(v));
             }
             "--check" => o.check_only = true,
             "-v" | "--verbose" => o.verbose = true,
-            "-h" | "--help" => return Err(CommandError::Usage(fmt_help().to_string())),
+            "-h" | "--help" => return Err(usage_err("U005", "fmt help", fmt_help())),
             x if x.starts_with('-') => {
-                return Err(CommandError::Usage(format!("unknown flag: {x}\n\n{}", fmt_help())))
+                return Err(usage_err("U002", format!("unknown flag: {x}"), fmt_help()))
             }
             other => {
                 if o.file.is_some() {
-                    return Err(CommandError::Usage(format!(
-                        "unexpected argument: {other}\n\n{}",
-                        fmt_help()
-                    )));
+                    return Err(usage_err(
+                        "U002",
+                        format!("unexpected argument: {other}"),
+                        fmt_help(),
+                    ));
                 }
                 o.file = Some(PathBuf::from(other));
             }
@@ -321,25 +344,27 @@ fn parse_doctor(rest: &[String]) -> Result<Cmd> {
     while let Some(a) = it.next() {
         match a.as_str() {
             "--root" => {
-                let v = it.next().ok_or_else(|| {
-                    CommandError::Usage("--root expects a path\n\n".to_string() + doctor_help())
-                })?;
+                let v = it
+                    .next()
+                    .ok_or_else(|| usage_err("U002", "--root expects a path", doctor_help()))?;
                 o.root_dir = Some(PathBuf::from(v));
             }
             "--json" => o.json = true,
             "-v" | "--verbose" => o.verbose = true,
-            "-h" | "--help" => return Err(CommandError::Usage(doctor_help().to_string())),
+            "-h" | "--help" => return Err(usage_err("U005", "doctor help", doctor_help())),
             x if x.starts_with('-') => {
-                return Err(CommandError::Usage(format!(
-                    "unknown flag: {x}\n\n{}",
-                    doctor_help()
-                )))
+                return Err(usage_err(
+                    "U002",
+                    format!("unknown flag: {x}"),
+                    doctor_help(),
+                ))
             }
             other => {
-                return Err(CommandError::Usage(format!(
-                    "unexpected argument: {other}\n\n{}",
-                    doctor_help()
-                )))
+                return Err(usage_err(
+                    "U002",
+                    format!("unexpected argument: {other}"),
+                    doctor_help(),
+                ))
             }
         }
     }
@@ -349,17 +374,18 @@ fn parse_doctor(rest: &[String]) -> Result<Cmd> {
 
 fn parse_cache(rest: &[String]) -> Result<Cmd> {
     if rest.is_empty() || matches!(rest.first().map(String::as_str), Some("-h" | "--help" | "help")) {
-        return Err(CommandError::Usage(cache_help().to_string()));
+        return Err(usage_err("U005", "cache help", cache_help()));
     }
 
     let action = match rest[0].as_str() {
         "status" => CacheAction::Status,
         "clear" => CacheAction::Clear,
         other => {
-            return Err(CommandError::Usage(format!(
-                "unknown cache action: {other}\n\n{}",
-                cache_help()
-            )))
+            return Err(usage_err(
+                "U002",
+                format!("unknown cache action: {other}"),
+                cache_help(),
+            ))
         }
     };
 
@@ -374,25 +400,27 @@ fn parse_cache(rest: &[String]) -> Result<Cmd> {
     while let Some(a) = it.next() {
         match a.as_str() {
             "--root" => {
-                let v = it.next().ok_or_else(|| {
-                    CommandError::Usage("--root expects a path\n\n".to_string() + cache_help())
-                })?;
+                let v = it
+                    .next()
+                    .ok_or_else(|| usage_err("U002", "--root expects a path", cache_help()))?;
                 o.root_dir = Some(PathBuf::from(v));
             }
             "--json" => o.json = true,
             "-v" | "--verbose" => o.verbose = true,
-            "-h" | "--help" => return Err(CommandError::Usage(cache_help().to_string())),
+            "-h" | "--help" => return Err(usage_err("U005", "cache help", cache_help())),
             x if x.starts_with('-') => {
-                return Err(CommandError::Usage(format!(
-                    "unknown flag: {x}\n\n{}",
-                    cache_help()
-                )))
+                return Err(usage_err(
+                    "U002",
+                    format!("unknown flag: {x}"),
+                    cache_help(),
+                ))
             }
             other => {
-                return Err(CommandError::Usage(format!(
-                    "unexpected argument: {other}\n\n{}",
-                    cache_help()
-                )))
+                return Err(usage_err(
+                    "U002",
+                    format!("unexpected argument: {other}"),
+                    cache_help(),
+                ))
             }
         }
     }
@@ -412,34 +440,34 @@ fn parse_run_args(rest: &[String]) -> Result<run_muf::RunOptions> {
     while let Some(a) = it.next() {
         match a.as_str() {
             "--root" => {
-                let v = it.next().ok_or_else(|| {
-                    CommandError::Usage("--root expects a path\n\n".to_string() + run_help())
-                })?;
+                let v = it
+                    .next()
+                    .ok_or_else(|| usage_err("U002", "--root expects a path", run_help()))?;
                 o.root_dir = PathBuf::from(v);
                 positional_root_set = true;
             }
             "--file" => {
-                let v = it.next().ok_or_else(|| {
-                    CommandError::Usage("--file expects a path\n\n".to_string() + run_help())
-                })?;
+                let v = it
+                    .next()
+                    .ok_or_else(|| usage_err("U002", "--file expects a path", run_help()))?;
                 o.steel_file = Some(PathBuf::from(v));
             }
             "--profile" => {
-                let v = it.next().ok_or_else(|| {
-                    CommandError::Usage("--profile expects a name\n\n".to_string() + run_help())
-                })?;
+                let v = it
+                    .next()
+                    .ok_or_else(|| usage_err("U002", "--profile expects a name", run_help()))?;
                 o.profile = Some(v.to_string());
             }
             "--toolchain" => {
-                let v = it.next().ok_or_else(|| {
-                    CommandError::Usage("--toolchain expects a path\n\n".to_string() + run_help())
-                })?;
+                let v = it
+                    .next()
+                    .ok_or_else(|| usage_err("U002", "--toolchain expects a path", run_help()))?;
                 o.toolchain_dir = Some(PathBuf::from(v));
             }
             "--bake" => {
-                let v = it.next().ok_or_else(|| {
-                    CommandError::Usage("--bake expects a name\n\n".to_string() + run_help())
-                })?;
+                let v = it
+                    .next()
+                    .ok_or_else(|| usage_err("U002", "--bake expects a name", run_help()))?;
                 o.bakes.push(v.to_string());
             }
             "--all" => o.run_all = true,
@@ -447,38 +475,38 @@ fn parse_run_args(rest: &[String]) -> Result<run_muf::RunOptions> {
             "--print" => o.dry_run = true,
             "-v" | "--verbose" => o.verbose = true,
             "--log" => {
-                let v = it.next().ok_or_else(|| {
-                    CommandError::Usage("--log expects a path\n\n".to_string() + run_help())
-                })?;
+                let v = it
+                    .next()
+                    .ok_or_else(|| usage_err("U002", "--log expects a path", run_help()))?;
                 o.log_path = Some(PathBuf::from(v));
             }
             "--log-mode" => {
-                let v = it.next().ok_or_else(|| {
-                    CommandError::Usage("--log-mode expects append|truncate\n\n".to_string() + run_help())
-                })?;
+                let v = it
+                    .next()
+                    .ok_or_else(|| usage_err("U002", "--log-mode expects append|truncate", run_help()))?;
                 o.log_mode = match v.as_str() {
                     "append" => run_muf::LogMode::Append,
                     "truncate" => run_muf::LogMode::Truncate,
                     _ => {
-                        return Err(CommandError::Usage(
-                            "invalid --log-mode (use append|truncate)\n\n".to_string() + run_help(),
+                        return Err(usage_err(
+                            "U002",
+                            "invalid --log-mode (use append|truncate)",
+                            run_help(),
                         ))
                     }
                 };
             }
-            "-h" | "--help" => return Err(CommandError::Usage(run_help().to_string())),
+            "-h" | "--help" => return Err(usage_err("U005", "run help", run_help())),
             x if x.starts_with('-') => {
-                return Err(CommandError::Usage(format!(
-                    "unknown flag: {x}\n\n{}",
-                    run_help()
-                )))
+                return Err(usage_err("U002", format!("unknown flag: {x}"), run_help()))
             }
             other => {
                 if positional_root_set {
-                    return Err(CommandError::Usage(format!(
-                        "unexpected argument: {other}\n\n{}",
-                        run_help()
-                    )));
+                    return Err(usage_err(
+                        "U002",
+                        format!("unexpected argument: {other}"),
+                        run_help(),
+                    ));
                 }
                 o.root_dir = PathBuf::from(other);
                 positional_root_set = true;
@@ -492,20 +520,35 @@ fn parse_run_args(rest: &[String]) -> Result<run_muf::RunOptions> {
 fn map_build_error(err: BuildMufError) -> CommandError {
     match err {
         BuildMufError::Arg { msg } => {
-            if msg.contains("build steel —") {
-                CommandError::Usage(msg)
+            if msg.contains("build —") {
+                CommandError::Usage(format_usage("U002", "invalid arguments", msg.as_str()))
             } else {
-                CommandError::Usage(format!(
-                    "{}\n\n{}",
-                    err_msg("U002", msg),
-                    build_muf::help_text()
-                ))
+                usage_err("U002", msg, build_muf::help_text())
             }
         }
         other => CommandError::Failure {
             code: 1,
             msg: err_msg("E001", other.to_string()),
         },
+    }
+}
+
+fn map_build_error_with_context(
+    err: BuildMufError,
+    root: &Path,
+    file: Option<&Path>,
+) -> CommandError {
+    let ctx = format_context(root, file);
+    match err {
+        BuildMufError::Validate { msg } => CommandError::Failure {
+            code: 1,
+            msg: format!("{}\n{}", err_msg("V001", format!("validate: {msg}")), ctx),
+        },
+        BuildMufError::Io { .. } => CommandError::Failure {
+            code: 1,
+            msg: format!("{}\n{}", err_msg("IO01", format!("validate: {}", err)), ctx),
+        },
+        other => map_build_error(other),
     }
 }
 
@@ -528,6 +571,7 @@ pub fn execute(cmd: Cmd) -> Result<()> {
             exec_build_steel(o)
         }
         Cmd::Run(o) => exec_run_muf(o),
+        Cmd::Ninja(o) => exec_ninja(o),
         Cmd::Doctor(o) => exec_doctor(o),
         Cmd::ToolchainDoctor(o) => exec_toolchain_doctor(o),
         Cmd::Cache(o) => exec_cache(o),
@@ -551,9 +595,9 @@ pub fn execute(cmd: Cmd) -> Result<()> {
             o.emit_path = Some(check_emit.clone());
             o.print = false;
 
-            let _cfg = build_muf::run(&o).map_err(|e| CommandError::Failure {
-                code: 1,
-                msg: err_msg("E001", e.to_string()),
+            let file = resolve_file_for_context(&root, o.steel_file.as_deref());
+            let _cfg = build_muf::run(&o).map_err(|e| {
+                map_build_error_with_context(e, &root, file.as_deref())
             })?;
 
             match fs::remove_file(&check_emit) {
@@ -563,11 +607,11 @@ pub fn execute(cmd: Cmd) -> Result<()> {
                         Err(CommandError::Failure {
                             code: 1,
                             msg: err_msg(
-                                "E001",
+                                "IO01",
                                 format!(
-                                    "check succeeded but could not remove {}: {err}",
+                                    "cleanup: could not remove {}: {err}",
                                     check_emit.display()
-                                ),
+                                )
                             ),
                         })
                     } else {
@@ -589,6 +633,7 @@ fn exec_build_steel(o: build_muf::BuildMufOptions) -> Result<()> {
     } else {
         o.root_dir.clone()
     };
+    let file = resolve_file_for_context(&root, o.steel_file.as_deref());
     let log_path = build_log_path(&root);
     let emit_path = resolve_emit_path(&root, &o);
 
@@ -600,7 +645,7 @@ fn exec_build_steel(o: build_muf::BuildMufOptions) -> Result<()> {
         Err(e) => {
             let msg = e.to_string();
             let _ = write_build_log(&log_path, false, &msg, emit_path.as_deref());
-            Err(map_build_error(e))
+            Err(map_build_error_with_context(e, &root, file.as_deref()))
         }
     }
 }
@@ -642,7 +687,7 @@ fn format_build_log(ok: bool, message: &str, emit_path: Option<&Path>) -> String
     out.push_str("mff 1\n\n");
     out.push_str("build\n");
     out.push_str(&format!("  tool \"{}\"\n", escape_mff(CLI_NAME)));
-    out.push_str("  command \"build steel\"\n");
+    out.push_str("  command \"steel\"\n");
     out.push_str(&format!("  ts_iso \"{}\"\n", escape_mff(&Utc::now().to_rfc3339()))); 
     out.push_str(&format!("  ok {}\n", if ok { "true" } else { "false" }));
     out.push_str(&format!("  message \"{}\"\n", escape_mff(message)));
@@ -676,7 +721,13 @@ fn escape_mff(s: &str) -> String {
 }
 
 fn exec_run_muf(o: run_muf::RunOptions) -> Result<()> {
-    run_muf::run(&o).map_err(|e| map_run_error(e))?;
+    let root = if o.root_dir.as_os_str().is_empty() {
+        env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
+    } else {
+        o.root_dir.clone()
+    };
+    let file = resolve_file_for_context(&root, o.steel_file.as_deref());
+    run_muf::run(&o).map_err(|e| map_run_error(e, &root, file.as_deref()))?;
     println!("Success Build");
     Ok(())
 }
@@ -722,15 +773,47 @@ fn version_string() -> String {
     format!("{name} {v}")
 }
 
-fn usage_unknown(cmd: &str) -> String {
-    err_msg(
+fn usage_unknown(cmd: &str) -> CommandError {
+    usage_err(
         "U001",
-        format!("unknown command: {cmd}. Run `steel -help` for the list of commands."),
+        format!("unknown command: {cmd}."),
+        "Run `steel --help` for the list of commands.",
     )
 }
 
 pub fn usage_text() -> &'static str {
-    ""
+    "steel <command> [options]\nRun `steel --help` for the list of commands."
+}
+
+fn build_missing_target_msg() -> String {
+    format_usage(
+        "U003",
+        "missing build target: expected `steelconf`.",
+        "steel build steelconf",
+    )
+}
+
+fn build_unknown_target_msg(target: &str) -> String {
+    format_usage(
+        "U004",
+        format!("unknown build target: {target}. Expected `steelconf` only."),
+        "steel build steelconf",
+    )
+}
+
+fn format_usage(code: &str, msg: impl Into<String>, help: &str) -> String {
+    let mut out = err_msg(code, msg);
+    let h = help.trim();
+    if !h.is_empty() {
+        out.push('\n');
+        out.push_str("help: ");
+        out.push_str(h);
+    }
+    out
+}
+
+fn usage_err(code: &str, msg: impl Into<String>, help: &str) -> CommandError {
+    CommandError::Usage(format_usage(code, msg, help))
 }
 
 fn welcome_text() -> &'static str {
@@ -773,6 +856,20 @@ FLAGS:
   --file <path>   steelconf path (default: steelconf)
   --check         Check-only mode
   -v, --verbose   Verbose output"
+}
+
+fn ninja_help() -> &'static str {
+    "steel ninja — Generate build.ninja from a target file
+
+USAGE:
+  steel ninja [--root <path>] [--targets <path>] [--emit <path>] [--print] [-v]
+
+FLAGS:
+  --root <path>      Workspace root (default: cwd)
+  --targets <path>   Target file (default: <root>/targets.steel)
+  --emit <path>      Output build.ninja path (default: <root>/build.ninja)
+  --print            Also print to stdout
+  -v, --verbose      Verbose output"
 }
 
 fn run_help() -> &'static str {
@@ -834,23 +931,142 @@ fn err_msg(code: &str, msg: impl Into<String>) -> String {
     format!("error[{code}]: {}", msg.into())
 }
 
-fn map_run_error(err: run_muf::RunError) -> CommandError {
+fn parse_ninja(rest: &[String]) -> Result<Cmd> {
+    if matches!(rest.first().map(String::as_str), Some("-h" | "--help" | "help")) {
+        return Err(usage_err("U005", "ninja help", ninja_help()));
+    }
+
+    let mut o = NinjaOptions::default();
+    let mut it = rest.iter().peekable();
+    while let Some(a) = it.next() {
+        match a.as_str() {
+            "--root" => {
+                let v = it
+                    .next()
+                    .ok_or_else(|| usage_err("U002", "--root expects a path", ninja_help()))?;
+                o.root_dir = Some(PathBuf::from(v));
+            }
+            "--targets" => {
+                let v = it
+                    .next()
+                    .ok_or_else(|| usage_err("U002", "--targets expects a path", ninja_help()))?;
+                o.targets_path = Some(PathBuf::from(v));
+            }
+            "--emit" => {
+                let v = it
+                    .next()
+                    .ok_or_else(|| usage_err("U002", "--emit expects a path", ninja_help()))?;
+                o.emit_path = Some(PathBuf::from(v));
+            }
+            "--print" => o.print = true,
+            "-v" | "--verbose" => o.verbose = true,
+            x if x.starts_with('-') => {
+                return Err(usage_err(
+                    "U005",
+                    format!("unknown flag: {x}"),
+                    ninja_help(),
+                ))
+            }
+            other => {
+                return Err(usage_err(
+                    "U005",
+                    format!("unexpected argument: {other}"),
+                    ninja_help(),
+                ))
+            }
+        }
+    }
+
+    Ok(Cmd::Ninja(o))
+}
+
+fn exec_ninja(o: NinjaOptions) -> Result<()> {
+    let root = o
+        .root_dir
+        .clone()
+        .unwrap_or_else(|| env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+    let targets_path = o
+        .targets_path
+        .clone()
+        .unwrap_or_else(|| root.join("targets.steel"));
+    let emit_path = o
+        .emit_path
+        .clone()
+        .unwrap_or_else(|| root.join("build.ninja"));
+
+    let tf = target_file::parse_target_file_path(&targets_path, &target_file::ParseOptions::default())
+        .map_err(|e| CommandError::Failure {
+            code: 1,
+            msg: err_msg("P001", format!("targets: {e}")),
+        })?;
+    let ninja_text = ninja::render_ninja(&tf).map_err(|e| CommandError::Failure {
+        code: 1,
+        msg: err_msg("N001", format!("ninja: {e}")),
+    })?;
+
+    if let Some(parent) = emit_path.parent() {
+        fs::create_dir_all(parent).map_err(|e| CommandError::Failure {
+            code: 1,
+            msg: err_msg("IO01", format!("mkdir {}: {e}", parent.display())),
+        })?;
+    }
+    fs::write(&emit_path, ninja_text.as_bytes()).map_err(|e| CommandError::Failure {
+        code: 1,
+        msg: err_msg("IO01", format!("write {}: {e}", emit_path.display())),
+    })?;
+
+    if o.print {
+        println!("{}", ninja_text);
+    }
+
+    if o.verbose {
+        println!("ninja: {}", emit_path.display());
+    }
+
+    Ok(())
+}
+
+fn resolve_file_for_context(root: &Path, file: Option<&Path>) -> Option<PathBuf> {
+    file.map(|p| if p.is_absolute() { p.to_path_buf() } else { root.join(p) })
+}
+
+fn format_context(root: &Path, file: Option<&Path>) -> String {
+    let file_display = match file {
+        Some(p) => p.display().to_string(),
+        None => "auto".to_string(),
+    };
+    format!("context: root={} file={}", root.display(), file_display)
+}
+
+fn map_run_error(err: run_muf::RunError, root: &Path, file: Option<&Path>) -> CommandError {
+    let ctx = format_context(root, file);
     match err {
         run_muf::RunError::Config { msg, help } => {
-            let msg = if let Some(h) = help {
-                format!("{}\nhelp: {h}", err_msg("C001", msg))
-            } else {
-                err_msg("C001", msg)
-            };
+            let mut msg = err_msg("V001", format!("validate: {msg}"));
+            msg.push('\n');
+            msg.push_str(&ctx);
+            if let Some(h) = help {
+                msg.push('\n');
+                msg.push_str("help: ");
+                msg.push_str(&h);
+            }
             CommandError::Failure { code: 2, msg }
         }
         run_muf::RunError::Parse { path, msg } => CommandError::Failure {
             code: 2,
-            msg: err_msg("P001", format!("parse {}: {msg}", path.display())),
+            msg: format!(
+                "{}\n{}",
+                err_msg("P001", format!("parse: {}: {msg}", path.display())),
+                ctx
+            ),
         },
         run_muf::RunError::Io { op, path, err } => CommandError::Failure {
             code: 4,
-            msg: err_msg("IO01", format!("{op} {}: {err}", path.display())),
+            msg: format!(
+                "{}\n{}",
+                err_msg("IO01", format!("run: {op} {}: {err}", path.display())),
+                ctx
+            ),
         },
         run_muf::RunError::Exec { cmd, status, stderr } => {
             let mut s = match status {
@@ -865,7 +1081,7 @@ fn map_run_error(err: run_muf::RunError) -> CommandError {
             }
             CommandError::Failure {
                 code: 3,
-                msg: err_msg("X001", s),
+                msg: format!("{}\n{}", err_msg("X001", format!("run: {s}")), ctx),
             }
         }
     }

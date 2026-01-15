@@ -354,10 +354,10 @@ pub fn parse_args(args: &[String]) -> Result<BuildMufOptions> {
 }
 
 pub fn help_text() -> &'static str {
-    "build steel — Configuration phase
+    "steel — Configuration phase (no flags; parameters are read from steelconf)
 
 Usage:
-  build steel [--root <path>] [--file <path>] [--profile <name>] [--target <triple>] [--emit <path>] [--print] [--strict] [--offline]
+  steel
 
 Flags:
   --root <path>             Workspace root (default: cwd)

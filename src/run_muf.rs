@@ -9,7 +9,9 @@ use std::env;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+use std::time::{SystemTime, UNIX_EPOCH};
 
+use crate::hash::Fingerprinter;
 use crate::version::VersionInfo;
 use vittelib::muf_parser::{Atom, Block, BlockItem, MufFile, Number};
 use vittelib::path::{GlobSet, WalkOptions};
@@ -160,17 +162,46 @@ pub fn run(opts: &RunOptions) -> Result<(), RunError> {
         if sources.is_empty() {
             return Err(RunError::Config {
                 msg: format!("bake `{}`: no sources matched", name),
-                help: Some("check your .make cglob pattern and --root".into()),
+                help: Some("check your .make patterns or file list and --root".into()),
             });
         }
 
         let output_rel = expand_vars(&bake.output_path, &vars);
         let output_abs = resolve_path_under_root(&root, &output_rel);
-        if !opts.dry_run && should_skip(&root, &output_abs, &sources, opts.no_cache) {
-            if opts.verbose {
-                println!("skip {name} (up to date)");
+
+        let cache_fp = if !opts.dry_run && !opts.no_cache {
+            let policy_fp = policy_fingerprint(&profile_name, &vars);
+            let toolchain_fp = toolchain_fingerprint(&tool_paths);
+            bake_fingerprint(
+                &root,
+                &name,
+                bake,
+                &sources,
+                &output_rel,
+                &vars,
+                &tool_paths,
+                policy_fp,
+                toolchain_fp,
+            )
+        } else {
+            None
+        };
+        let cache_path = cache_fp.as_ref().map(|_| bake_cache_path(&root, &name));
+
+        if !opts.dry_run {
+            if let (Some(fp), Some(path)) = (cache_fp, cache_path.as_deref()) {
+                if should_skip_with_fingerprint(&output_abs, path, fp) {
+                    if opts.verbose {
+                        println!("skip {name} (up to date)");
+                    }
+                    continue;
+                }
+            } else if should_skip_mtime(&root, &output_abs, &sources, opts.no_cache) {
+                if opts.verbose {
+                    println!("skip {name} (up to date)");
+                }
+                continue;
             }
-            continue;
         }
 
         if let Some(parent) = output_abs.parent() {
@@ -185,6 +216,15 @@ pub fn run(opts: &RunOptions) -> Result<(), RunError> {
         let mut bake_duration_ms = 0u64;
         if !opts.dry_run {
             append_bake_log_start(&log_path, &name)?;
+            append_bake_log_sources(&log_path, &output_rel, &sources)?;
+        }
+
+        if opts.verbose {
+            println!(
+                "bake {name}: {} sources -> {}",
+                sources.len(),
+                output_rel
+            );
         }
 
         for run in &bake.runs {
@@ -206,6 +246,9 @@ pub fn run(opts: &RunOptions) -> Result<(), RunError> {
             let mut cmd = Command::new(tool_exec);
             cmd.args(&args).current_dir(&root);
             let cmd_str = format!("{} {}", tool_exec, args.join(" "));
+            if opts.verbose {
+                println!("run {name}: {cmd_str}");
+            }
             let start = std::time::Instant::now();
             let output = cmd.output().map_err(|e| RunError::Exec {
                 cmd: cmd_str.clone(),
@@ -216,7 +259,7 @@ pub fn run(opts: &RunOptions) -> Result<(), RunError> {
 
             bake_run_count = bake_run_count.saturating_add(1);
             bake_duration_ms = bake_duration_ms.saturating_add(duration_ms);
-            append_run_log(&log_path, &cmd_str, &output, duration_ms)?;
+            append_run_log(&log_path, &cmd_str, &root, &output, duration_ms)?;
             if env_flag("MUFFIN_RUN_STDOUT") {
                 if !output.stdout.is_empty() {
                     print!("{}", String::from_utf8_lossy(&output.stdout));
@@ -241,6 +284,14 @@ pub fn run(opts: &RunOptions) -> Result<(), RunError> {
         if !opts.dry_run {
             append_bake_log_summary(&log_path, bake_run_count, bake_duration_ms)?;
             append_bake_log_end(&log_path)?;
+        }
+
+        if let (Some(fp), Some(path)) = (cache_fp, cache_path.as_deref()) {
+            if let Err(e) = write_cache_fingerprint(path, fp) {
+                if opts.verbose {
+                    println!("cache write failed for {name}: {e}");
+                }
+            }
         }
     }
 
@@ -267,6 +318,7 @@ fn run_log_path(root: &Path, workspace: &BTreeMap<String, String>, override_path
 fn append_run_log(
     path: &Path,
     cmd: &str,
+    cwd: &Path,
     output: &std::process::Output,
     duration_ms: u64,
 ) -> Result<(), RunError> {
@@ -292,6 +344,8 @@ fn append_run_log(
     let ok = output.status.success();
     let stdout = String::from_utf8_lossy(&output.stdout);
     let stderr = String::from_utf8_lossy(&output.stderr);
+    let stdout_bytes = output.stdout.len();
+    let stderr_bytes = output.stderr.len();
 
     use std::io::Write;
     let ts = run_log_stamp();
@@ -321,12 +375,27 @@ fn append_run_log(
         path: path.to_path_buf(),
         err: e.to_string(),
     })?;
+    writeln!(f, "cwd \"{}\"", cwd.to_string_lossy().replace('"', "\\\"")).map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
     writeln!(f, "status {status}").map_err(|e| RunError::Io {
         op: "write",
         path: path.to_path_buf(),
         err: e.to_string(),
     })?;
     writeln!(f, "ok {}", if ok { "true" } else { "false" }).map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    writeln!(f, "stdout_bytes {stdout_bytes}").map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    writeln!(f, "stderr_bytes {stderr_bytes}").map_err(|e| RunError::Io {
         op: "write",
         path: path.to_path_buf(),
         err: e.to_string(),
@@ -371,6 +440,42 @@ fn append_bake_log_start(path: &Path, bake: &str) -> Result<(), RunError> {
         path: path.to_path_buf(),
         err: e.to_string(),
     })?;
+    Ok(())
+}
+
+fn append_bake_log_sources(
+    path: &Path,
+    output_rel: &str,
+    sources: &[String],
+) -> Result<(), RunError> {
+    let mut f = fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|e| RunError::Io {
+            op: "open",
+            path: path.to_path_buf(),
+            err: e.to_string(),
+        })?;
+
+    use std::io::Write;
+    writeln!(f, "output \"{}\"", output_rel.replace('"', "\\\"")).map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    writeln!(f, "sources_count {}", sources.len()).map_err(|e| RunError::Io {
+        op: "write",
+        path: path.to_path_buf(),
+        err: e.to_string(),
+    })?;
+    for src in sources {
+        writeln!(f, "source \"{}\"", src.replace('"', "\\\"")).map_err(|e| RunError::Io {
+            op: "write",
+            path: path.to_path_buf(),
+            err: e.to_string(),
+        })?;
+    }
     Ok(())
 }
 
@@ -711,7 +816,7 @@ fn visit_bake(
     Ok(())
 }
 
-fn should_skip(root: &Path, output: &Path, inputs: &[String], no_cache: bool) -> bool {
+fn should_skip_mtime(root: &Path, output: &Path, inputs: &[String], no_cache: bool) -> bool {
     if no_cache {
         return false;
     }
@@ -738,6 +843,165 @@ fn should_skip(root: &Path, output: &Path, inputs: &[String], no_cache: bool) ->
         }
     }
     true
+}
+
+fn should_skip_with_fingerprint(output: &Path, cache_path: &Path, expected: u64) -> bool {
+    if !output.is_file() {
+        return false;
+    }
+    match read_cache_fingerprint(cache_path) {
+        Some(found) => found == expected,
+        None => false,
+    }
+}
+
+fn bake_cache_path(root: &Path, bake: &str) -> PathBuf {
+    let mut name = String::with_capacity(bake.len());
+    for ch in bake.chars() {
+        if ch.is_ascii_alphanumeric() || ch == '-' || ch == '_' {
+            name.push(ch);
+        } else {
+            name.push('_');
+        }
+    }
+    if name.is_empty() {
+        name.push_str("bake");
+    }
+    root.join(".steel-cache").join("run").join(format!("{name}.fp"))
+}
+
+fn read_cache_fingerprint(path: &Path) -> Option<u64> {
+    let text = fs::read_to_string(path).ok()?;
+    for line in text.lines() {
+        let line = line.trim();
+        if let Some(rest) = line.strip_prefix("fingerprint ") {
+            let hex = rest.trim();
+            if let Ok(v) = u64::from_str_radix(hex, 16) {
+                return Some(v);
+            }
+        }
+    }
+    None
+}
+
+fn write_cache_fingerprint(path: &Path, fp: u64) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    let text = format!("fingerprint {:016x}\n", fp);
+    fs::write(path, text).map_err(|e| e.to_string())
+}
+
+fn policy_fingerprint(profile: &str, vars: &BTreeMap<String, String>) -> u64 {
+    let mut fp = Fingerprinter::new();
+    fp.put_str(profile);
+    fp.put_kv_sorted(vars);
+    fp.finish().raw
+}
+
+fn toolchain_fingerprint(tool_paths: &BTreeMap<String, String>) -> u64 {
+    let mut fp = Fingerprinter::new();
+    for (name, path) in tool_paths {
+        fp.put_str(name);
+        fp.put_str(path);
+        put_file_stamp(&mut fp, Path::new(path));
+    }
+    fp.finish().raw
+}
+
+fn bake_fingerprint(
+    root: &Path,
+    bake_name: &str,
+    bake: &Bake,
+    sources: &[String],
+    output_rel: &str,
+    vars: &BTreeMap<String, String>,
+    tool_paths: &BTreeMap<String, String>,
+    policy_fp: u64,
+    toolchain_fp: u64,
+) -> Option<u64> {
+    let mut fp = Fingerprinter::new();
+    fp.put_str("bake");
+    fp.put_str(bake_name);
+    fp.put_str(output_rel);
+    fp.put_str(&bake.output_port);
+    fp.put_u64(policy_fp);
+    fp.put_u64(toolchain_fp);
+    fp.put_kv_sorted(vars);
+
+    for make in &bake.makes {
+        fp.put_str(&make.kind);
+        fp.put_str(&make.pattern);
+    }
+
+    for run in &bake.runs {
+        fp.put_str(&run.tool);
+        if let Some(path) = tool_paths.get(&run.tool) {
+            fp.put_str(path);
+        }
+        for take in &run.takes {
+            fp.put_str(&take.flag);
+        }
+        for emit in &run.emits {
+            fp.put_str(&emit.port);
+            fp.put_str(&emit.flag);
+        }
+        for set in &run.sets {
+            fp.put_str(&set.flag);
+            fp.put_str(&set.value);
+        }
+        for inc in &run.includes {
+            fp.put_str(inc);
+        }
+        for (k, v) in &run.defines {
+            fp.put_str(k);
+            if let Some(v) = v {
+                fp.put_str(v);
+            }
+        }
+        for dir in &run.lib_dirs {
+            fp.put_str(dir);
+        }
+        for lib in &run.libs {
+            fp.put_str(lib);
+        }
+    }
+
+    let mut sorted_sources = sources.to_vec();
+    sorted_sources.sort();
+    for src in &sorted_sources {
+        let path = root.join(src);
+        if !path.exists() {
+            return None;
+        }
+        fp.put_str(src);
+        put_file_stamp(&mut fp, &path);
+    }
+
+    Some(fp.finish().raw)
+}
+
+fn put_file_stamp(fp: &mut Fingerprinter, path: &Path) {
+    if let Ok(md) = fs::metadata(path) {
+        fp.put_u64(md.len());
+        if let Ok(mt) = md.modified() {
+            let (secs, nanos) = system_time_parts(mt);
+            fp.put_u64(secs);
+            fp.put_u64(nanos as u64);
+        } else {
+            fp.put_u64(0);
+            fp.put_u64(0);
+        }
+    } else {
+        fp.put_u64(0);
+        fp.put_u64(0);
+        fp.put_u64(0);
+    }
+}
+
+fn system_time_parts(t: SystemTime) -> (u64, u32) {
+    let d = t.duration_since(UNIX_EPOCH).unwrap_or_default();
+    (d.as_secs(), d.subsec_nanos())
 }
 
 #[derive(Debug)]
@@ -903,10 +1167,16 @@ fn parse_bake(blk: &Block, cfg: &mut Config) -> Result<(), RunError> {
         match item {
             BlockItem::Directive(d) => {
                 match d.op.as_str() {
-                    "make" if d.args.len() >= 3 => {
+                    "make" if d.args.len() >= 2 => {
                         let _id = atom_to_string(&d.args[0])?;
-                        let kind = atom_to_string(&d.args[1])?;
-                        let pattern = atom_to_string(&d.args[2])?;
+                        let (kind, pattern) = if d.args.len() >= 3 {
+                            let kind = atom_to_string(&d.args[1])?;
+                            let pattern = atom_to_string(&d.args[2])?;
+                            (kind, pattern)
+                        } else {
+                            let pattern = atom_to_string(&d.args[1])?;
+                            ("file".to_string(), pattern)
+                        };
                         makes.push(Make { kind, pattern });
                     }
                     "needs" if d.args.len() >= 1 => {
@@ -1041,23 +1311,28 @@ fn atom_to_string(a: &Atom) -> Result<String, RunError> {
 fn expand_sources(root: &Path, makes: &[Make]) -> Result<Vec<String>, RunError> {
     let mut out = Vec::new();
     for m in makes {
-        if m.kind != "cglob" && m.kind != "glob" {
-            continue;
-        }
-        let mut set = GlobSet::new();
-        set.add(m.pattern.clone()).map_err(|e| RunError::Config {
-            msg: format!("invalid glob `{}`: {e}", m.pattern),
-            help: Some("example: **/*.c".into()),
-        })?;
-        let files = set
-            .walk(root, WalkOptions::default())
-            .map_err(|e| RunError::Config {
-                msg: format!("glob scan failed: {e}"),
-                help: Some("check --root and filesystem permissions".into()),
-            })?;
-        for p in files {
-            let rel = p.strip_prefix(root).unwrap_or(&p);
-            out.push(rel.to_string_lossy().to_string());
+        match m.kind.as_str() {
+            "cglob" | "glob" => {
+                let mut set = GlobSet::new();
+                set.add(m.pattern.clone()).map_err(|e| RunError::Config {
+                    msg: format!("invalid glob `{}`: {e}", m.pattern),
+                    help: Some("example: **/*.c".into()),
+                })?;
+                let files = set
+                    .walk(root, WalkOptions::default())
+                    .map_err(|e| RunError::Config {
+                        msg: format!("glob scan failed: {e}"),
+                        help: Some("check --root and filesystem permissions".into()),
+                    })?;
+                for p in files {
+                    let rel = p.strip_prefix(root).unwrap_or(&p);
+                    out.push(rel.to_string_lossy().to_string());
+                }
+            }
+            "file" | "list" => {
+                out.push(m.pattern.clone());
+            }
+            _ => {}
         }
     }
     Ok(out)
@@ -1245,6 +1520,105 @@ mod tests {
         let resolved = resolve_tool_paths(&tools, Some(&dir)).unwrap();
         assert_eq!(resolved.get("gcc").unwrap(), tool_path.to_string_lossy().as_ref());
         fs::remove_dir_all(&dir).ok();
+    }
+
+    #[test]
+    fn bake_fingerprint_changes_with_policy_and_toolchain() {
+        let root = temp_dir("cachefp");
+        let src_dir = root.join("src");
+        fs::create_dir_all(&src_dir).unwrap();
+        fs::write(src_dir.join("main.c"), "int main(){return 0;}").unwrap();
+
+        let tool_dir = temp_dir("toolchain_a");
+        let tool_path = tool_dir.join("gcc");
+        File::create(&tool_path).unwrap();
+
+        let mut tool_paths = BTreeMap::new();
+        tool_paths.insert("gcc".to_string(), tool_path.to_string_lossy().to_string());
+
+        let bake = Bake {
+            makes: vec![Make {
+                kind: "cglob".to_string(),
+                pattern: "src/*.c".to_string(),
+            }],
+            runs: vec![RunBlock {
+                tool: "gcc".to_string(),
+                takes: vec![TakeBinding {
+                    flag: "@args".to_string(),
+                }],
+                emits: vec![EmitBinding {
+                    port: "exe".to_string(),
+                    flag: "-o".to_string(),
+                }],
+                sets: Vec::new(),
+                includes: Vec::new(),
+                defines: Vec::new(),
+                lib_dirs: Vec::new(),
+                libs: Vec::new(),
+            }],
+            deps: Vec::new(),
+            output_port: "exe".to_string(),
+            output_path: "target/out/app".to_string(),
+        };
+
+        let sources = vec!["src/main.c".to_string()];
+
+        let mut vars = BTreeMap::new();
+        vars.insert("opt".to_string(), "0".to_string());
+        let policy_fp = policy_fingerprint("debug", &vars);
+        let toolchain_fp = toolchain_fingerprint(&tool_paths);
+        let fp_a = bake_fingerprint(
+            &root,
+            "app",
+            &bake,
+            &sources,
+            "target/out/app",
+            &vars,
+            &tool_paths,
+            policy_fp,
+            toolchain_fp,
+        )
+        .unwrap();
+
+        vars.insert("opt".to_string(), "2".to_string());
+        let policy_fp2 = policy_fingerprint("debug", &vars);
+        let fp_b = bake_fingerprint(
+            &root,
+            "app",
+            &bake,
+            &sources,
+            "target/out/app",
+            &vars,
+            &tool_paths,
+            policy_fp2,
+            toolchain_fp,
+        )
+        .unwrap();
+        assert_ne!(fp_a, fp_b);
+
+        let tool_dir_b = temp_dir("toolchain_b");
+        let tool_path_b = tool_dir_b.join("gcc");
+        File::create(&tool_path_b).unwrap();
+        let mut tool_paths_b = BTreeMap::new();
+        tool_paths_b.insert("gcc".to_string(), tool_path_b.to_string_lossy().to_string());
+        let toolchain_fp_b = toolchain_fingerprint(&tool_paths_b);
+        let fp_c = bake_fingerprint(
+            &root,
+            "app",
+            &bake,
+            &sources,
+            "target/out/app",
+            &vars,
+            &tool_paths_b,
+            policy_fp2,
+            toolchain_fp_b,
+        )
+        .unwrap();
+        assert_ne!(fp_b, fp_c);
+
+        fs::remove_dir_all(&root).ok();
+        fs::remove_dir_all(&tool_dir).ok();
+        fs::remove_dir_all(&tool_dir_b).ok();
     }
 
     #[cfg(windows)]

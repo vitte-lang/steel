@@ -8,16 +8,57 @@ Steel est la couche de configuration **déclarative** du build Vitte. Il **parse
 ## Points forts
 
 - Configuration déclarative, séparée de l'exécution.
+- Artefact canonique de configuration (`steel.log` / `config.mff`) pour audit/CI.
 - Résolution déterministe et sorties facilement outillables.
+- Introspection intégrée (print/graph/why) pour diagnostiquer le build.
 - Portabilité multi-OS/arch et profils explicites.
 - Introspection via commandes `print` et export de graphes.
 - Mode dev via `build steel -watch` et diagnostics `-why` / `-graph`.
 - Overrides non-invasifs via `-D KEY=VALUE` (sans modifier le buildfile).
 
+## Configuration déclarative (exemple)
+
+Un `steelconf` décrit explicitement le **workspace**, les **profils**, les **targets** et la **toolchain**. Pas de règles ad-hoc : la structure est lisible, composable et stable.
+
+```text
+!muf 4
+
+[workspace]
+  .set name "demo"
+  .set root "."
+  .set target_dir "target"
+  .set profile "debug"
+..
+
+[profile debug]
+  .set opt 0
+  .set debug 1
+..
+
+[profile release]
+  .set opt 2
+  .set debug 0
+..
+
+[target x86_64-apple-darwin]
+  .set os "macos"
+  .set arch "x86_64"
+..
+
+[tool gcc]
+  .exec "gcc"
+..
+
+[tool ar]
+  .exec "ar"
+..
+```
+
 ## CLI (raccourci)
 
 Commandes (details dans `doc/manifest.md`, liste rapide: `doc/manifest.md#liste-rapide-commandes`, flags: `doc/manifest.md#flags-frequents`):
-- [`build steel`](doc/manifest.md#cmd-build-steel)
+- [`steel`](doc/manifest.md#cmd-build-steel) (equivalent de `steel build steelconf`)
+- [`build steelconf`](doc/manifest.md#cmd-build-steel)
 - [`run`](doc/manifest.md#cmd-run)
 - [`doctor`](doc/manifest.md#cmd-doctor)
 - [`cache`](doc/manifest.md#cmd-cache)
@@ -27,16 +68,11 @@ Commandes (details dans `doc/manifest.md`, liste rapide: `doc/manifest.md#liste-
 
 ### Flags frequents
 
-- `--profile <name>`: selection du profil (ex: `debug`, `release`).
-- `--target <triple>`: selection du target (ex: `x86_64-unknown-linux-gnu`).
-- `--emit <path>`: sortie de `steel.log`.
-- `--log <path>`: log d execution `run` (avec `--log-mode`).
+- `steel` (comme `steel build steelconf`) n accepte aucun flag: tout est dans `steelconf`.
 
 Exemples:
 ```text
-steel build steel --profile release
-steel build steel --target x86_64-apple-darwin
-steel build steel --emit dist/steel.log
+steel
 steel run --log target/run.mff --log-mode truncate --all
 ```
 
@@ -251,6 +287,7 @@ Vitte orchestre la phase **construction** à partir de la configuration gelée :
 - profil sélectionné,
 - chemins (root/build/dist/cache),
 - toolchain + fingerprint (invalidation cache),
+- inputs: liste explicite ou regroupement par glob,
 - targets résolues et options associées,
 - dépendances transitives résolues,
 - variables d'environnement interpellées.

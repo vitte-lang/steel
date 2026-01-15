@@ -146,6 +146,7 @@ pub mod job;
 pub mod load;
 pub mod loadapi;
 pub mod misc;
+pub mod ninja;
 pub mod steelcustom;
 pub mod steelint;
 pub mod os;

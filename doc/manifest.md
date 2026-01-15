@@ -13,7 +13,7 @@ Steel est la couche **de configuration declarative** du build. Il:
 - fournit un runner minimal pour executer des bakes declaratifs.
 
 Le pipeline est scinde en deux phases:
-1) **Configuration** (build steel) -> produit steelconfig.mff.
+1) **Configuration** (steel / build steelconf) -> produit steelconfig.mff.
 2) **Execution** (run) -> interprete steelconf pour executer des outils.
 
 Cette separation garantit la reproductibilite: la configuration figee peut etre relue, versionnee et comparee.
@@ -27,7 +27,7 @@ Cette separation garantit la reproductibilite: la configuration figee peut etre 
 - **Bake**: unite de travail dans un DAG, definie par des sources, des runs et un output.
 - **Run**: etape d execution d un tool, qui transforme des inputs en outputs.
 - **MUF**: format declaratif (fichier texte) base sur blocs et directives.
-- **MFF**: format resolu (fichier texte stable) emis par `build steel`.
+- **MFF**: format resolu (fichier texte stable) emis par `steel` / `build steelconf`.
 
 <a id="steellib-backends"></a>
 ## 2.1 SteelLib (backends)
@@ -50,14 +50,14 @@ Backends disponibles (liste rapide):
 <a id="3-1-entrees"></a>
 ### 3.1 Entrees
 
-- `steelconf` ou `steel`: fichier de configuration cherche par `build steel`.
+- `steelconf`: fichier de configuration cherche par `steel` / `build steelconf`.
 - `steelconf`: fichier MUF attendu par `steel run` si `--file` n est pas fourni (alias: `steelconf`).
 - Note migration: `Steelfile` a ete renomme en `steelconf`. Renommer vos fichiers existants si besoin.
 
 <a id="3-2-sorties"></a>
 ### 3.2 Sorties
 
-- `steelconfig.mff`: artefact resolu emis par `build steel` (nom par defaut).
+- `steelconfig.mff`: artefact resolu emis par `steel` / `build steelconf` (nom par defaut).
 - `.steel-cache/`: cache de configuration (check, stats, etc.).
 - `target/steel_run_<timestamp>.mff`: log d execution du runner (par defaut).
 
@@ -73,7 +73,8 @@ Backends disponibles (liste rapide):
 
 <a id="liste-rapide-commandes"></a>
 Liste rapide (toutes les commandes):
-- [`build steel`](#42-build-steel-configuration) (alias: `resolve`, `check`, `print`) — ex: `steel build steel --profile debug --target x86_64-unknown-linux-gnu`
+- [`steel`](#42-build-steel-configuration) (alias: `build steelconf`) — ex: `steel`
+- [`build steelconf`](#42-build-steel-configuration) (alias: `resolve`, `check`, `print`) — ex: `steel build steelconf`
 - [`run`](#43-run-execution) — ex: `steel run --file MinConfig.muf --all`
 - [`doctor`](#44-doctor) — ex: `steel doctor --json`
 - [`cache`](#45-cache) — ex: `steel cache status`
@@ -92,36 +93,11 @@ Ces flags apparaissent dans plusieurs commandes; ils sont censes rester stables.
 
 - Selection du profil de configuration (ex: `debug`, `release`).
 - Defaut: `debug` (ou `MUFFIN_PROFILE` si defini).
-- Utilise par: `build steel`, `run`.
+- Utilise par: `run`.
 
 Exemples:
 ```
-steel build steel --profile release
 steel run --profile debug --all
-```
-
-<a id="target-triple"></a>
-#### `--target <triple>`
-
-- Selection du target de build (ex: `x86_64-unknown-linux-gnu`).
-- Defaut: host best-effort (ou `MUFFIN_TARGET` si defini).
-- Utilise par: `build steel`.
-
-Exemples:
-```
-steel build steel --target x86_64-apple-darwin
-```
-
-<a id="emit-path"></a>
-#### `--emit <path>`
-
-- Chemin de sortie pour `steelconfig.mff`.
-- Defaut: `steelconfig.mff` a la racine (ou `MUFFIN_EMIT` si defini).
-- Utilise par: `build steel`.
-
-Exemples:
-```
-steel build steel --emit dist/steelconfig.mff
 ```
 
 <a id="log-path-et-log-mode"></a>
@@ -144,23 +120,20 @@ steel run --log target/run.mff --log-mode truncate --all
 - `steel version` / `steel -V` / `steel --version`
 
 <a id="cmd-build-steel"></a>
-### 4.2 build steel (configuration)
+### 4.2 build steelconf (configuration)
 
-Commande principale:
+Commande principale (alias `steel build steelconf`):
 ```
-steel build steel [--root <path>] [--file <path>] [--profile <name>] [--target <triple>]
-                   [--emit <path>] [--offline] [--strict] [--no-tool-fingerprint]
-                   [--include-hidden] [--follow-symlinks] [--max-depth <n>]
-                   [--print] [-v]
+steel
 ```
 
 Semantique:
 - parse / valide / resolve la configuration,
-- emet `steelconfig.mff` (ou `--emit` / `MUFFIN_EMIT`),
-- `--print` affiche le fichier resolu sur stdout.
+- emet `steelconfig.mff`,
+- aucun parametre: tout est lu depuis `steelconf`.
 
 Aliases:
-- `steel resolve` : alias de `build steel`.
+- `steel resolve` : alias de `build steelconf`.
 - `steel check`   : emit dans `.steel-cache/check/` puis supprime (best effort).
 - `steel print`   : emit + print.
 
@@ -226,33 +199,31 @@ steel fmt [--file <path>] [--check] [-v]
 - `4`: erreur I/O.
 
 <a id="5-resolution-et-discovery-build-steel"></a>
-## 5. Resolution et discovery (build steel)
+## 5. Resolution et discovery (build steelconf)
 
 <a id="5-1-racine-du-workspace"></a>
 ### 5.1 Racine du workspace
 
 - par defaut: repertoire courant.
-- `--root <path>` ou argument positionnel apres `build steel`.
+- aucun argument: `steel` utilise le repertoire courant.
 
 <a id="5-2-recherche-de-steelfile"></a>
 ### 5.2 Recherche de steelconf
 
 Ordre:
-1) `steelconf` ou `steel` dans la racine.
+1) `steelconf` dans la racine.
 2) scan DFS deterministe sous la racine, avec tri lexicographique.
 
-Regles de scan:
-- profondeur max: `--max-depth` (defaut 16).
+Regles de scan (fixes):
+- profondeur max: 16.
 - dossiers ignores: `.git`, `.hg`, `.svn`, `target`, `node_modules`, `dist`, `build`, `.steel`, `.steel-cache`.
-- si `--include-hidden` n est pas fourni, les fichiers/dirs caches sont ignores.
-- si `--follow-symlinks` est actif, on suit les symlinks.
-- `--strict` fait echouer si un acces FS echoue ou si le fichier est hors root.
+- fichiers/dirs caches ignores.
+- symlinks non suivis.
 
 <a id="5-3-profil-et-target"></a>
 ### 5.3 Profil et target
 
-- `--profile` ou `MUFFIN_PROFILE` (defaut: `debug`).
-- `--target`  ou `MUFFIN_TARGET`  (defaut: triple host best effort).
+- definis dans `steelconf` (workspace + blocs profile/target).
 
 <a id="5-4-toolchain-et-fingerprint"></a>
 ### 5.4 Toolchain et fingerprint
@@ -264,7 +235,6 @@ Regles de scan:
   - `toolchain.ghc` -> `GHC_PACKAGE_PATH`
 - overrides explicites via env:
   - `MUFFIN_TOOLCHAIN_PYTHON`, `MUFFIN_TOOLCHAIN_OCAML`, `MUFFIN_TOOLCHAIN_GHC`
-- `--no-tool-fingerprint` desactive `tool --version`.
 - fingerprint deterministe (FNV-1a 64-bit) sur:
   - bytes du steelconf,
   - profile + target,
@@ -399,7 +369,9 @@ Le runner actuel supporte un sous-ensemble volontairement limite.
 ### 8.4 Bloc [bake <name>]
 
 - `.make <id> <kind> <pattern>`
-  - `kind` supporte: `glob`, `cglob`.
+  - `kind` supporte: `glob`, `cglob`, `file` (alias: `list`).
+  - raccourci: `.make <id> <path>` == `.make <id> file <path>`.
+  - pour lister plusieurs fichiers, repeter `.make`.
 - `.needs <bake>`: dependance explicite.
 - `.output <port> <path>`: output final.
 - sous-bloc `[run <tool>]` obligatoire.
@@ -481,13 +453,19 @@ ts_iso "<RFC3339>"
 ..
 
 [bake log "<name>"]
+output "<path>"
+sources_count <n>
+source "<path>"   ;; repete
 [run log]
 ts <epoch>
 ts_iso "<RFC3339>"
 duration_ms <n>
 cmd "gcc ..."
+cwd "/path/to/root"
 status <code>
 ok true|false
+stdout_bytes <n>
+stderr_bytes <n>
 stdout "..."   ;; optionnel
 stderr "..."   ;; optionnel
 ..
@@ -553,8 +531,8 @@ ts_iso "<RFC3339>"
 
 ```
 # configuration
-steel build steel --root . --file steelconf --profile debug --target x86_64-unknown-linux-gnu
-steel print --root .
+steel
+steel print
 
 # execution
 steel run --root . --file steelconf --bake app
@@ -626,7 +604,7 @@ steel run --root . --all --print
 ..
 
 [bake app_c]
-  .make main "src/main.c"
+  .make main file "src/main.c"
   [run gcc]
     .takes main as "@args"
     .takes "target/obj/lib_c.o" as "@args"
@@ -782,7 +760,7 @@ steel run --root . --all --print
 ..
 
 [bake app]
-  .make main "src/main.c"
+  .make main file "src/main.c"
   [run gcc]
     .takes main as "@args"
     .takes "target/obj/lib_core.o" as "@args"
@@ -1430,8 +1408,8 @@ int main() {
 - `error[IO01]`: erreur I/O.
 
 Conseils:
-- verifier `--root` et l existence de `steelconf` ou `steelconf`.
-- utiliser `--profile` ou `workspace.profile`.
+- verifier l existence de `steelconf`.
+- utiliser `workspace.profile`.
 - activer `-v` pour des diagnostics.
 
 <a id="14-roadmap-cibles-plausibles"></a>
@@ -1439,7 +1417,7 @@ Conseils:
 
 - Implementer `steel graph` avec export `text|dot|json` depuis le DAG resolu.
 - Implementer `steel fmt` (normalisation des blocs/directives).
-- Remplacer la resolution minimale de `build steel` par un parser MUF complet.
+- Remplacer la resolution minimale de `build steelconf` par un parser MUF complet.
 - Etendre le runner a d autres blocs (targets, toolchains, exports, plans).
 - Exposer un format `.mff` de run log stable et versionne.
 
@@ -1451,7 +1429,7 @@ M1 - CLI et outputs:
 - fmt --check + format deterministe
 
 M2 - Configuration complete:
-- parse MUF complet dans `build steel`
+- parse MUF complet dans `build steelconf`
 - emission `steelconfig.mff` basee sur le modele resolu
 
 M3 - Runner et outillage:
@@ -1462,14 +1440,14 @@ M3 - Runner et outillage:
 ## 15. Limitations et etat actuel
 
 - `graph` et `fmt` sont des stubs (placeholder deterministe).
-- le resolver de `build steel` est minimal (pas de parse MUF complet).
+- le resolver de `build steelconf` est minimal (pas de parse MUF complet).
 - le runner supporte un sous-ensemble de MUF (workspace/profile/tool/bake/run).
 
 <a id="16-glossaire-rapide"></a>
 ## 16. Glossaire rapide
 
 - **MUF**: format declaratif source.
-- **MFF**: format resolu, stable, emet par `build steel`.
+- **MFF**: format resolu, stable, emet par `build steelconf`.
 - **Bake**: noeud du graphe d execution.
 - **Run**: etape d execution d un tool.
 - **Toolchain**: ensemble des executables (cc/ld/ar/rustc).
@@ -1600,7 +1578,7 @@ Le runner va:
 ### 17.8 Premiere configuration resolue
 
 ```
-steel build steel --root . --file steelconf --profile debug
+steel
 ```
 
 Cela produit `steelconfig.mff`. C est une photo stable de votre config.
@@ -1721,7 +1699,7 @@ Une strategie simple:
 <a id="20-3-version-et-fingerprint"></a>
 ### 20.3 Version et fingerprint
 
-Le build `steel build` calcule un fingerprint stable:
+Le build `steel` calcule un fingerprint stable:
 - contenu du steelconf
 - profil/target
 - versions des tools
@@ -1896,7 +1874,7 @@ error[P001]: invalid token
 ### 27.1 CI
 
 Dans un pipeline:
-1) `steel build steel --print > steelconfig.mff`
+1) `steel print > steelconfig.mff`
 2) archiver `steelconfig.mff`
 3) executer `steel run`
 
@@ -1960,10 +1938,8 @@ Utiliser `--log` et inspecter la commande.
 <a id="30-1-variables-d-environnement-supportees"></a>
 ### 30.1 Variables d environnement supportees
 
-- `MUFFIN_PROFILE`
-- `MUFFIN_TARGET`
-- `MUFFIN_EMIT`
-- `MUFFIN_FINGERPRINT_TIME`
+- `MUFFIN_FINGERPRINT_TIME` (sel temporel pour debug, non deterministe).
+- `MUFFIN_PROFILE`, `MUFFIN_TARGET`, `MUFFIN_EMIT` sont ignores pour `steel`.
 
 <a id="30-2-rappel-des-chemins-par-defaut"></a>
 ### 30.2 Rappel des chemins par defaut
@@ -2169,7 +2145,7 @@ Le header `mff 1` fixe la version du format.
 ### 34.2 Utiliser MFF en CI
 
 ```
-steel build steel --print > steelconfig.mff
+steel print > steelconfig.mff
 ```
 
 Puis archiver l artefact. Cela permet:
@@ -2187,7 +2163,7 @@ Comme c est deterministe, un diff git est lisible et utile.
 <a id="35-1-erreurs-de-parse"></a>
 ### 35.1 Erreurs de parse
 
-Si MUF est invalide, la phase `build steel` renvoie des diagnostics.
+Si MUF est invalide, la phase `build steelconf` renvoie des diagnostics.
 
 <a id="35-2-erreurs-de-run"></a>
 ### 35.2 Erreurs de run
@@ -2535,21 +2511,21 @@ Ne pas melanger sources et outputs.
 ### 47.1 Steel build
 
 ```
-steel build steel --root . --file steelconf --profile debug --target x86_64-unknown-linux-gnu
+steel
 ```
 
 <a id="47-2-steel-print"></a>
 ### 47.2 Steel print
 
 ```
-steel print --root . --file steelconf
+steel print
 ```
 
 <a id="47-3-steel-check"></a>
 ### 47.3 Steel check
 
 ```
-steel check --root . --file steelconf
+steel check
 ```
 
 <a id="48-tutoriel-audit-de-config"></a>
@@ -2629,7 +2605,7 @@ Ce guide peut etre etendu en fonction de l evolution du runner et des schemas.
 ### 51.1 Documenter le build
 
 Ajouter un court README:
-- comment lancer `steel build`
+- comment lancer `steel`
 - comment lancer `steel run`
 - quels outputs attendre
 
@@ -2857,7 +2833,7 @@ root/
 <a id="60-2-commandes-essentielles"></a>
 ### 60.2 Commandes essentielles
 
-- `steel build steel`
+- `steel`
 - `steel run`
 - `steel print`
 - `steel check`
@@ -3013,8 +2989,8 @@ Limiter les scripts pour conserver la reproductibilite.
 ### 68.1 Deux targets
 
 ```
-steel build steel --target x86_64-unknown-linux-gnu
-steel build steel --target aarch64-unknown-linux-gnu
+steel
+steel
 ```
 
 <a id="68-2-outputs-separes"></a>
@@ -3244,7 +3220,7 @@ Eviter les changements cassants dans les conventions internes.
 <a id="80-1-commandes-resumees"></a>
 ### 80.1 Commandes resumees
 
-- build: `steel build steel`
+- build: `steel`
 - run: `steel run --bake app`
 - print: `steel print`
 
