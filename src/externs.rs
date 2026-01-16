@@ -205,13 +205,13 @@ pub fn is_executable(p: &Path) -> bool {
         if let Ok(md) = std::fs::metadata(p) {
             return (md.permissions().mode() & 0o111) != 0;
         }
+        return false;
     }
     #[cfg(not(unix))]
     {
         // best-effort on non-unix
         return true;
     }
-    false
 }
 
 /// Best-effort: `tool --version`, first stdout line.

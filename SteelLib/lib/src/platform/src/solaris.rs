@@ -17,7 +17,6 @@
 
 use std::collections::BTreeMap;
 use std::env;
-use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -205,7 +204,7 @@ pub fn default_env() -> BTreeMap<String, String> {
 #[cfg(unix)]
 pub fn is_executable(path: &Path) -> std::io::Result<bool> {
     use std::os::unix::fs::PermissionsExt;
-    let md = fs::metadata(path)?;
+    let md = std::fs::metadata(path)?;
     Ok((md.permissions().mode() & 0o111) != 0)
 }
 
