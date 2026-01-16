@@ -40,6 +40,8 @@
 *.swp
 *.swo
 *~
+!src/
+!src/**
 
 # =========================
 # CMake / Ninja (si utilisés)
