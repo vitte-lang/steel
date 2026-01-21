@@ -17,7 +17,7 @@ Set these in Netlify site settings:
 - `ADMIN_ALLOWLIST` (comma-separated emails allowed to access admin endpoints)
 
 ## 3) API endpoints (Netlify Functions)
-- `GET /api/comments-list?page=/docs`
+- `GET /api/comments-list?page=/site` (ou `/docs`)
 - `POST /api/comments-create` (requires Authorization: Bearer <supabase_jwt>)
 - `POST /api/messages-create` (requires Authorization: Bearer <supabase_jwt>)
 - `POST /api/stats-track` (public)
@@ -27,7 +27,7 @@ Rate limits:
 
 Payload examples:
 ```json
-{ "page": "/docs", "author": "Ada", "rating": 5, "message": "Nice guide" }
+{ "page": "/site", "author": "Ada", "rating": 5, "message": "Nice guide" }
 ```
 ```json
 { "page": "/docs", "email": "ada@host", "message": "Question" }
