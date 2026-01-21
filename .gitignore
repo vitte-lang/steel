@@ -42,6 +42,9 @@
 *~
 !src/
 !src/**
+!docs/
+!docs/**
+!netlify.toml
 
 # =========================
 # CMake / Ninja (si utilisés)
