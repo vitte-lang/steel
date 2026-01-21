@@ -817,20 +817,20 @@ fn usage_err(code: &str, msg: impl Into<String>, help: &str) -> CommandError {
 }
 
 fn welcome_text() -> &'static str {
-    "Welcome Muffin
+    "Welcome Vitte
 
-      _____ _             _
-     / ____| |           | |
-    | (___ | |_ ___  __ _| |
-     \\___ \\| __/ _ \\/ _` | |
-     ____) | ||  __/ (_| | |
-    |_____/ \\__\\___|\\__,_|_|
+                ##                         ##
+            ##     #####    #####      ##
+ ######   ######   ##       ##         ##
+ ###        ##     #####    #####      ###
+   ####     ###    ###      ###        ###
+ ######     ###    #####    #####      ###
 
-@Vitte_Lang_org - Muffin Version 1-2026"
+@Vitte_Lang_org - Steel - Version 1-2026"
 }
 
 fn help_text_with_welcome() -> String {
-    welcome_text().to_string()
+    "USAGE\n  steel <command> [options]\n\nCOMMANDS\n  run       Run a build (steelconf)\n  build     Build once (alias of run)\n  fmt       Format a steelconf\n  doctor    Diagnose environment\n  graph     Inspect graph\n  ninja     Emit Ninja (stub)\n  cache     Cache utilities\n  toolchain Toolchain utilities\n  help      Show help\n  version   Show version\n\nGLOBAL FLAGS\n  -h, --help     Show help\n  -v, --version  Show version\n\nKEYWORDS (steelconf core)\n  steel          File header / format marker\n  bake           Recipe block\n  store          Store block\n  capsule        Sandbox / policy block\n  var            Variable block\n  profile        Profile block\n  tool           Tool declaration\n  plan           Plan block\n  switch         Conditional block\n  run            Execution step\n  export         Export recipe\n  exports        Export list\n  wire           Wire outputs/inputs\n\nKEYWORDS (io + build)\n  in             Input binding\n  out            Output binding\n  make           Source collection (glob)\n  takes          Inputs -> flags\n  emits          Outputs -> flags\n  output         Final output\n  set            Add flag/value\n  at             Path anchor\n\nKEYWORDS (cache + sandbox)\n  cache          Cache block\n  mode           Cache or policy mode\n  path           Path policy\n  env            Env policy\n  fs             Filesystem policy\n  net            Network policy\n  time           Time policy\n  allow          Allow rule\n  deny           Deny rule\n  allow_read     Allow read access\n  allow_write    Allow write access\n  allow_write_exact Allow exact write path\n  stable         Mark stable inputs/outputs\n".to_string()
 }
 
 fn graph_help() -> &'static str {

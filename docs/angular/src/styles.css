@@ -329,6 +329,89 @@ a {
   margin-top: 0;
 }
 
+.code-editor {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #f9f6f1;
+  min-height: 320px;
+  position: relative;
+  z-index: 1;
+}
+
+.code-editor .cm-editor {
+  height: 320px;
+}
+
+.code-editor .cm-scroller {
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+}
+
+.app-shell[dir='rtl'] .code-editor .cm-editor,
+.app-shell[dir='rtl'] pre,
+.app-shell[dir='rtl'] code {
+  direction: ltr;
+  text-align: left;
+}
+
+.suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.suggestion {
+  border: 1px solid var(--border);
+  background: #fff4f0;
+  color: var(--ink-900);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.suggestion:hover {
+  border-color: var(--ruby-400);
+  color: var(--ruby-700);
+}
+
+.suggestion.active {
+  border-color: var(--ruby-500);
+  color: var(--ruby-900);
+  box-shadow: 0 0 0 2px rgba(166, 31, 59, 0.18);
+}
+
+.inline-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 8px 0 12px;
+  position: relative;
+  z-index: 2;
+}
+
+.button {
+  border: 1px solid var(--border);
+  background: #fff4f0;
+  color: var(--ink-900);
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-family: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
+    "Courier New", monospace;
+  font-size: 0.8rem;
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.button.ghost {
+  background: transparent;
+}
+
 .hint {
   color: var(--ink-600);
   font-size: 0.9rem;
@@ -383,6 +466,19 @@ a {
 
 .panel.terminal {
   padding: 22px;
+}
+
+.panel.terminal pre {
+  background: #1f1a16;
+  color: #e9e2da;
+  border-radius: 10px;
+  padding: 14px 16px;
+  overflow: auto;
+  border: 1px solid rgba(96, 78, 64, 0.35);
+}
+
+.panel.terminal h3 {
+  margin-bottom: 10px;
 }
 
 .panel.terminal.wide,

@@ -1,19 +1,10 @@
 import { computed, Injectable, signal } from '@angular/core';
 
-type LangKey = 'en' | 'fr' | 'de' | 'it';
+type LangKey = 'en' | 'fr' | 'de' | 'it' | 'ar' | 'zh' | 'ja' | 'pt' | 'es';
 
 type Example = {
   title: string;
   code: string;
-};
-
-type BlogPost = {
-  slug: string;
-  title: string;
-  date: string;
-  text: string;
-  body: string[];
-  takeaways: string[];
 };
 
 type I18n = {
@@ -21,9 +12,7 @@ type I18n = {
     home: string;
     downloads: string;
     docs: string;
-    community: string;
     showcase: string;
-    blog: string;
     security: string;
     status: string;
   };
@@ -69,12 +58,6 @@ type I18n = {
     cards: { title: string; text: string }[];
     examplesTitle: string;
   };
-  blog: {
-    eyebrow: string;
-    title: string;
-    lead: string;
-    posts: BlogPost[];
-  };
   security: {
     eyebrow: string;
     title: string;
@@ -118,14 +101,6 @@ type I18n = {
     bestPracticesTitle: string;
     bestPractices: string[];
   };
-  community: {
-    eyebrow: string;
-    title: string;
-    lead: string;
-    cards: { title: string; text: string }[];
-    linksTitle: string;
-    links: string[];
-  };
   faq: {
     eyebrow: string;
     title: string;
@@ -152,9 +127,7 @@ const I18N: Record<LangKey, I18n> = {
       home: 'Home',
       downloads: 'Downloads',
       docs: 'Docs',
-      community: 'Community',
       showcase: 'Showcase',
-      blog: 'Blog',
       security: 'Security',
       status: 'Status'
     },
@@ -220,62 +193,6 @@ const I18N: Record<LangKey, I18n> = {
         { title: 'Polyglot repo', text: 'One config per language, one build story.' }
       ],
       examplesTitle: 'Example blocks'
-    },
-    blog: {
-      eyebrow: 'Blog',
-      title: 'Notes from the Steel team.',
-      lead: 'Short updates, focused on releases and patterns.',
-      posts: [
-        {
-          slug: 'steel-command-stays-minimal',
-          title: 'Why Steel - Command stays minimal',
-          date: '2026-01-12',
-          text: 'Complexity is a tax on every build. Steel - Command keeps a single source of truth, obvious outputs, and small, readable recipes.',
-          body: [
-            'Build tools drift toward complexity. Steel - Command does not. We keep it minimal because clarity scales better than cleverness.',
-            'Rule one: one file should tell the story. A steelconf must be readable in under a minute or it is too big.',
-            'Rule two: outputs must be obvious. Every artifact lands in target/out, so you never hunt for results.',
-            'Rule three: examples before features. If a feature cannot be shown in ten lines, it is not ready.'
-          ],
-          takeaways: [
-            'One file is the source of truth.',
-            'Outputs go to target/out by default.',
-            'Features ship only with small examples.'
-          ]
-        },
-        {
-          slug: 'multi-language-pattern-that-scales',
-          title: 'The multi-language pattern that scales',
-          date: '2026-01-16',
-          text: 'Keep each language isolated with its own tool and bake block. Shared rule: output clarity in target/out.',
-          body: [
-            'Multi-language builds fail when everything blends together. Steel - Command keeps each language in its own block.',
-            'Define one tool and one bake per language. Keep outputs predictable. The result is a build you can explain to anyone on the team.',
-            'Start small: one language, one output. Add more only when the existing setup is stable.'
-          ],
-          takeaways: [
-            'Isolate each language in its own block.',
-            'One tool + one bake per language.',
-            'Add languages only after the base is stable.'
-          ]
-        },
-        {
-          slug: 'release-notes-that-matter',
-          title: 'Release notes that matter',
-          date: '2026-01-20',
-          text: 'We ship direct installers first and document the path to a first build. Each release has a single focus.',
-          body: [
-            'Releases should have one story. For Steel - Command, that story is always: faster onboarding and clearer builds.',
-            'That is why we ship a direct macOS installer before anything else. The first build matters more than options.',
-            'Every release gets a minimal example and a short explanation of what improved.'
-          ],
-          takeaways: [
-            'One release, one clear story.',
-            'Direct installers first.',
-            'Every release ships with a minimal example.'
-          ]
-        }
-      ]
     },
     security: {
       eyebrow: 'Security',
@@ -352,18 +269,6 @@ const I18N: Record<LangKey, I18n> = {
         'Start with one target, then expand.'
       ]
     },
-    community: {
-      eyebrow: 'Community',
-      title: 'Get help and share examples.',
-      lead: 'Short links, no noise.',
-      cards: [
-        { title: 'Report issues', text: 'Open a GitHub issue with your log and config.' },
-        { title: 'Share recipes', text: 'Post a minimal steelconf snippet.' },
-        { title: 'Ask questions', text: 'Keep it short, include your OS and toolchain.' }
-      ],
-      linksTitle: 'Tips for good questions',
-      links: ['Include your OS', 'Include your tool version', 'Share a minimal config']
-    },
     faq: {
       eyebrow: 'FAQ',
       title: 'Short answers.',
@@ -402,9 +307,7 @@ const I18N: Record<LangKey, I18n> = {
       home: 'Accueil',
       downloads: 'Telechargements',
       docs: 'Docs',
-      community: 'Communaute',
       showcase: 'Showcase',
-      blog: 'Blog',
       security: 'Securite',
       status: 'Statut'
     },
@@ -470,62 +373,6 @@ const I18N: Record<LangKey, I18n> = {
         { title: 'Depot polyglotte', text: 'Une config par langage, un build.' }
       ],
       examplesTitle: 'Blocs d\'exemple'
-    },
-    blog: {
-      eyebrow: 'Blog',
-      title: 'Notes de l\'equipe Steel.',
-      lead: 'Updates courts sur releases et patterns.',
-      posts: [
-        {
-          slug: 'steel-command-reste-minimal',
-          title: 'Pourquoi Steel - Command reste minimal',
-          date: '2026-01-12',
-          text: 'La complexite coute cher. Un seul fichier, des sorties claires, et des recettes courtes.',
-          body: [
-            'Les outils de build tendent vers la complexite. Steel - Command fait l\'inverse pour rester lisible.',
-            'Regle un: un seul fichier doit raconter l\'histoire. Si ce n\'est pas lisible en une minute, c\'est trop gros.',
-            'Regle deux: des sorties evidentes. Chaque artefact va dans target/out.',
-            'Regle trois: exemples avant features. Si on ne peut pas le montrer en dix lignes, ce n\'est pas pret.'
-          ],
-          takeaways: [
-            'Un seul fichier pour tout comprendre.',
-            'Sorties dans target/out par defaut.',
-            'Pas de feature sans exemple court.'
-          ]
-        },
-        {
-          slug: 'pattern-multi-langage',
-          title: 'Le pattern multi-langage qui tient',
-          date: '2026-01-16',
-          text: 'Un tool + un bake par langage. Regle commune: sorties claires dans target/out.',
-          body: [
-            'Les builds multi-langage echouent quand tout est melange. Steel - Command garde chaque langage isole.',
-            'Un tool, un bake, un output clair. Le build reste simple a expliquer.',
-            'Commencer petit: une langue, un output. Ajouter ensuite.'
-          ],
-          takeaways: [
-            'Un bloc par langage.',
-            'Un tool + un bake par langage.',
-            'Ajouter apres stabilite.'
-          ]
-        },
-        {
-          slug: 'notes-de-release',
-          title: 'Des releases qui comptent',
-          date: '2026-01-20',
-          text: 'Installer direct d\'abord, puis le chemin vers le premier build. Un focus par release.',
-          body: [
-            'Une release doit raconter une seule histoire. Pour Steel - Command: demarrer vite et comprendre le build.',
-            'C\'est pour cela qu\'on livre d\'abord un installeur macOS direct.',
-            'Chaque release ajoute un exemple minimal et une explication courte.'
-          ],
-          takeaways: [
-            'Un seul objectif par release.',
-            'Installeur direct en premier.',
-            'Exemple minimal a chaque release.'
-          ]
-        }
-      ]
     },
     security: {
       eyebrow: 'Securite',
@@ -602,18 +449,6 @@ const I18N: Record<LangKey, I18n> = {
         'Commencer avec une seule target.'
       ]
     },
-    community: {
-      eyebrow: 'Communaute',
-      title: 'Aide rapide, exemples partages.',
-      lead: 'Liens courts, pas de bruit.',
-      cards: [
-        { title: 'Signaler un probleme', text: 'Ouvrir un issue avec le log.' },
-        { title: 'Partager une recette', text: 'Poster un steelconf minimal.' },
-        { title: 'Poser une question', text: 'OS, toolchain, et reproduction.' }
-      ],
-      linksTitle: 'Conseils utiles',
-      links: ['Indiquer votre OS', 'Donner la version des outils', 'Partager un exemple minimal']
-    },
     faq: {
       eyebrow: 'FAQ',
       title: 'Reponses rapides.',
@@ -652,9 +487,7 @@ const I18N: Record<LangKey, I18n> = {
       home: 'Start',
       downloads: 'Downloads',
       docs: 'Dokumente',
-      community: 'Community',
       showcase: 'Showcase',
-      blog: 'Blog',
       security: 'Sicherheit',
       status: 'Status'
     },
@@ -720,62 +553,6 @@ const I18N: Record<LangKey, I18n> = {
         { title: 'Polyglot Repo', text: 'Config pro Sprache, ein Build-Story.' }
       ],
       examplesTitle: 'Beispielbloecke'
-    },
-    blog: {
-      eyebrow: 'Blog',
-      title: 'Notizen vom Steel-Team.',
-      lead: 'Kurze Updates zu Releases und Patterns.',
-      posts: [
-        {
-          slug: 'steel-command-bleibt-minimal',
-          title: 'Warum Steel - Command minimal bleibt',
-          date: '2026-01-12',
-          text: 'Komplexitat kostet. Eine Datei, klare Outputs und kleine Rezepte halten Builds lesbar.',
-          body: [
-            'Build-Tools werden oft zu komplex. Steel - Command bleibt bewusst minimal.',
-            'Regel eins: eine Datei erzahlt die ganze Geschichte. Wenn es nicht in einer Minute klar ist, ist es zu viel.',
-            'Regel zwei: klare Outputs. Jeder Build landet in target/out.',
-            'Regel drei: Beispiele vor Features. Kein Feature ohne zehn Zeilen Beispiel.'
-          ],
-          takeaways: [
-            'Eine Datei erklart alles.',
-            'Outputs in target/out.',
-            'Features brauchen kurze Beispiele.'
-          ]
-        },
-        {
-          slug: 'multi-language-muster',
-          title: 'Das Multi-Language Muster',
-          date: '2026-01-16',
-          text: 'Ein Tool und ein Bake pro Sprache. Gemeinsame Regel: klare Outputs in target/out.',
-          body: [
-            'Multi-Language Builds scheitern, wenn alles vermischt wird. Steel - Command trennt sauber.',
-            'Ein Tool, ein Bake, ein Output. So bleibt der Build erklarbar.',
-            'Starte klein und erweitere Schritt fur Schritt.'
-          ],
-          takeaways: [
-            'Ein Block pro Sprache.',
-            'Ein Tool + ein Bake pro Sprache.',
-            'Erst stabil, dann erweitern.'
-          ]
-        },
-        {
-          slug: 'release-notizen',
-          title: 'Releases mit Fokus',
-          date: '2026-01-20',
-          text: 'Direkte Installer zuerst, dann Beispiele. Jede Release hat ein klares Ziel.',
-          body: [
-            'Jede Release erzahlt nur eine Geschichte: schneller starten, klarer bauen.',
-            'Darum liefern wir zuerst den macOS Installer.',
-            'Jede Release kommt mit minimalem Beispiel und kurzer Erklarung.'
-          ],
-          takeaways: [
-            'Eine Release, ein Ziel.',
-            'Direkter Installer zuerst.',
-            'Beispiel in jeder Release.'
-          ]
-        }
-      ]
     },
     security: {
       eyebrow: 'Sicherheit',
@@ -852,18 +629,6 @@ const I18N: Record<LangKey, I18n> = {
         'Mit einem Target beginnen.'
       ]
     },
-    community: {
-      eyebrow: 'Community',
-      title: 'Hilfe finden und Beispiele teilen.',
-      lead: 'Kurze Links, kein Larm.',
-      cards: [
-        { title: 'Problem melden', text: 'Issue mit Log und Config eroffnen.' },
-        { title: 'Rezepte teilen', text: 'Minimalen steelconf posten.' },
-        { title: 'Fragen stellen', text: 'OS und Toolchain angeben.' }
-      ],
-      linksTitle: 'Gute Fragen',
-      links: ['OS angeben', 'Tool-Version nennen', 'Minimalbeispiel posten']
-    },
     faq: {
       eyebrow: 'FAQ',
       title: 'Kurze Antworten.',
@@ -902,9 +667,7 @@ const I18N: Record<LangKey, I18n> = {
       home: 'Home',
       downloads: 'Download',
       docs: 'Documenti',
-      community: 'Community',
       showcase: 'Showcase',
-      blog: 'Blog',
       security: 'Sicurezza',
       status: 'Stato'
     },
@@ -970,62 +733,6 @@ const I18N: Record<LangKey, I18n> = {
         { title: 'Repo poliglott', text: 'Una config per linguaggio, un build.' }
       ],
       examplesTitle: 'Blocchi esempio'
-    },
-    blog: {
-      eyebrow: 'Blog',
-      title: 'Note dal team Steel.',
-      lead: 'Aggiornamenti brevi su release e pattern.',
-      posts: [
-        {
-          slug: 'steel-command-resta-minimale',
-          title: 'Perche Steel - Command resta minimale',
-          date: '2026-01-12',
-          text: 'La complessita costa. Un solo file, output chiari, ricette brevi.',
-          body: [
-            'Gli strumenti di build tendono alla complessita. Steel - Command resta essenziale.',
-            'Regola uno: un file racconta tutto. Se non e leggibile in un minuto, e troppo.',
-            'Regola due: output chiari. Tutto finisce in target/out.',
-            'Regola tre: esempi prima delle feature. Nessuna feature senza dieci righe.'
-          ],
-          takeaways: [
-            'Un file per capire tutto.',
-            'Output in target/out.',
-            'Esempi brevi per ogni feature.'
-          ]
-        },
-        {
-          slug: 'pattern-multi-lingua',
-          title: 'Il pattern multi-lingua',
-          date: '2026-01-16',
-          text: 'Un tool e un bake per linguaggio. Output chiari in target/out.',
-          body: [
-            'I build multi-lingua falliscono quando tutto si mescola. Steel - Command separa.',
-            'Un tool, un bake, un output. Il build resta spiegabile.',
-            'Inizia piccolo e aggiungi gradualmente.'
-          ],
-          takeaways: [
-            'Un blocco per linguaggio.',
-            'Un tool + un bake per lingua.',
-            'Aggiungi solo dopo stabilita.'
-          ]
-        },
-        {
-          slug: 'note-di-release',
-          title: 'Release con un obiettivo',
-          date: '2026-01-20',
-          text: 'Installer diretto prima, poi esempi. Ogni release ha un focus.',
-          body: [
-            'Ogni release racconta una sola storia: partire in fretta e capire il build.',
-            'Per questo consegniamo prima l\'installer macOS.',
-            'Ogni release aggiunge un esempio minimo e una spiegazione corta.'
-          ],
-          takeaways: [
-            'Una release, un obiettivo.',
-            'Installer diretto prima.',
-            'Esempio minimo per ogni release.'
-          ]
-        }
-      ]
     },
     security: {
       eyebrow: 'Sicurezza',
@@ -1102,18 +809,6 @@ const I18N: Record<LangKey, I18n> = {
         'Inizia con un solo target.'
       ]
     },
-    community: {
-      eyebrow: 'Community',
-      title: 'Aiuto rapido, esempi condivisi.',
-      lead: 'Link brevi, niente rumore.',
-      cards: [
-        { title: 'Segnala un problema', text: 'Apri una issue con log e config.' },
-        { title: 'Condividi ricette', text: 'Pubblica uno steelconf minimale.' },
-        { title: 'Fai domande', text: 'Indica OS e toolchain.' }
-      ],
-      linksTitle: 'Consigli utili',
-      links: ['Indica il tuo OS', 'Scrivi la versione tool', 'Condividi config minima']
-    },
     faq: {
       eyebrow: 'FAQ',
       title: 'Risposte rapide.',
@@ -1145,6 +840,898 @@ const I18N: Record<LangKey, I18n> = {
     footer: 'Steel Edizione privata. Solo download diretti.',
     labels: {
       language: 'Lingua'
+    }
+  },
+  ar: {
+    nav: {
+      home: 'الرئيسية',
+      downloads: 'التنزيلات',
+      docs: 'الوثائق',
+      showcase: 'العروض',
+      security: 'الأمان',
+      status: 'الحالة'
+    },
+    hero: {
+      eyebrow: 'إصدار خاص',
+      title: 'Steel، تسليم مباشر. بلا تعقيد.',
+      lead: 'نص قليل. أمثلة كثيرة. حمّل، شغّل، انسخ.',
+      primary: 'حمّل Steel',
+      ghost: 'شاهد الأمثلة',
+      pills: ['سهل للمبتدئين', 'تثبيت نظيف', 'متعدد الأنظمة'],
+      steps: ['حمّل المثبّت', 'نفّذ أمرًا واحدًا', 'ألصق مثالًا جاهزًا'],
+      cardTitle: 'بداية سريعة',
+      cardTag: 'v0.1.0_test'
+    },
+    download: {
+      eyebrow: 'التنزيل',
+      title: 'زر واحد. ملف واحد.',
+      lead: 'رابط مباشر بلا خطوات إضافية.',
+      macTitle: 'macOS (0.1.0_test)',
+      macDesc: 'مثبّت macOS مباشر. افتح وثبّت.',
+      macButton: 'حمّل Steel لـ macOS',
+      macHint: 'نوع الملف: .pkg',
+      otherTitle: 'Windows + Linux',
+      otherDesc: 'قيد العمل.',
+      otherHint: 'Windows: .exe — Linux: .deb',
+      quickInstall: 'تثبيت سريع'
+    },
+    about: {
+      eyebrow: 'لماذا Steel',
+      title: 'دليل بناء واضح، بلا غموض.',
+      cards: [
+        {
+          title: 'مدخلات واضحة',
+          text: 'ملف واحد يصف ما يُبنى وأين تذهب المخرجات.'
+        },
+        {
+          title: 'مخرجات ثابتة',
+          text: 'Steel ينشئ خطة متوقعة يمكنك إعادة استخدامها.'
+        },
+        {
+          title: 'للمبتدئين أولًا',
+          text: 'أمثلة قصيرة يمكنك نسخها دون تعلم كل شيء.'
+        }
+      ]
+    },
+    showcase: {
+      eyebrow: 'حالات الاستخدام',
+      title: 'أين يناسب Steel.',
+      lead: 'فرق صغيرة، تقنيات متعددة، أو لغة واحدة بإتقان.',
+      cards: [
+        { title: 'مشاريع فردية', text: 'ابدأ بملف واحد وتوسّع لاحقًا.' },
+        { title: 'تطبيقات متعددة اللغات', text: 'اجمع C وRust وSwift وJava.' },
+        { title: 'خطوط CI', text: 'مخرجات حتمية ومدخلات واضحة.' }
+      ]
+    },
+    showcasePage: {
+      eyebrow: 'Showcase',
+      title: 'أنماط steelconf حقيقية.',
+      lead: 'اختر نمطًا وكيّفه مع تقنيتك.',
+      cards: [
+        { title: 'تطبيق CLI', text: 'هدف واحد، مخرجات سريعة، بلا مفاجآت.' },
+        { title: 'تطبيق + مكتبة', text: 'قسّم البناء بمخرجات واضحة.' },
+        { title: 'مستودع متعدد اللغات', text: 'ملف لكل لغة، قصة بناء واحدة.' }
+      ],
+      examplesTitle: 'كتل أمثلة'
+    },
+    security: {
+      eyebrow: 'الأمان',
+      title: 'أمان افتراضي.',
+      lead: 'أدوات صريحة ومخرجات واضحة.',
+      cards: [
+        { title: 'أدوات صريحة', text: 'تُنفّذ الأدوات المصرّح بها فقط.' },
+        { title: 'مدخلات حتمية', text: 'مدخلات معروفة لبناء ثابت.' },
+        { title: 'تهيئة قابلة للتدقيق', text: 'Steel يولّد ملفًا موحّدًا.' },
+        { title: 'سطح هجوم صغير', text: 'ملف واحد يوجّه البناء.' }
+      ],
+      policyTitle: 'سياسة الأمان',
+      policyText: 'أبلغ عن المشاكل مع أقل إعادة إنتاج وتفاصيل نظام التشغيل/الأدوات.',
+      timelineTitle: 'الجدول الزمني',
+      timeline: ['اليوم 0: الاستلام', 'اليوم 3: الفرز', 'اليوم 7: الإصلاح']
+    },
+    status: {
+      eyebrow: 'الحالة',
+      title: 'الحالة الحالية للخدمات.',
+      lead: 'أحدث التنزيلات وخطوط البناء.',
+      metrics: [
+        { label: 'الجاهزية', value: '99.9%' },
+        { label: 'زمن البناء', value: '< 2 دقيقة' },
+        { label: 'زمن التنزيل', value: '< 1 دقيقة' }
+      ],
+      services: [
+        { name: 'تنزيل macOS', state: 'متاح', text: 'مثبّت .pkg متوفر.' },
+        { name: 'تنزيل Windows', state: 'قيد العمل', text: 'التغليف والتوقيع جاريان.' },
+        { name: 'تنزيل Linux', state: 'قيد العمل', text: 'تحضير خط .deb.' }
+      ],
+      historyTitle: 'آخر التحديثات',
+      history: [
+        { title: 'نشر مثبّت macOS', date: '2026-01-20', text: 'حزمة .pkg شاملة جاهزة.' },
+        { title: 'بدء خط Windows', date: '2026-01-18', text: 'التوقيع في مرحلة التجهيز.' }
+      ]
+    },
+    examples: {
+      eyebrow: 'أمثلة',
+      title: 'انسخ، الصق، شغّل.',
+      lead: 'مقاطع قصيرة لمشروعك.',
+      checkTitle: 'تحقق',
+      runTitle: 'تشغيل',
+      minimalTitle: 'steelconf بسيط',
+      editorTitle: 'عرض vim',
+      browseAll: 'عرض كل الأمثلة'
+    },
+    docs: {
+      eyebrow: 'الوثائق',
+      title: 'فقط ما تحتاجه للبداية.',
+      lead: 'أدلة قصيرة مع أوامر حقيقية.',
+      sections: [
+        { title: '1) أنشئ ملفًا', text: 'ضع steelconf في الجذر.' },
+        { title: '2) عرّف الأدوات', text: 'صرّح بالمُصرّف المستخدم.' },
+        { title: '3) أضف وصفة', text: 'صف البناء والمخرجات.' }
+      ],
+      commandsTitle: 'أوامر أساسية',
+      commandList: ['steel --version', 'steel run', 'steel fmt', 'steel doctor'],
+      guidesTitle: 'أدلة',
+      guides: [
+        { title: 'اختر لغة', text: 'ابدأ بمثال قريب.' },
+        { title: 'مخرجات بسيطة', text: 'استخدم target/out/ لاختبار سريع.' },
+        { title: 'التنسيق لاحقًا', text: 'ابدأ بالبناء أولًا.' }
+      ],
+      troubleshootingTitle: 'استكشاف الأخطاء',
+      troubleshooting: [
+        'إذا كانت أداة مفقودة، تحقق من PATH.',
+        'إذا كانت ملفات مفقودة، تحقق من glob.',
+        'إذا كان بطيئًا، قلّل المدخلات.'
+      ],
+      bestPracticesTitle: 'أفضل الممارسات',
+      bestPractices: [
+        'مسارات مخرجات ثابتة.',
+        'سمِّ الأدوات بأسماء التنفيذ.',
+        'ابدأ بهدف واحد فقط.'
+      ]
+    },
+    faq: {
+      eyebrow: 'الأسئلة الشائعة',
+      title: 'إجابات سريعة.',
+      items: [
+        { q: 'هل يناسب المبتدئين؟', a: 'نعم. أمثلة قصيرة وقابلة للنسخ.' },
+        { q: 'Windows + Linux؟', a: 'قيد العمل. .exe و .deb.' },
+        { q: 'ما اسم الملف الرئيسي؟', a: 'اسم الملف هو steelconf.' },
+        { q: 'اختبار سريع؟', a: 'حمّل ثم steel --version.' },
+        { q: 'تحتاج مساعدة؟', a: 'ابدأ بالمثال الأدنى.' }
+      ]
+    },
+    changelog: {
+      eyebrow: 'سجل التغييرات',
+      title: 'ملاحظات الإصدار',
+      lead: 'الجديد وما القادم.',
+      items: [
+        {
+          version: '0.1.0_test',
+          date: '2026-01-20',
+          notes: ['مثبّت macOS مباشر', 'أمثلة للمبتدئين', 'موقع متعدد اللغات']
+        },
+        {
+          version: '0.1.0_next',
+          date: 'قريبًا',
+          notes: ['Windows .exe', 'Linux .deb', 'قوالب أكثر']
+        }
+      ]
+    },
+    footer: 'Steel إصدار خاص. تنزيلات مباشرة فقط.',
+    labels: {
+      language: 'اللغة'
+    }
+  },
+  zh: {
+    nav: {
+      home: '首页',
+      downloads: '下载',
+      docs: '文档',
+      showcase: '示例',
+      security: '安全',
+      status: '状态'
+    },
+    hero: {
+      eyebrow: '私有版',
+      title: 'Steel，直达交付。无需折腾。',
+      lead: '文本极简，示例极多。下载、运行、复制、上线。',
+      primary: '下载 Steel',
+      ghost: '查看示例',
+      pills: ['新手友好', '安装干净', '多平台'],
+      steps: ['下载安装包', '运行一个命令', '粘贴现成示例'],
+      cardTitle: '快速开始',
+      cardTag: 'v0.1.0_test'
+    },
+    download: {
+      eyebrow: '下载',
+      title: '一个按钮，一个文件。',
+      lead: '直链安装，无额外步骤。',
+      macTitle: 'macOS (0.1.0_test)',
+      macDesc: 'macOS 直装包。打开并安装。',
+      macButton: '下载 macOS 版 Steel',
+      macHint: '文件类型: .pkg',
+      otherTitle: 'Windows + Linux',
+      otherDesc: '进行中。',
+      otherHint: 'Windows: .exe — Linux: .deb',
+      quickInstall: '快速安装'
+    },
+    about: {
+      eyebrow: '为什么选择 Steel',
+      title: '构建清晰，不再神秘。',
+      cards: [
+        {
+          title: '输入清楚',
+          text: '一个文件说明要构建什么，以及输出到哪里。'
+        },
+        {
+          title: '输出稳定',
+          text: 'Steel 生成可复用、可自动化的构建计划。'
+        },
+        {
+          title: '新手优先',
+          text: '短小示例，复制即可用。'
+        }
+      ]
+    },
+    showcase: {
+      eyebrow: '使用场景',
+      title: 'Steel 最合适的地方。',
+      lead: '小团队、混合技术栈，或单一语言。',
+      cards: [
+        { title: '个人项目', text: '用一个文件起步，按需扩展。' },
+        { title: '多语言应用', text: '把 C、Rust、Swift、Java 放在一起。' },
+        { title: 'CI 流水线', text: '确定性输出与清晰输入。' }
+      ]
+    },
+    showcasePage: {
+      eyebrow: 'Showcase',
+      title: '真实 steelconf 模式。',
+      lead: '选择一个模式并适配你的技术栈。',
+      cards: [
+        { title: 'CLI 应用', text: '一个目标，快速输出，零惊喜。' },
+        { title: '应用 + 库', text: '清晰分步与整洁输出。' },
+        { title: '多语言仓库', text: '每种语言一份配置，一个构建故事。' }
+      ],
+      examplesTitle: '示例模块'
+    },
+    security: {
+      eyebrow: '安全',
+      title: '默认安全。',
+      lead: '显式工具，清晰输出。',
+      cards: [
+        { title: '显式工具', text: '只执行已声明的工具。' },
+        { title: '确定性输入', text: '已知输入带来稳定构建。' },
+        { title: '可审计配置', text: 'Steel 生成规范化文件。' },
+        { title: '最小攻击面', text: '一个文件即可驱动构建。' }
+      ],
+      policyTitle: '安全政策',
+      policyText: '报告问题时请提供最小复现与 OS/工具链细节。',
+      timelineTitle: '时间线',
+      timeline: ['第 0 天：接收', '第 3 天：分诊', '第 7 天：修复']
+    },
+    status: {
+      eyebrow: '状态',
+      title: '当前服务状态。',
+      lead: '最新下载与流水线。',
+      metrics: [
+        { label: '可用性', value: '99.9%' },
+        { label: '构建延迟', value: '< 2 分钟' },
+        { label: '下载延迟', value: '< 1 分钟' }
+      ],
+      services: [
+        { name: 'macOS 下载', state: '正常', text: '.pkg 安装包可用。' },
+        { name: 'Windows 下载', state: '进行中', text: '打包与签名进行中。' },
+        { name: 'Linux 下载', state: '进行中', text: '.deb 流水线准备中。' }
+      ],
+      historyTitle: '最近更新',
+      history: [
+        { title: '发布 macOS 安装包', date: '2026-01-20', text: '通用 .pkg 已就绪。' },
+        { title: '启动 Windows 流水线', date: '2026-01-18', text: '签名在预发布中。' }
+      ]
+    },
+    examples: {
+      eyebrow: '示例',
+      title: '复制、粘贴、运行。',
+      lead: '适合项目的短片段。',
+      checkTitle: '检查',
+      runTitle: '运行',
+      minimalTitle: '最小 steelconf',
+      editorTitle: 'vim 视图',
+      browseAll: '查看全部示例'
+    },
+    docs: {
+      eyebrow: '文档',
+      title: '启动只需这些。',
+      lead: '带真实命令的短指南。',
+      sections: [
+        { title: '1) 创建文件', text: '在根目录创建 steelconf。' },
+        { title: '2) 定义工具', text: '声明要使用的编译器。' },
+        { title: '3) 添加配方', text: '描述构建与输出。' }
+      ],
+      commandsTitle: '核心命令',
+      commandList: ['steel --version', 'steel run', 'steel fmt', 'steel doctor'],
+      guidesTitle: '指南',
+      guides: [
+        { title: '选择语言', text: '从接近的示例开始。' },
+        { title: '简单输出', text: '用 target/out/ 快速验证。' },
+        { title: '稍后格式化', text: '先把构建跑通。' }
+      ],
+      troubleshootingTitle: '故障排查',
+      troubleshooting: [
+        '工具缺失时检查 PATH。',
+        '文件缺失时检查 glob。',
+        '速度慢时减少输入。'
+      ],
+      bestPracticesTitle: '最佳实践',
+      bestPractices: ['输出路径稳定。', '工具名使用真实可执行文件名。', '先从一个 target 开始。']
+    },
+    faq: {
+      eyebrow: 'FAQ',
+      title: '快速解答。',
+      items: [
+        { q: '适合新手吗？', a: '是的。示例短小可复制。' },
+        { q: 'Windows + Linux？', a: '进行中。.exe 与 .deb。' },
+        { q: '主文件名？', a: '文件名为 steelconf。' },
+        { q: '快速测试？', a: '下载后运行 steel --version。' },
+        { q: '需要帮助？', a: '从最小示例开始。' }
+      ]
+    },
+    changelog: {
+      eyebrow: '变更日志',
+      title: '发布说明',
+      lead: '新内容与下一步。',
+      items: [
+        {
+          version: '0.1.0_test',
+          date: '2026-01-20',
+          notes: ['macOS 直装包', '新手示例', '多语言站点']
+        },
+        {
+          version: '0.1.0_next',
+          date: '即将推出',
+          notes: ['Windows .exe', 'Linux .deb', '更多模板']
+        }
+      ]
+    },
+    footer: 'Steel 私有版。仅直链下载。',
+    labels: {
+      language: '语言'
+    }
+  },
+  ja: {
+    nav: {
+      home: 'ホーム',
+      downloads: 'ダウンロード',
+      docs: 'ドキュメント',
+      showcase: 'ショーケース',
+      security: 'セキュリティ',
+      status: 'ステータス'
+    },
+    hero: {
+      eyebrow: 'プライベート版',
+      title: 'Steel、直送。セットアップの面倒なし。',
+      lead: '短いテキスト。豊富な例。ダウンロードして実行、コピー。',
+      primary: 'Steelをダウンロード',
+      ghost: '例を見る',
+      pills: ['初心者向け', 'クリーンインストール', 'マルチOS'],
+      steps: ['インストーラを取得', 'コマンド1つ', 'すぐ使える例を貼り付け'],
+      cardTitle: 'クイックスタート',
+      cardTag: 'v0.1.0_test'
+    },
+    download: {
+      eyebrow: 'ダウンロード',
+      title: '1ボタン、1ファイル。',
+      lead: '追加手順なしの直リンク。',
+      macTitle: 'macOS (0.1.0_test)',
+      macDesc: 'macOS 直インストーラ。開いてインストール。',
+      macButton: 'macOS版 Steel をダウンロード',
+      macHint: 'ファイル形式: .pkg',
+      otherTitle: 'Windows + Linux',
+      otherDesc: '準備中。',
+      otherHint: 'Windows: .exe — Linux: .deb',
+      quickInstall: 'クイックインストール'
+    },
+    about: {
+      eyebrow: 'なぜSteel',
+      title: 'ビルドを明確に、謎なし。',
+      cards: [
+        {
+          title: '明確な入力',
+          text: '1ファイルで何を作るか、出力先を示します。'
+        },
+        {
+          title: '安定した出力',
+          text: 'Steelは再利用可能な計画を作成します。'
+        },
+        {
+          title: '初心者優先',
+          text: '短い例をそのままコピーできます。'
+        }
+      ]
+    },
+    showcase: {
+      eyebrow: 'ユースケース',
+      title: 'Steelが合う場面。',
+      lead: '小さなチーム、混在スタック、または単一言語。',
+      cards: [
+        { title: '個人プロジェクト', text: '1ファイルで始めて拡張。' },
+        { title: '多言語アプリ', text: 'C/Rust/Swift/Java をまとめる。' },
+        { title: 'CI パイプライン', text: '決定的な出力と明確な入力。' }
+      ]
+    },
+    showcasePage: {
+      eyebrow: 'ショーケース',
+      title: '実際の steelconf パターン。',
+      lead: 'パターンを選んでスタックに合わせる。',
+      cards: [
+        { title: 'CLI アプリ', text: '1ターゲット、速い出力、サプライズなし。' },
+        { title: 'アプリ + ライブラリ', text: '明確なステップと綺麗な出力。' },
+        { title: '多言語リポジトリ', text: '言語ごとに設定、1つのビルド。' }
+      ],
+      examplesTitle: '例のブロック'
+    },
+    security: {
+      eyebrow: 'セキュリティ',
+      title: 'デフォルトで安全。',
+      lead: '明示的なツールと明確な出力。',
+      cards: [
+        { title: '明示的ツール', text: '宣言されたツールだけを実行。' },
+        { title: '決定的入力', text: '既知の入力で安定ビルド。' },
+        { title: '監査可能な設定', text: 'Steelが正規化ファイルを生成。' },
+        { title: '最小攻撃面', text: '1ファイルでビルドを制御。' }
+      ],
+      policyTitle: 'セキュリティポリシー',
+      policyText: '最小再現とOS/ツールチェーン情報を添えて報告してください。',
+      timelineTitle: 'タイムライン',
+      timeline: ['0日目: 受領', '3日目: トリアージ', '7日目: 修正']
+    },
+    status: {
+      eyebrow: 'ステータス',
+      title: 'サービスの現在状況。',
+      lead: '最新のダウンロードとパイプライン。',
+      metrics: [
+        { label: '稼働率', value: '99.9%' },
+        { label: 'ビルド遅延', value: '< 2分' },
+        { label: 'ダウンロード遅延', value: '< 1分' }
+      ],
+      services: [
+        { name: 'macOS ダウンロード', state: '稼働中', text: '.pkg が利用可能。' },
+        { name: 'Windows ダウンロード', state: '準備中', text: 'パッケージングと署名中。' },
+        { name: 'Linux ダウンロード', state: '準備中', text: '.deb パイプライン準備中。' }
+      ],
+      historyTitle: '最近の更新',
+      history: [
+        { title: 'macOS インストーラ公開', date: '2026-01-20', text: 'ユニバーサル .pkg 完了。' },
+        { title: 'Windows パイプライン開始', date: '2026-01-18', text: '署名をステージング中。' }
+      ]
+    },
+    examples: {
+      eyebrow: '例',
+      title: 'コピーして実行。',
+      lead: 'プロジェクト向けの短いスニペット。',
+      checkTitle: 'チェック',
+      runTitle: '実行',
+      minimalTitle: '最小 steelconf',
+      editorTitle: 'vim ビュー',
+      browseAll: 'すべての例を見る'
+    },
+    docs: {
+      eyebrow: 'ドキュメント',
+      title: '始めるために必要なだけ。',
+      lead: '実際のコマンド付きの短いガイド。',
+      sections: [
+        { title: '1) ファイル作成', text: 'ルートに steelconf を置く。' },
+        { title: '2) ツール定義', text: '使うコンパイラを宣言。' },
+        { title: '3) レシピ追加', text: 'ビルドと出力を記述。' }
+      ],
+      commandsTitle: '必須コマンド',
+      commandList: ['steel --version', 'steel run', 'steel fmt', 'steel doctor'],
+      guidesTitle: 'ガイド',
+      guides: [
+        { title: '言語を選ぶ', text: '近い例から始める。' },
+        { title: 'シンプル出力', text: 'target/out/ で素早く確認。' },
+        { title: '整形は後で', text: 'まず最小ビルドから。' }
+      ],
+      troubleshootingTitle: 'トラブルシューティング',
+      troubleshooting: [
+        'ツールが見つからない場合は PATH を確認。',
+        'ファイルが見つからない場合は glob を確認。',
+        '遅い場合は入力を減らす。'
+      ],
+      bestPracticesTitle: 'ベストプラクティス',
+      bestPractices: ['出力パスを安定させる。', 'ツール名は実行ファイル名に。', 'ターゲットは1つから。']
+    },
+    faq: {
+      eyebrow: 'FAQ',
+      title: 'よくある質問。',
+      items: [
+        { q: '初心者向け？', a: 'はい。短い例をコピーできます。' },
+        { q: 'Windows + Linux？', a: '準備中。.exe と .deb。' },
+        { q: 'メインファイル名？', a: 'ファイル名は steelconf。' },
+        { q: '簡単なテスト？', a: 'ダウンロード後に steel --version。' },
+        { q: '助けが必要？', a: '最小例から始めてください。' }
+      ]
+    },
+    changelog: {
+      eyebrow: '変更履歴',
+      title: 'リリースノート',
+      lead: '新機能と次の予定。',
+      items: [
+        {
+          version: '0.1.0_test',
+          date: '2026-01-20',
+          notes: ['macOS 直インストーラ', '初心者向け例', '多言語サイト']
+        },
+        {
+          version: '0.1.0_next',
+          date: '近日',
+          notes: ['Windows .exe', 'Linux .deb', 'テンプレート追加']
+        }
+      ]
+    },
+    footer: 'Steel プライベート版。直接ダウンロードのみ。',
+    labels: {
+      language: '言語'
+    }
+  },
+  pt: {
+    nav: {
+      home: 'Inicio',
+      downloads: 'Downloads',
+      docs: 'Documentacao',
+      showcase: 'Showcase',
+      security: 'Seguranca',
+      status: 'Status'
+    },
+    hero: {
+      eyebrow: 'Edicao privada',
+      title: 'Steel, entregue direto. Sem drama de setup.',
+      lead: 'Texto minimo. Muitos exemplos. Baixe, rode, copie.',
+      primary: 'Baixar Steel',
+      ghost: 'Ver exemplos',
+      pills: ['Amigavel para iniciantes', 'Instalacao limpa', 'Multi-OS'],
+      steps: ['Baixe o instalador', 'Rode um comando', 'Cole um exemplo pronto'],
+      cardTitle: 'Inicio rapido',
+      cardTag: 'v0.1.0_test'
+    },
+    download: {
+      eyebrow: 'Download',
+      title: 'Um botao. Um arquivo.',
+      lead: 'Link direto sem etapas extras.',
+      macTitle: 'macOS (0.1.0_test)',
+      macDesc: 'Instalador macOS direto. Abra e instale.',
+      macButton: 'Baixar Steel para macOS',
+      macHint: 'Tipo de arquivo: .pkg',
+      otherTitle: 'Windows + Linux',
+      otherDesc: 'Em andamento.',
+      otherHint: 'Windows: .exe — Linux: .deb',
+      quickInstall: 'Instalacao rapida'
+    },
+    about: {
+      eyebrow: 'Por que Steel',
+      title: 'Build claro, sem misterio.',
+      cards: [
+        {
+          title: 'Entradas claras',
+          text: 'Um arquivo descreve o que construir e onde saem os outputs.'
+        },
+        {
+          title: 'Output estavel',
+          text: 'Steel cria um plano previsivel para reutilizar e automatizar.'
+        },
+        {
+          title: 'Primeiro os iniciantes',
+          text: 'Exemplos curtos para copiar sem aprender tudo.'
+        }
+      ]
+    },
+    showcase: {
+      eyebrow: 'Casos de uso',
+      title: 'Onde o Steel funciona melhor.',
+      lead: 'Times pequenos, stacks mistos ou uma linguagem so.',
+      cards: [
+        { title: 'Projetos solo', text: 'Comece com um arquivo e cresca.' },
+        { title: 'Apps multi-linguagem', text: 'C, Rust, Swift e Java juntos.' },
+        { title: 'Pipelines CI', text: 'Outputs deterministas e entradas claras.' }
+      ]
+    },
+    showcasePage: {
+      eyebrow: 'Showcase',
+      title: 'Padroes steelconf reais.',
+      lead: 'Escolha um padrao e adapte ao seu stack.',
+      cards: [
+        { title: 'App CLI', text: 'Um target, output rapido, zero surpresa.' },
+        { title: 'App + lib', text: 'Divida etapas com outputs limpos.' },
+        { title: 'Repo poliglota', text: 'Uma config por linguagem, um build.' }
+      ],
+      examplesTitle: 'Blocos de exemplo'
+    },
+    security: {
+      eyebrow: 'Seguranca',
+      title: 'Seguranca por padrao.',
+      lead: 'Ferramentas explicitas e outputs claros.',
+      cards: [
+        { title: 'Ferramentas explicitas', text: 'So executa as ferramentas declaradas.' },
+        { title: 'Entradas deterministas', text: 'Entradas conhecidas para build estavel.' },
+        { title: 'Config auditavel', text: 'Steel gera um arquivo normalizado.' },
+        { title: 'Superficie minima', text: 'Um arquivo guia todo o build.' }
+      ],
+      policyTitle: 'Politica de seguranca',
+      policyText: 'Reporte problemas com repro minimo e detalhes de SO/toolchain.',
+      timelineTitle: 'Linha do tempo',
+      timeline: ['Dia 0: recebimento', 'Dia 3: triagem', 'Dia 7: correcao']
+    },
+    status: {
+      eyebrow: 'Status',
+      title: 'Status atual dos servicos.',
+      lead: 'Downloads e pipelines mais recentes.',
+      metrics: [
+        { label: 'Uptime', value: '99.9%' },
+        { label: 'Latencia de build', value: '< 2 min' },
+        { label: 'Latencia de download', value: '< 1 min' }
+      ],
+      services: [
+        { name: 'Download macOS', state: 'Operacional', text: 'Instalador .pkg disponivel.' },
+        { name: 'Download Windows', state: 'Em andamento', text: 'Packaging e assinatura em curso.' },
+        { name: 'Download Linux', state: 'Em andamento', text: 'Pipeline .deb em preparo.' }
+      ],
+      historyTitle: 'Atualizacoes recentes',
+      history: [
+        { title: 'Instalador macOS publicado', date: '2026-01-20', text: 'Universal .pkg pronto.' },
+        { title: 'Pipeline Windows iniciado', date: '2026-01-18', text: 'Assinatura em staging.' }
+      ]
+    },
+    examples: {
+      eyebrow: 'Exemplos',
+      title: 'Copie, cole, rode.',
+      lead: 'Snippets curtos para seu projeto.',
+      checkTitle: 'Verificar',
+      runTitle: 'Executar',
+      minimalTitle: 'steelconf minimo',
+      editorTitle: 'Vista vim',
+      browseAll: 'Ver todos os exemplos'
+    },
+    docs: {
+      eyebrow: 'Documentos',
+      title: 'So o necessario para comecar.',
+      lead: 'Guias curtos com comandos reais.',
+      sections: [
+        { title: '1) Crie um arquivo', text: 'Crie o steelconf na raiz.' },
+        { title: '2) Defina as ferramentas', text: 'Declare o compilador usado.' },
+        { title: '3) Adicione uma receita', text: 'Descreva build e output.' }
+      ],
+      commandsTitle: 'Comandos essenciais',
+      commandList: ['steel --version', 'steel run', 'steel fmt', 'steel doctor'],
+      guidesTitle: 'Guias',
+      guides: [
+        { title: 'Escolha um idioma', text: 'Comece por um exemplo proximo.' },
+        { title: 'Outputs simples', text: 'Use target/out/ para testar rapido.' },
+        { title: 'Formatacao depois', text: 'Primeiro faca o build minimo.' }
+      ],
+      troubleshootingTitle: 'Solucao de problemas',
+      troubleshooting: [
+        'Se faltar ferramenta, verifique o PATH.',
+        'Se faltar arquivo, verifique os globs.',
+        'Se estiver lento, reduza as entradas.'
+      ],
+      bestPracticesTitle: 'Boas praticas',
+      bestPractices: [
+        'Caminhos de output estaveis.',
+        'Ferramentas com nomes reais.',
+        'Comece com um unico target.'
+      ]
+    },
+    faq: {
+      eyebrow: 'FAQ',
+      title: 'Respostas rapidas.',
+      items: [
+        { q: 'Para iniciantes?', a: 'Sim. Exemplos curtos e copiaveis.' },
+        { q: 'Windows + Linux?', a: 'Em andamento. .exe e .deb.' },
+        { q: 'Arquivo principal?', a: 'O arquivo se chama steelconf.' },
+        { q: 'Teste rapido?', a: 'Baixe e rode steel --version.' },
+        { q: 'Precisa de ajuda?', a: 'Comece pelo exemplo minimo.' }
+      ]
+    },
+    changelog: {
+      eyebrow: 'Changelog',
+      title: 'Notas de release',
+      lead: 'Novidades e proximos passos.',
+      items: [
+        {
+          version: '0.1.0_test',
+          date: '2026-01-20',
+          notes: ['Instalador macOS direto', 'Exemplos para iniciantes', 'Site multi-idioma']
+        },
+        {
+          version: '0.1.0_next',
+          date: 'Em breve',
+          notes: ['Windows .exe', 'Linux .deb', 'Mais templates']
+        }
+      ]
+    },
+    footer: 'Steel Edicao privada. Apenas downloads diretos.',
+    labels: {
+      language: 'Idioma'
+    }
+  },
+  es: {
+    nav: {
+      home: 'Inicio',
+      downloads: 'Descargas',
+      docs: 'Docs',
+      showcase: 'Showcase',
+      security: 'Seguridad',
+      status: 'Estado'
+    },
+    hero: {
+      eyebrow: 'Edicion privada',
+      title: 'Steel, entrega directa. Sin drama de setup.',
+      lead: 'Texto minimo. Maximos ejemplos. Descarga, ejecuta, copia.',
+      primary: 'Descargar Steel',
+      ghost: 'Ver ejemplos',
+      pills: ['Amigable para principiantes', 'Instalacion limpia', 'Multi-OS'],
+      steps: ['Descarga el instalador', 'Ejecuta un comando', 'Pega un ejemplo listo'],
+      cardTitle: 'Inicio rapido',
+      cardTag: 'v0.1.0_test'
+    },
+    download: {
+      eyebrow: 'Descarga',
+      title: 'Un boton. Un archivo.',
+      lead: 'Link directo sin pasos extra.',
+      macTitle: 'macOS (0.1.0_test)',
+      macDesc: 'Instalador macOS directo. Abre e instala.',
+      macButton: 'Descargar Steel para macOS',
+      macHint: 'Tipo de archivo: .pkg',
+      otherTitle: 'Windows + Linux',
+      otherDesc: 'En progreso.',
+      otherHint: 'Windows: .exe — Linux: .deb',
+      quickInstall: 'Instalacion rapida'
+    },
+    about: {
+      eyebrow: 'Por que Steel',
+      title: 'Build claro, sin misterios.',
+      cards: [
+        {
+          title: 'Entradas claras',
+          text: 'Un archivo describe que construir y donde van los outputs.'
+        },
+        {
+          title: 'Salida estable',
+          text: 'Steel crea un plan predecible que puedes reutilizar.'
+        },
+        {
+          title: 'Primero principiantes',
+          text: 'Ejemplos cortos para copiar sin aprender todo.'
+        }
+      ]
+    },
+    showcase: {
+      eyebrow: 'Casos de uso',
+      title: 'Donde Steel encaja mejor.',
+      lead: 'Equipos pequenos, stacks mixtos o un solo lenguaje.',
+      cards: [
+        { title: 'Proyectos solo', text: 'Empieza con un archivo y crece.' },
+        { title: 'Apps multi-lenguaje', text: 'C, Rust, Swift y Java juntos.' },
+        { title: 'Pipelines CI', text: 'Salidas deterministas e inputs claros.' }
+      ]
+    },
+    showcasePage: {
+      eyebrow: 'Showcase',
+      title: 'Patrones steelconf reales.',
+      lead: 'Elige un patron y adaptalo a tu stack.',
+      cards: [
+        { title: 'App CLI', text: 'Un target, salida rapida, cero sorpresas.' },
+        { title: 'App + lib', text: 'Divide pasos con salidas limpias.' },
+        { title: 'Repo poliglota', text: 'Una config por lenguaje, un build.' }
+      ],
+      examplesTitle: 'Bloques de ejemplo'
+    },
+    security: {
+      eyebrow: 'Seguridad',
+      title: 'Seguridad por defecto.',
+      lead: 'Herramientas explicitas y salidas claras.',
+      cards: [
+        { title: 'Herramientas explicitas', text: 'Solo se ejecutan las herramientas declaradas.' },
+        { title: 'Entradas deterministas', text: 'Entradas conocidas para builds estables.' },
+        { title: 'Config auditable', text: 'Steel genera un archivo normalizado.' },
+        { title: 'Superficie minima', text: 'Un archivo guia todo el build.' }
+      ],
+      policyTitle: 'Politica de seguridad',
+      policyText: 'Reporta problemas con repro minimo y detalles de SO/toolchain.',
+      timelineTitle: 'Linea de tiempo',
+      timeline: ['Dia 0: recepcion', 'Dia 3: triage', 'Dia 7: fix']
+    },
+    status: {
+      eyebrow: 'Estado',
+      title: 'Estado actual de los servicios.',
+      lead: 'Descargas y pipelines mas recientes.',
+      metrics: [
+        { label: 'Uptime', value: '99.9%' },
+        { label: 'Latencia build', value: '< 2 min' },
+        { label: 'Latencia descarga', value: '< 1 min' }
+      ],
+      services: [
+        { name: 'Descarga macOS', state: 'Operativo', text: 'Instalador .pkg disponible.' },
+        { name: 'Descarga Windows', state: 'En progreso', text: 'Packaging y firma en curso.' },
+        { name: 'Descarga Linux', state: 'En progreso', text: 'Pipeline .deb en preparacion.' }
+      ],
+      historyTitle: 'Actualizaciones recientes',
+      history: [
+        { title: 'Instalador macOS publicado', date: '2026-01-20', text: 'Universal .pkg listo.' },
+        { title: 'Pipeline Windows iniciado', date: '2026-01-18', text: 'Firma en staging.' }
+      ]
+    },
+    examples: {
+      eyebrow: 'Ejemplos',
+      title: 'Copia, pega, ejecuta.',
+      lead: 'Snippets cortos para tu proyecto.',
+      checkTitle: 'Verificar',
+      runTitle: 'Ejecutar',
+      minimalTitle: 'steelconf minimo',
+      editorTitle: 'Vista vim',
+      browseAll: 'Ver todos los ejemplos'
+    },
+    docs: {
+      eyebrow: 'Documentos',
+      title: 'Solo lo necesario para empezar.',
+      lead: 'Guias cortas con comandos reales.',
+      sections: [
+        { title: '1) Crea un archivo', text: 'Crea steelconf en la raiz.' },
+        { title: '2) Define herramientas', text: 'Declara el compilador a usar.' },
+        { title: '3) Agrega una receta', text: 'Describe el build y la salida.' }
+      ],
+      commandsTitle: 'Comandos esenciales',
+      commandList: ['steel --version', 'steel run', 'steel fmt', 'steel doctor'],
+      guidesTitle: 'Guias',
+      guides: [
+        { title: 'Elige un lenguaje', text: 'Empieza con un ejemplo cercano.' },
+        { title: 'Salidas simples', text: 'Usa target/out/ para probar rapido.' },
+        { title: 'Formato despues', text: 'Primero construye lo minimo.' }
+      ],
+      troubleshootingTitle: 'Solucion de problemas',
+      troubleshooting: [
+        'Si falta una herramienta, revisa PATH.',
+        'Si faltan archivos, revisa los globs.',
+        'Si es lento, reduce los inputs.'
+      ],
+      bestPracticesTitle: 'Buenas practicas',
+      bestPractices: [
+        'Rutas de salida estables.',
+        'Herramientas con nombres reales.',
+        'Empieza con un solo target.'
+      ]
+    },
+    faq: {
+      eyebrow: 'FAQ',
+      title: 'Respuestas rapidas.',
+      items: [
+        { q: 'Para principiantes?', a: 'Si. Ejemplos cortos y copiables.' },
+        { q: 'Windows + Linux?', a: 'En progreso. .exe y .deb.' },
+        { q: 'Archivo principal?', a: 'El archivo se llama steelconf.' },
+        { q: 'Prueba rapida?', a: 'Descarga y ejecuta steel --version.' },
+        { q: 'Necesitas ayuda?', a: 'Empieza por el ejemplo minimo.' }
+      ]
+    },
+    changelog: {
+      eyebrow: 'Changelog',
+      title: 'Notas de release',
+      lead: 'Novedades y proximos pasos.',
+      items: [
+        {
+          version: '0.1.0_test',
+          date: '2026-01-20',
+          notes: ['Instalador macOS directo', 'Ejemplos para principiantes', 'Sitio multi-idioma']
+        },
+        {
+          version: '0.1.0_next',
+          date: 'Pronto',
+          notes: ['Windows .exe', 'Linux .deb', 'Mas templates']
+        }
+      ]
+    },
+    footer: 'Steel Edicion privada. Solo descargas directas.',
+    labels: {
+      language: 'Idioma'
     }
   }
 };
@@ -1205,6 +1792,7 @@ const STORAGE_KEY = 'steel_lang';
 export class AppState {
   readonly lang = signal<LangKey>('en');
   readonly t = computed(() => I18N[this.lang()]);
+  readonly isRtl = computed(() => this.lang() === 'ar');
   readonly downloadUrl = DOWNLOAD_MAC_URL;
   readonly examples = [...CORE_EXAMPLES, ...EXTRA_EXAMPLES];
 
@@ -1220,7 +1808,17 @@ export class AppState {
       return;
     }
     const detected = navigator.language.toLowerCase();
-    if (detected.startsWith('fr')) {
+    if (detected.startsWith('ar')) {
+      this.lang.set('ar');
+    } else if (detected.startsWith('es')) {
+      this.lang.set('es');
+    } else if (detected.startsWith('zh')) {
+      this.lang.set('zh');
+    } else if (detected.startsWith('ja')) {
+      this.lang.set('ja');
+    } else if (detected.startsWith('pt')) {
+      this.lang.set('pt');
+    } else if (detected.startsWith('fr')) {
       this.lang.set('fr');
     } else if (detected.startsWith('de')) {
       this.lang.set('de');

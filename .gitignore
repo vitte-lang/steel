@@ -118,3 +118,4 @@ Thumbs.db
 # =========================
 !SteelLib/
 !SteelLib/**
+.DS_Store
