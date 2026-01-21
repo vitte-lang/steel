@@ -816,6 +816,7 @@ fn usage_err(code: &str, msg: impl Into<String>, help: &str) -> CommandError {
     CommandError::Usage(format_usage(code, msg, help))
 }
 
+#[allow(dead_code)]
 fn welcome_text() -> &'static str {
     "Welcome Vitte
 
