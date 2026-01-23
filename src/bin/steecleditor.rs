@@ -1,6 +1,6 @@
 use std::fs;
 use std::io::{self, stdout, Write};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
 
@@ -169,6 +169,25 @@ const CSHARP_KEYWORDS: &[&str] = &[
     "try", "typeof", "uint", "ulong", "unchecked", "unsafe", "ushort", "using", "virtual",
     "void", "volatile", "while",
 ];
+const C_TYPES: &[&str] = &[
+    "char", "short", "int", "long", "float", "double", "void", "signed", "unsigned", "size_t",
+    "ssize_t", "intptr_t", "uintptr_t", "int8_t", "int16_t", "int32_t", "int64_t", "uint8_t",
+    "uint16_t", "uint32_t", "uint64_t", "bool", "wchar_t",
+];
+const CPP_TYPES: &[&str] = &[
+    "bool", "char", "char16_t", "char32_t", "wchar_t", "short", "int", "long", "float", "double",
+    "void", "size_t", "ssize_t", "intptr_t", "uintptr_t", "int8_t", "int16_t", "int32_t", "int64_t",
+    "uint8_t", "uint16_t", "uint32_t", "uint64_t", "string", "u8string", "u16string", "u32string",
+    "wstring",
+];
+const PY_BUILTINS: &[&str] = &[
+    "abs", "all", "any", "bool", "bytes", "bytearray", "callable", "chr", "dict", "dir", "divmod",
+    "enumerate", "eval", "exec", "filter", "float", "format", "frozenset", "getattr", "hasattr",
+    "hash", "help", "hex", "id", "int", "isinstance", "issubclass", "iter", "len", "list", "map",
+    "max", "min", "next", "object", "oct", "open", "ord", "pow", "print", "range", "repr", "reversed",
+    "round", "set", "slice", "sorted", "str", "sum", "tuple", "type", "zip", "super", "property",
+    "classmethod", "staticmethod", "globals", "locals", "vars",
+];
 
 #[derive(Copy, Clone, PartialEq)]
 enum Language {
@@ -189,10 +208,21 @@ enum Theme {
     Light,
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+enum Palette {
+    Default,
+    Vivid,
+    Soft,
+}
+
 struct ThemeColors {
     fg: Color,
     comment: Color,
+    doc_comment: Color,
     keyword: Color,
+    type_name: Color,
+    builtin: Color,
+    function: Color,
     string: Color,
     number: Color,
     operator: Color,
@@ -215,7 +245,11 @@ impl Theme {
             Theme::Dark => ThemeColors {
                 fg: Color::White,
                 comment: Color::DarkGrey,
+                doc_comment: Color::DarkCyan,
                 keyword: Color::Cyan,
+                type_name: Color::Blue,
+                builtin: Color::Green,
+                function: Color::Yellow,
                 string: Color::Green,
                 number: Color::Yellow,
                 operator: Color::Magenta,
@@ -234,7 +268,11 @@ impl Theme {
             Theme::Light => ThemeColors {
                 fg: Color::Black,
                 comment: Color::DarkGrey,
+                doc_comment: Color::DarkBlue,
                 keyword: Color::Blue,
+                type_name: Color::DarkMagenta,
+                builtin: Color::DarkGreen,
+                function: Color::DarkCyan,
                 string: Color::DarkGreen,
                 number: Color::DarkYellow,
                 operator: Color::DarkMagenta,
@@ -254,9 +292,39 @@ impl Theme {
     }
 }
 
+impl Palette {
+    fn from_str(value: &str) -> Option<Self> {
+        match value {
+            "default" => Some(Self::Default),
+            "vivid" => Some(Self::Vivid),
+            "soft" => Some(Self::Soft),
+            _ => None,
+        }
+    }
+
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::Default => "default",
+            Self::Vivid => "vivid",
+            Self::Soft => "soft",
+        }
+    }
+
+    fn next(self) -> Self {
+        match self {
+            Self::Default => Self::Vivid,
+            Self::Vivid => Self::Soft,
+            Self::Soft => Self::Default,
+        }
+    }
+}
+
 struct EditorConfig {
     autosave_interval: Option<u64>,
     theme: Option<Theme>,
+    palette_c: Option<Palette>,
+    palette_cpp: Option<Palette>,
+    palette_py: Option<Palette>,
 }
 
 #[derive(Copy, Clone, Eq, PartialEq)]
@@ -319,12 +387,19 @@ struct Editor {
     autosave_interval: Duration,
     theme: Theme,
     colors: ThemeColors,
+    palette_c: Palette,
+    palette_cpp: Palette,
+    palette_py: Palette,
     extra_cursors: Vec<(usize, usize)>,
     line_ending: LineEnding,
     encoding: String,
     show_run_panel: bool,
     run_output: Vec<String>,
     run_status: Option<i32>,
+    show_terminal_panel: bool,
+    terminal_output: Vec<String>,
+    terminal_status: Option<i32>,
+    last_terminal_cmd: String,
     session_paths: Vec<PathBuf>,
     pending_restore: bool,
     run_errors: Vec<RunError>,
@@ -356,6 +431,9 @@ impl Editor {
         let autosave_interval = Duration::from_secs(config.autosave_interval.unwrap_or(30).max(1));
         let session_paths = load_session_paths();
         let language = detect_language(&file);
+        let palette_c = config.palette_c.unwrap_or(Palette::Default);
+        let palette_cpp = config.palette_cpp.unwrap_or(Palette::Default);
+        let palette_py = config.palette_py.unwrap_or(Palette::Default);
         Ok(Self {
             file: file.clone(),
             lines: lines.clone(),
@@ -385,12 +463,19 @@ impl Editor {
             autosave_interval,
             theme,
             colors,
+            palette_c,
+            palette_cpp,
+            palette_py,
             extra_cursors: Vec::new(),
             line_ending,
             encoding,
             show_run_panel: false,
             run_output: Vec::new(),
             run_status: None,
+            show_terminal_panel: false,
+            terminal_output: Vec::new(),
+            terminal_status: None,
+            last_terminal_cmd: String::new(),
             session_paths,
             pending_restore: true,
             run_errors: Vec::new(),
@@ -586,12 +671,28 @@ impl Editor {
                     self.toggle_theme();
                     return Ok(false);
                 }
+                KeyCode::Char(',') => {
+                    self.open_settings_menu()?;
+                    return Ok(false);
+                }
+                KeyCode::Char('`') => {
+                    self.open_native_terminal()?;
+                    return Ok(false);
+                }
                 KeyCode::Char('n') => {
                     self.goto_next_match_word();
                     return Ok(false);
                 }
                 KeyCode::Char('k') => {
                     self.cut_line();
+                    return Ok(false);
+                }
+                KeyCode::Char('c') => {
+                    self.copy_current_line_system();
+                    return Ok(false);
+                }
+                KeyCode::Char('v') => {
+                    self.paste_from_system();
                     return Ok(false);
                 }
                 KeyCode::Char('u') => {
@@ -606,14 +707,6 @@ impl Editor {
                     }
                     return Ok(true);
                 }
-                KeyCode::Char('x') => {
-                    if self.dirty && !self.confirm_quit {
-                        self.status = "Unsaved changes. Press Ctrl+X again to quit.".to_string();
-                        self.confirm_quit = true;
-                        return Ok(false);
-                    }
-                    return Ok(true);
-                }
                 _ => {}
             }
         }
@@ -623,6 +716,10 @@ impl Editor {
             KeyCode::Esc => {
                 if self.completion_active {
                     self.clear_completion();
+                    return Ok(false);
+                }
+                if self.show_terminal_panel {
+                    self.show_terminal_panel = false;
                     return Ok(false);
                 }
                 if self.show_run_panel {
@@ -697,7 +794,12 @@ impl Editor {
 
     fn render(&mut self, out: &mut io::Stdout) -> io::Result<()> {
         let (cols, rows) = terminal::size()?;
-        let height = rows.saturating_sub(3) as usize;
+        let panel_height = if self.show_terminal_panel {
+            self.terminal_panel_height(rows)
+        } else {
+            0
+        };
+        let height = rows.saturating_sub(3 + panel_height) as usize;
 
         self.validation = self.validate_header();
         self.lint = self.lint_warnings();
@@ -745,6 +847,10 @@ impl Editor {
         }
 
         let text_cols = cols.saturating_sub(2) as usize;
+        let mut raw_state: Option<String> = None;
+        let mut raw_carry = String::new();
+        let mut py_state: Option<String> = None;
+        let mut py_carry = String::new();
         let mut screen_row = 1usize;
         let mut line_idx = self.scroll;
         while screen_row <= height && line_idx < self.lines.len() {
@@ -756,14 +862,30 @@ impl Editor {
                     let chunk = &line[start..end];
                     let y = screen_row as u16;
                     queue!(out, cursor::MoveTo(0, y), Clear(ClearType::CurrentLine))?;
-                    self.render_line(out, chunk, text_cols)?;
+                    self.render_line(
+                        out,
+                        chunk,
+                        text_cols,
+                        &mut raw_state,
+                        &mut raw_carry,
+                        &mut py_state,
+                        &mut py_carry,
+                    )?;
                     screen_row += 1;
                     start += text_cols;
                 }
             } else {
                 let y = screen_row as u16;
                 queue!(out, cursor::MoveTo(0, y), Clear(ClearType::CurrentLine))?;
-                self.render_line(out, line, text_cols)?;
+                self.render_line(
+                    out,
+                    line,
+                    text_cols,
+                    &mut raw_state,
+                    &mut raw_carry,
+                    &mut py_state,
+                    &mut py_carry,
+                )?;
                 if !self.soft_wrap {
                     self.render_minimap(out, y, cols)?;
                 }
@@ -772,7 +894,7 @@ impl Editor {
             line_idx += 1;
         }
 
-        if !self.completion_active {
+        if !self.completion_active && !self.show_terminal_panel {
             if let Some(msg) = self.lint.first() {
                 let warn_line = truncate(&format!("warn: {msg}"), cols as usize);
                 queue!(
@@ -783,6 +905,10 @@ impl Editor {
                     ResetColor
                 )?;
             }
+        }
+
+        if self.show_terminal_panel && panel_height > 0 {
+            self.render_terminal_panel(out, cols as usize, rows as usize, panel_height)?;
         }
 
         let mut status = format!(
@@ -864,12 +990,16 @@ impl Editor {
             "Ctrl+B  Jump bake block",
             "Ctrl+J  Jump to symbol",
             "Ctrl+K  Cut line",
+            "Ctrl+C  Copy line",
+            "Ctrl+V  Paste",
             "Ctrl+U  Paste line",
+            "Ctrl+`  Open terminal",
             "Ctrl+G  Toggle help",
             "F2      Recent files",
             "Ctrl+A  Autosave toggle",
             "Ctrl+E  Read-only toggle",
             "Ctrl+M  Toggle theme",
+            "Ctrl+,  Settings",
             "Ctrl+R  Run steel",
             "Ctrl+D  Add next match",
             "Ctrl+N  Next word match",
@@ -902,7 +1032,16 @@ impl Editor {
         Ok(())
     }
 
-    fn render_line(&self, out: &mut io::Stdout, line: &str, cols: usize) -> io::Result<()> {
+    fn render_line(
+        &self,
+        out: &mut io::Stdout,
+        line: &str,
+        cols: usize,
+        raw_state: &mut Option<String>,
+        raw_carry: &mut String,
+        py_state: &mut Option<String>,
+        py_carry: &mut String,
+    ) -> io::Result<()> {
         let trimmed = line.trim_start();
         if contains_todo(trimmed) {
             queue!(
@@ -914,7 +1053,101 @@ impl Editor {
             return Ok(());
         }
         if self.language != Language::Steelconf {
-            return self.render_inline_with_keywords(out, line, cols);
+            if let Some(term) = raw_state.clone() {
+                let mut search = String::new();
+                if !raw_carry.is_empty() {
+                    search.push_str(raw_carry);
+                }
+                search.push_str(line);
+                if let Some(pos) = search.find(&term) {
+                    if pos < raw_carry.len() {
+                        *raw_state = None;
+                        raw_carry.clear();
+                        return self.render_inline_with_keywords(out, line, cols, raw_state, py_state, py_carry);
+                    }
+                    let end = pos - raw_carry.len() + term.len();
+                    let end = end.min(line.len());
+                    let head = &line[..end];
+                    queue!(
+                        out,
+                        SetForegroundColor(self.colors.string),
+                        Print(truncate(head, cols)),
+                        ResetColor
+                    )?;
+                    *raw_state = None;
+                    raw_carry.clear();
+                    let rest = &line[end..];
+                    let remaining_cols = cols.saturating_sub(head.chars().count());
+                    return self.render_inline_with_keywords(out, rest, remaining_cols, raw_state, py_state, py_carry);
+                }
+                queue!(
+                    out,
+                    SetForegroundColor(self.colors.string),
+                    Print(truncate(line, cols)),
+                    ResetColor
+                )?;
+                let tail_len = term.len().saturating_sub(1);
+                if tail_len == 0 {
+                    raw_carry.clear();
+                } else {
+                    let combined = search;
+                    let start = combined.len().saturating_sub(tail_len);
+                    raw_carry.clear();
+                    raw_carry.push_str(&combined[start..]);
+                }
+                return Ok(());
+            }
+            raw_carry.clear();
+
+            if self.language == Language::Python {
+                if let Some(term) = py_state.clone() {
+                    let mut search = String::new();
+                    if !py_carry.is_empty() {
+                        search.push_str(py_carry);
+                    }
+                    search.push_str(line);
+                    if let Some(pos) = search.find(&term) {
+                        if pos < py_carry.len() {
+                            *py_state = None;
+                            py_carry.clear();
+                            return self.render_inline_with_keywords(out, line, cols, raw_state, py_state, py_carry);
+                        }
+                        let end = pos - py_carry.len() + term.len();
+                        let end = end.min(line.len());
+                        let head = &line[..end];
+                        queue!(
+                            out,
+                            SetForegroundColor(self.colors.string),
+                            Print(truncate(head, cols)),
+                            ResetColor
+                        )?;
+                        *py_state = None;
+                        py_carry.clear();
+                        let rest = &line[end..];
+                        let remaining_cols = cols.saturating_sub(head.chars().count());
+                        return self.render_inline_with_keywords(out, rest, remaining_cols, raw_state, py_state, py_carry);
+                    }
+                    queue!(
+                        out,
+                        SetForegroundColor(self.colors.string),
+                        Print(truncate(line, cols)),
+                        ResetColor
+                    )?;
+                    let tail_len = term.len().saturating_sub(1);
+                    if tail_len == 0 {
+                        py_carry.clear();
+                    } else {
+                        let combined = search;
+                        let start = combined.len().saturating_sub(tail_len);
+                        py_carry.clear();
+                        py_carry.push_str(&combined[start..]);
+                    }
+                    return Ok(());
+                }
+                py_carry.clear();
+            }
+
+            return self.render_inline_with_keywords(out, line, cols, raw_state, py_state, py_carry);
         }
         if trimmed.starts_with(";;") {
             queue!(
@@ -1062,6 +1295,56 @@ impl Editor {
         self.clear_completion();
     }
 
+    fn copy_current_line_system(&mut self) {
+        let line = self.lines.get(self.cursor_y).cloned().unwrap_or_default();
+        self.clipboard = line.clone();
+        if system_clipboard_set(&line) {
+            self.status = "Copied line to system clipboard.".to_string();
+        } else {
+            self.status = "Copied line (system clipboard unavailable).".to_string();
+        }
+    }
+
+    fn paste_from_system(&mut self) {
+        if !self.can_edit() {
+            return;
+        }
+        let text = system_clipboard_get().unwrap_or_else(|| self.clipboard.clone());
+        if text.is_empty() {
+            self.status = "Clipboard empty.".to_string();
+            return;
+        }
+        self.insert_text_at_cursor(&text);
+        self.status = "Pasted.".to_string();
+    }
+
+    fn insert_text_at_cursor(&mut self, text: &str) {
+        self.record_undo();
+        let text = text.replace("\r\n", "\n");
+        let parts: Vec<&str> = text.split('\n').collect();
+        if parts.is_empty() {
+            return;
+        }
+        let current = self.lines.get_mut(self.cursor_y).unwrap();
+        let tail = current.split_off(self.cursor_x);
+        current.push_str(parts[0]);
+        if parts.len() == 1 {
+            current.push_str(&tail);
+            self.cursor_x += parts[0].len();
+            self.dirty = true;
+            return;
+        }
+        for part in &parts[1..] {
+            self.cursor_y += 1;
+            self.lines.insert(self.cursor_y, part.to_string());
+        }
+        if let Some(last) = self.lines.get_mut(self.cursor_y) {
+            last.push_str(&tail);
+        }
+        self.cursor_x = parts.last().unwrap_or(&"").len();
+        self.dirty = true;
+    }
+
     fn current_indent(&self) -> String {
         let line = self.lines.get(self.cursor_y).map(|s| s.as_str()).unwrap_or("");
         line.chars().take_while(|c| *c == ' ').collect()
@@ -1122,6 +1405,23 @@ impl Editor {
         if self.language == Language::Steelconf {
             if let Some(done) = self.complete_steelconf(&prefix, start)? {
                 return Ok(done);
+            }
+        }
+
+        if matches!(self.language, Language::C | Language::Cpp) {
+            let items = self.collect_language_completion_items(&prefix);
+            if !items.is_empty() {
+                let choice = if items.len() == 1 {
+                    Some(items[0].clone())
+                } else {
+                    let labels = items.iter().map(|item| item.label.clone()).collect::<Vec<_>>();
+                    let picked = self.pick_from_list("Complete", &labels)?;
+                    picked.and_then(|label| items.into_iter().find(|item| item.label == label))
+                };
+                if let Some(item) = choice {
+                    self.apply_completion_item(start, &prefix, &item);
+                    return Ok(true);
+                }
             }
         }
 
@@ -1507,7 +1807,16 @@ impl Editor {
     }
 
     fn render_tabs(&self, out: &mut io::Stdout, cols: usize) -> io::Result<()> {
-        let mut line = String::new();
+        let current_name = self
+            .tabs
+            .get(self.current_tab)
+            .and_then(|tab| tab.file_name())
+            .and_then(|s| s.to_str())
+            .unwrap_or("untitled");
+        let mut line = format!(
+            "Mitsou Editor 2026 — {current_name} ({})  ",
+            self.language_label()
+        );
         for (i, tab) in self.tabs.iter().enumerate() {
             let name = tab.file_name().and_then(|s| s.to_str()).unwrap_or("untitled");
             if i == self.current_tab {
@@ -1524,6 +1833,20 @@ impl Editor {
             ResetColor
         )?;
         Ok(())
+    }
+
+    fn language_label(&self) -> &'static str {
+        match self.language {
+            Language::Steelconf => "steelconf",
+            Language::C => "C",
+            Language::Cpp => "C++",
+            Language::Python => "Python",
+            Language::Java => "Java",
+            Language::Ocaml => "OCaml",
+            Language::Zig => "Zig",
+            Language::CSharp => "C#",
+            Language::Other => "text",
+        }
     }
 
     fn render_history(&self, out: &mut io::Stdout, cols: usize, rows: usize) -> io::Result<()> {
@@ -2126,12 +2449,62 @@ impl Editor {
         };
     }
 
+    fn open_settings_menu(&mut self) -> io::Result<()> {
+        let items = vec![
+            format!("Theme: {}", self.theme_label()),
+            format!("C palette: {}", self.palette_c.as_str()),
+            format!("C++ palette: {}", self.palette_cpp.as_str()),
+            format!("Python palette: {}", self.palette_py.as_str()),
+        ];
+        let choice = self.pick_from_list("Settings", &items)?;
+        let Some(item) = choice else { return Ok(()); };
+        if item.starts_with("Theme:") {
+            self.toggle_theme();
+        } else if item.starts_with("C palette:") {
+            self.palette_c = self.palette_c.next();
+            self.status = format!("C palette: {}", self.palette_c.as_str());
+        } else if item.starts_with("C++ palette:") {
+            self.palette_cpp = self.palette_cpp.next();
+            self.status = format!("C++ palette: {}", self.palette_cpp.as_str());
+        } else if item.starts_with("Python palette:") {
+            self.palette_py = self.palette_py.next();
+            self.status = format!("Python palette: {}", self.palette_py.as_str());
+        }
+        let _ = self.save_editor_config();
+        Ok(())
+    }
+
+    fn theme_label(&self) -> &'static str {
+        match self.theme {
+            Theme::Dark => "dark",
+            Theme::Light => "light",
+        }
+    }
+
+    fn save_editor_config(&self) -> io::Result<()> {
+        let base = config_root().join("steel");
+        fs::create_dir_all(&base)?;
+        let path = base.join("steecleditor.conf");
+        let autosave = if self.autosave { self.autosave_interval.as_secs() } else { 0 };
+        let content = format!(
+            "theme={}\nautosave_interval={}\npalette_c={}\npalette_cpp={}\npalette_py={}\n",
+            self.theme_label(),
+            autosave,
+            self.palette_c.as_str(),
+            self.palette_cpp.as_str(),
+            self.palette_py.as_str(),
+        );
+        fs::write(path, content)?;
+        Ok(())
+    }
+
     fn run_steel(&mut self) -> io::Result<()> {
         let root = find_workspace_root(&self.file).unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
         self.status = "Running steel run...".to_string();
         let mut out = stdout();
         self.render(&mut out)?;
-        let output = Command::new("steel")
+        let steel_bin = resolve_steel_bin().unwrap_or_else(|| PathBuf::from("steel"));
+        let output = Command::new(steel_bin)
             .arg("run")
             .current_dir(root)
             .output();
@@ -2158,6 +2531,160 @@ impl Editor {
                 self.show_run_panel = true;
                 self.status = "steel run failed.".to_string();
             }
+        }
+        Ok(())
+    }
+
+    fn open_native_terminal(&mut self) -> io::Result<()> {
+        let root = find_workspace_root(&self.file)
+            .unwrap_or_else(|| std::env::current_dir().unwrap_or_else(|_| PathBuf::from(".")));
+        let launched = if cfg!(windows) {
+            self.launch_windows_terminal(&root)
+        } else if cfg!(target_os = "macos") {
+            self.launch_macos_terminal(&root)
+        } else {
+            self.launch_linux_terminal(&root)
+        };
+        if launched {
+            self.status = "Opened native terminal.".to_string();
+        } else {
+            self.status = "Failed to open native terminal.".to_string();
+        }
+        self.show_terminal_panel = false;
+        Ok(())
+    }
+
+    fn launch_macos_terminal(&self, root: &Path) -> bool {
+        Command::new("open")
+            .args(["-a", "Terminal"])
+            .arg(root)
+            .spawn()
+            .is_ok()
+    }
+
+    fn launch_windows_terminal(&self, root: &Path) -> bool {
+        let root = root.display().to_string();
+        let wt = Command::new("cmd")
+            .args(["/C", "start", "", "wt.exe", "-d"])
+            .arg(&root)
+            .spawn()
+            .is_ok();
+        if wt {
+            return true;
+        }
+        Command::new("cmd")
+            .args(["/C", "start", "", "cmd.exe", "/K"])
+            .arg(format!("cd /d {root}"))
+            .spawn()
+            .is_ok()
+    }
+
+    fn launch_linux_terminal(&self, root: &Path) -> bool {
+        if let Ok(term) = std::env::var("TERMINAL") {
+            if self.spawn_terminal(&term, root) {
+                return true;
+            }
+        }
+        let candidates = [
+            "x-terminal-emulator",
+            "gnome-terminal",
+            "konsole",
+            "xfce4-terminal",
+            "kitty",
+            "alacritty",
+            "xterm",
+        ];
+        for term in candidates {
+            if self.spawn_terminal(term, root) {
+                return true;
+            }
+        }
+        false
+    }
+
+    fn spawn_terminal(&self, term: &str, root: &Path) -> bool {
+        let root_str = root.display().to_string();
+        let root_quoted = root_str.replace('"', "\\\"");
+        let mut cmd = Command::new(term);
+        match term {
+            "gnome-terminal" | "xfce4-terminal" | "alacritty" => {
+                cmd.args(["--working-directory", &root_str]);
+            }
+            "konsole" => {
+                cmd.args(["--workdir", &root_str]);
+            }
+            "kitty" => {
+                cmd.args(["--directory", &root_str]);
+            }
+            "x-terminal-emulator" => {
+                cmd.args([
+                    "-e",
+                    "sh",
+                    "-c",
+                    &format!("cd \"{root_quoted}\"; exec $SHELL"),
+                ]);
+            }
+            "xterm" => {
+                cmd.args([
+                    "-e",
+                    "sh",
+                    "-c",
+                    &format!("cd \"{root_quoted}\"; exec $SHELL"),
+                ]);
+            }
+            _ => {}
+        }
+        cmd.spawn().is_ok()
+    }
+
+    fn terminal_panel_height(&self, rows: u16) -> u16 {
+        let available = rows.saturating_sub(4);
+        if available < 4 {
+            return 0;
+        }
+        let desired = (rows / 3).max(6);
+        desired.min(available)
+    }
+
+    fn render_terminal_panel(
+        &self,
+        out: &mut io::Stdout,
+        cols: usize,
+        rows: usize,
+        panel_height: u16,
+    ) -> io::Result<()> {
+        if panel_height == 0 {
+            return Ok(());
+        }
+        let start_row = rows.saturating_sub(1 + panel_height as usize) as u16;
+        let cmd = if self.last_terminal_cmd.is_empty() {
+            "<no command>"
+        } else {
+            self.last_terminal_cmd.as_str()
+        };
+        let header_status = if self.last_terminal_cmd.is_empty() {
+            "idle".to_string()
+        } else {
+            match self.terminal_status {
+                Some(code) => format!("exit {code}"),
+                None => "error".to_string(),
+            }
+        };
+        let header = truncate(&format!("Terminal | {cmd} | {header_status}"), cols);
+        queue!(
+            out,
+            cursor::MoveTo(0, start_row),
+            Clear(ClearType::CurrentLine),
+            SetForegroundColor(self.colors.status_ok),
+            Print(header),
+            ResetColor
+        )?;
+        let max_lines = panel_height.saturating_sub(1) as usize;
+        for (i, line) in self.terminal_output.iter().rev().take(max_lines).enumerate() {
+            let y = start_row + 1 + i as u16;
+            queue!(out, cursor::MoveTo(0, y), Clear(ClearType::CurrentLine))?;
+            let text = truncate(line, cols);
+            queue!(out, Print(text))?;
         }
         Ok(())
     }
@@ -2263,6 +2790,25 @@ impl Editor {
         items
     }
 
+    fn collect_language_completion_items(&self, prefix: &str) -> Vec<CompletionItem> {
+        if !matches!(self.language, Language::C | Language::Cpp) {
+            return Vec::new();
+        }
+        if !is_identifier_prefix(prefix) {
+            return Vec::new();
+        }
+        let keywords = language_keywords(self.language);
+        keywords
+            .iter()
+            .filter(|kw| kw.starts_with(prefix))
+            .map(|kw| CompletionItem {
+                label: format!("keyword: {}", kw),
+                insert: (*kw).to_string(),
+                is_snippet: false,
+            })
+            .collect()
+    }
+
     fn apply_completion_item(&mut self, start: usize, prefix: &str, item: &CompletionItem) {
         if item.is_snippet {
             self.apply_snippet(start, prefix, &item.insert);
@@ -2303,7 +2849,7 @@ impl Editor {
     }
 
     fn update_auto_completion(&mut self) {
-        if self.language != Language::Steelconf {
+        if !matches!(self.language, Language::Steelconf | Language::C | Language::Cpp) {
             self.clear_completion();
             return;
         }
@@ -2312,7 +2858,11 @@ impl Editor {
             self.clear_completion();
             return;
         }
-        let items = self.collect_completion_items(&prefix);
+        let items = if self.language == Language::Steelconf {
+            self.collect_completion_items(&prefix)
+        } else {
+            self.collect_language_completion_items(&prefix)
+        };
         if items.is_empty() {
             self.clear_completion();
             return;
@@ -2441,7 +2991,15 @@ impl Editor {
         String::new()
     }
 
-    fn render_inline_with_keywords(&self, out: &mut io::Stdout, line: &str, cols: usize) -> io::Result<()> {
+    fn render_inline_with_keywords(
+        &self,
+        out: &mut io::Stdout,
+        line: &str,
+        cols: usize,
+        raw_state: &mut Option<String>,
+        py_state: &mut Option<String>,
+        py_carry: &mut String,
+    ) -> io::Result<()> {
         let mut count = 0usize;
         let mut chars = line.chars().peekable();
         let comment_start = match self.language {
@@ -2449,9 +3007,273 @@ impl Editor {
             _ => "//",
         };
 
+        if matches!(self.language, Language::C | Language::Cpp) {
+            let trimmed = line.trim_start();
+            if trimmed.starts_with('#') {
+                queue!(
+                    out,
+                    SetForegroundColor(self.colors.directive),
+                    Print(truncate(line, cols)),
+                    ResetColor
+                )?;
+                return Ok(());
+            }
+        }
+
         while let Some(ch) = chars.next() {
             if count >= cols {
                 break;
+            }
+            if self.language == Language::Python && matches!(ch, 'f' | 'F' | 'r' | 'R' | 'b' | 'B' | 'u' | 'U') {
+                let mut probe = chars.clone();
+                let mut prefix = String::new();
+                prefix.push(ch);
+                let mut next = probe.peek().copied();
+                for _ in 0..2 {
+                    if let Some(p) = next {
+                        if matches!(p, 'f' | 'F' | 'r' | 'R' | 'b' | 'B' | 'u' | 'U') {
+                            prefix.push(p);
+                            probe.next();
+                            next = probe.peek().copied();
+                            continue;
+                        }
+                    }
+                    break;
+                }
+                if let Some(quote) = next {
+                    if quote == '"' || quote == '\'' {
+                        let (valid_prefix, has_f) = validate_python_prefix(&prefix);
+                        if valid_prefix && has_f {
+                            let consumed = prefix.len().saturating_sub(1);
+                            for _ in 0..consumed {
+                                chars.next();
+                            }
+                            let _ = chars.next();
+                            let mut probe_quote = chars.clone();
+                            let mut is_triple = false;
+                            if probe_quote.peek() == Some(&quote) {
+                                let _ = probe_quote.next();
+                                if probe_quote.peek() == Some(&quote) {
+                                    is_triple = true;
+                                }
+                            }
+                            let mut literal = String::new();
+                            literal.push_str(&prefix);
+                            literal.push(quote);
+                            if is_triple {
+                                literal.push(quote);
+                                literal.push(quote);
+                                chars.next();
+                                chars.next();
+                                let delimiter = format!("{quote}{quote}{quote}");
+                                let mut window = String::new();
+                                let mut found = false;
+                                let mut segments: Vec<(String, bool)> = Vec::new();
+                                let mut segment = String::new();
+                                let mut brace_depth = 0usize;
+                                while let Some(n) = chars.next() {
+                                    literal.push(n);
+                                    if brace_depth == 0 {
+                                        if n == '{' && chars.peek() == Some(&'{') {
+                                            let esc = chars.next().unwrap();
+                                            literal.push(esc);
+                                            segment.push('{');
+                                        } else if n == '}' && chars.peek() == Some(&'}') {
+                                            let esc = chars.next().unwrap();
+                                            literal.push(esc);
+                                            segment.push('}');
+                                        } else if n == '{' {
+                                            if !segment.is_empty() {
+                                                segments.push((segment.clone(), false));
+                                                segment.clear();
+                                            }
+                                            segment.push(n);
+                                            brace_depth = 1;
+                                        } else {
+                                            segment.push(n);
+                                        }
+                                    } else {
+                                        segment.push(n);
+                                        if n == '\\' {
+                                            if let Some(esc) = chars.next() {
+                                                literal.push(esc);
+                                                segment.push(esc);
+                                            }
+                                        } else if n == '{' {
+                                            if chars.peek() == Some(&'{') {
+                                                let esc = chars.next().unwrap();
+                                                literal.push(esc);
+                                                segment.push(esc);
+                                            } else {
+                                                brace_depth += 1;
+                                            }
+                                        } else if n == '}' && brace_depth > 0 {
+                                            if chars.peek() == Some(&'}') {
+                                                let esc = chars.next().unwrap();
+                                                literal.push(esc);
+                                                segment.push(esc);
+                                            } else {
+                                                brace_depth -= 1;
+                                                if brace_depth == 0 {
+                                                    segments.push((segment.clone(), true));
+                                                    segment.clear();
+                                                }
+                                            }
+                                        }
+                                    }
+                                    window.push(n);
+                                    if window.len() > delimiter.len() {
+                                        window.remove(0);
+                                    }
+                                    if window == delimiter {
+                                        found = true;
+                                        break;
+                                    }
+                                }
+                                count += literal.len();
+                                if !segments.is_empty() {
+                                    for (seg, is_expr) in segments {
+                                        let color = if is_expr { self.colors.keyword } else { self.colors.string };
+                                        queue!(out, SetForegroundColor(color), Print(seg), ResetColor)?;
+                                    }
+                                    if !segment.is_empty() {
+                                        let color = if brace_depth > 0 { self.colors.keyword } else { self.colors.string };
+                                        queue!(out, SetForegroundColor(color), Print(segment), ResetColor)?;
+                                    }
+                                } else {
+                                    queue!(out, SetForegroundColor(self.colors.string), Print(&literal), ResetColor)?;
+                                }
+                                if !found {
+                                    *py_state = Some(delimiter);
+                                    py_carry.clear();
+                                    if literal.len() >= 2 {
+                                        let start = literal.len().saturating_sub(2);
+                                        py_carry.push_str(&literal[start..]);
+                                    } else {
+                                        py_carry.push_str(&literal);
+                                    }
+                                    return Ok(());
+                                }
+                                continue;
+                            }
+                            let mut segments: Vec<(String, bool)> = Vec::new();
+                            let mut segment = String::new();
+                            let mut brace_depth = 0usize;
+                            while let Some(n) = chars.next() {
+                                literal.push(n);
+                                if brace_depth == 0 {
+                                    if n == '{' && chars.peek() == Some(&'{') {
+                                        let esc = chars.next().unwrap();
+                                        literal.push(esc);
+                                        segment.push('{');
+                                    } else if n == '}' && chars.peek() == Some(&'}') {
+                                        let esc = chars.next().unwrap();
+                                        literal.push(esc);
+                                        segment.push('}');
+                                    } else if n == '{' {
+                                        if !segment.is_empty() {
+                                            segments.push((segment.clone(), false));
+                                            segment.clear();
+                                        }
+                                        segment.push(n);
+                                        brace_depth = 1;
+                                    } else {
+                                        segment.push(n);
+                                    }
+                                } else {
+                                    segment.push(n);
+                                    if n == '\\' {
+                                        if let Some(esc) = chars.next() {
+                                            literal.push(esc);
+                                            segment.push(esc);
+                                        }
+                                    } else if n == '{' {
+                                        if chars.peek() == Some(&'{') {
+                                            let esc = chars.next().unwrap();
+                                            literal.push(esc);
+                                            segment.push(esc);
+                                        } else {
+                                            brace_depth += 1;
+                                        }
+                                    } else if n == '}' && brace_depth > 0 {
+                                        if chars.peek() == Some(&'}') {
+                                            let esc = chars.next().unwrap();
+                                            literal.push(esc);
+                                            segment.push(esc);
+                                        } else {
+                                            brace_depth -= 1;
+                                            if brace_depth == 0 {
+                                                segments.push((segment.clone(), true));
+                                                segment.clear();
+                                            }
+                                        }
+                                    }
+                                }
+                                if n == quote && brace_depth == 0 {
+                                    break;
+                                }
+                            }
+                            count += literal.len();
+                            if !segments.is_empty() {
+                                for (seg, is_expr) in segments {
+                                    let color = if is_expr { self.colors.keyword } else { self.colors.string };
+                                    queue!(out, SetForegroundColor(color), Print(seg), ResetColor)?;
+                                }
+                                if !segment.is_empty() {
+                                    let color = if brace_depth > 0 { self.colors.keyword } else { self.colors.string };
+                                    queue!(out, SetForegroundColor(color), Print(segment), ResetColor)?;
+                                }
+                            } else {
+                                queue!(out, SetForegroundColor(self.colors.string), Print(&literal), ResetColor)?;
+                            }
+                            continue;
+                        }
+                    }
+                }
+            }
+            if self.language == Language::Python && (ch == '"' || ch == '\'') {
+                if chars.peek() == Some(&ch) {
+                    let mut probe = chars.clone();
+                    let _ = probe.next();
+                    if probe.peek() == Some(&ch) {
+                        let mut literal = String::new();
+                        literal.push(ch);
+                        literal.push(ch);
+                        literal.push(ch);
+                        chars.next();
+                        chars.next();
+                        let delimiter = literal.clone();
+                        let mut window = String::new();
+                        let mut found = false;
+                        while let Some(n) = chars.next() {
+                            literal.push(n);
+                            window.push(n);
+                            if window.len() > delimiter.len() {
+                                window.remove(0);
+                            }
+                            if window == delimiter {
+                                found = true;
+                                break;
+                            }
+                        }
+                        count += literal.len();
+                        let is_doc = line.trim_start().starts_with(&delimiter);
+                        let color = if is_doc { self.color_doc_comment() } else { self.colors.string };
+                        queue!(out, SetForegroundColor(color), Print(&literal), ResetColor)?;
+                        if !found {
+                            *py_state = Some(delimiter);
+                            py_carry.clear();
+                            if literal.len() >= 2 {
+                                let start = literal.len().saturating_sub(2);
+                                py_carry.push_str(&literal[start..]);
+                            } else {
+                                py_carry.push_str(&literal);
+                            }
+                            return Ok(());
+                        }
+                        continue;
+                    }
+                }
             }
             if ch == '"' {
                 let mut string = String::from("\"");
@@ -2465,25 +3287,110 @@ impl Editor {
                 queue!(out, SetForegroundColor(self.colors.string), Print(string), ResetColor)?;
                 continue;
             }
+            if ch == '\'' {
+                let mut literal = String::from("'");
+                while let Some(n) = chars.next() {
+                    literal.push(n);
+                    if n == '\'' {
+                        break;
+                    }
+                }
+                count += literal.len();
+                queue!(out, SetForegroundColor(self.colors.string), Print(&literal), ResetColor)?;
+                continue;
+            }
 
             if comment_start == "#" && ch == '#' {
                 let mut comment = String::from("#");
                 for n in chars {
                     comment.push(n);
                 }
-                queue!(out, SetForegroundColor(self.colors.comment), Print(comment), ResetColor)?;
+                queue!(out, SetForegroundColor(self.colors.comment), Print(&comment), ResetColor)?;
                 return Ok(());
+            }
+            if comment_start == "//" && ch == '/' && chars.peek() == Some(&'*') {
+                chars.next();
+                let mut comment = String::from("/*");
+                let is_doc = chars.peek() == Some(&'*');
+                if is_doc {
+                    comment.push('*');
+                    chars.next();
+                }
+                let mut prev = '\0';
+                while let Some(n) = chars.next() {
+                    comment.push(n);
+                    if prev == '*' && n == '/' {
+                        break;
+                    }
+                    prev = n;
+                }
+                let color = if is_doc { self.color_doc_comment() } else { self.colors.comment };
+                queue!(out, SetForegroundColor(color), Print(&comment), ResetColor)?;
+                count += comment.len();
+                continue;
             }
             if comment_start == "//" && ch == '/' && chars.peek() == Some(&'/') {
                 chars.next();
                 let mut comment = String::from("//");
+                let is_doc = chars.peek() == Some(&'/');
+                if is_doc {
+                    comment.push('/');
+                    chars.next();
+                }
                 for n in chars {
                     comment.push(n);
                 }
-                queue!(out, SetForegroundColor(self.colors.comment), Print(comment), ResetColor)?;
+                let color = if is_doc { self.color_doc_comment() } else { self.colors.comment };
+                queue!(out, SetForegroundColor(color), Print(&comment), ResetColor)?;
                 return Ok(());
             }
 
+            if matches!(self.language, Language::C | Language::Cpp) && ch == 'R' && chars.peek() == Some(&'"') {
+                let mut literal = String::from("R");
+                chars.next();
+                literal.push('"');
+                let mut delim = String::new();
+                while let Some(n) = chars.peek() {
+                    if *n == '(' {
+                        break;
+                    }
+                    if delim.len() > 16 {
+                        break;
+                    }
+                    delim.push(*n);
+                    chars.next();
+                }
+                if chars.peek() == Some(&'(') {
+                    chars.next();
+                    literal.push_str(&delim);
+                    literal.push('(');
+                    let mut tail = String::from(")");
+                    tail.push_str(&delim);
+                    tail.push('"');
+                    let mut found_tail = false;
+                    let mut window = String::new();
+                    while let Some(n) = chars.next() {
+                        literal.push(n);
+                        window.push(n);
+                        if window.len() > tail.len() {
+                            window.remove(0);
+                        }
+                        if window == tail {
+                            found_tail = true;
+                            break;
+                        }
+                    }
+                    count += literal.len();
+                    queue!(out, SetForegroundColor(self.colors.string), Print(&literal), ResetColor)?;
+                    if !found_tail {
+                        *raw_state = Some(tail);
+                    }
+                    continue;
+                }
+                count += literal.len();
+                queue!(out, SetForegroundColor(self.colors.fg), Print(&literal), ResetColor)?;
+                continue;
+            }
             if ch.is_alphanumeric() || ch == '_' {
                 let mut token = String::new();
                 token.push(ch);
@@ -2496,8 +3403,14 @@ impl Editor {
                     }
                 }
                 count += token.len();
-                if is_keyword(self.language, &token) {
-                    queue!(out, SetForegroundColor(self.colors.keyword), Print(token), ResetColor)?;
+                if is_type_name(self.language, &token) {
+                    queue!(out, SetForegroundColor(self.color_type()), Print(token), ResetColor)?;
+                } else if is_builtin(self.language, &token) {
+                    queue!(out, SetForegroundColor(self.color_builtin()), Print(token), ResetColor)?;
+                } else if is_keyword(self.language, &token) {
+                    queue!(out, SetForegroundColor(self.color_keyword()), Print(token), ResetColor)?;
+                } else if is_function_token(&chars, &token) {
+                    queue!(out, SetForegroundColor(self.color_function()), Print(token), ResetColor)?;
                 } else {
                     queue!(out, SetForegroundColor(self.colors.fg), Print(token), ResetColor)?;
                 }
@@ -2598,6 +3511,48 @@ impl Editor {
         }
         Ok(())
     }
+
+    fn color_keyword(&self) -> Color {
+        match self.language {
+            Language::C => palette_color(self.palette_c, self.theme, ColorRole::Keyword),
+            Language::Cpp => palette_color(self.palette_cpp, self.theme, ColorRole::Keyword),
+            Language::Python => palette_color(self.palette_py, self.theme, ColorRole::Keyword),
+            _ => self.colors.keyword,
+        }
+    }
+
+    fn color_type(&self) -> Color {
+        match self.language {
+            Language::C => palette_color(self.palette_c, self.theme, ColorRole::TypeName),
+            Language::Cpp => palette_color(self.palette_cpp, self.theme, ColorRole::TypeName),
+            _ => self.colors.type_name,
+        }
+    }
+
+    fn color_builtin(&self) -> Color {
+        match self.language {
+            Language::C => palette_color(self.palette_c, self.theme, ColorRole::Builtin),
+            Language::Cpp => palette_color(self.palette_cpp, self.theme, ColorRole::Builtin),
+            Language::Python => palette_color(self.palette_py, self.theme, ColorRole::Builtin),
+            _ => self.colors.builtin,
+        }
+    }
+
+    fn color_function(&self) -> Color {
+        match self.language {
+            Language::C => palette_color(self.palette_c, self.theme, ColorRole::Function),
+            Language::Cpp => palette_color(self.palette_cpp, self.theme, ColorRole::Function),
+            Language::Python => palette_color(self.palette_py, self.theme, ColorRole::Function),
+            _ => self.colors.function,
+        }
+    }
+
+    fn color_doc_comment(&self) -> Color {
+        match self.language {
+            Language::Python => palette_color(self.palette_py, self.theme, ColorRole::Docstring),
+            _ => self.colors.doc_comment,
+        }
+    }
 }
 
 fn truncate(s: &str, max: usize) -> String {
@@ -2648,6 +3603,140 @@ fn is_keyword(lang: Language, token: &str) -> bool {
         Language::CSharp => CSHARP_KEYWORDS.contains(&token),
         _ => false,
     }
+}
+
+fn language_keywords(lang: Language) -> &'static [&'static str] {
+    match lang {
+        Language::C => C_KEYWORDS,
+        Language::Cpp => CPP_KEYWORDS,
+        Language::Python => PY_KEYWORDS,
+        Language::Java => JAVA_KEYWORDS,
+        Language::Ocaml => OCAML_KEYWORDS,
+        Language::Zig => ZIG_KEYWORDS,
+        Language::CSharp => CSHARP_KEYWORDS,
+        Language::Steelconf | Language::Other => &[],
+    }
+}
+
+fn is_type_name(lang: Language, token: &str) -> bool {
+    match lang {
+        Language::C => C_TYPES.contains(&token),
+        Language::Cpp => CPP_TYPES.contains(&token),
+        _ => false,
+    }
+}
+
+fn is_builtin(lang: Language, token: &str) -> bool {
+    match lang {
+        Language::Python => PY_BUILTINS.contains(&token),
+        _ => false,
+    }
+}
+
+fn is_function_token(chars: &std::iter::Peekable<std::str::Chars<'_>>, token: &str) -> bool {
+    if token.is_empty() {
+        return false;
+    }
+    let mut probe = chars.clone();
+    while let Some(ch) = probe.peek() {
+        if ch.is_whitespace() {
+            probe.next();
+        } else {
+            break;
+        }
+    }
+    matches!(probe.peek(), Some('('))
+}
+
+fn validate_python_prefix(prefix: &str) -> (bool, bool) {
+    let mut has_f = false;
+    let mut has_r = false;
+    let mut has_b = false;
+    let mut has_u = false;
+    for ch in prefix.chars() {
+        match ch {
+            'f' | 'F' => {
+                if has_f {
+                    return (false, false);
+                }
+                has_f = true;
+            }
+            'r' | 'R' => {
+                if has_r {
+                    return (false, false);
+                }
+                has_r = true;
+            }
+            'b' | 'B' => {
+                if has_b {
+                    return (false, false);
+                }
+                has_b = true;
+            }
+            'u' | 'U' => {
+                if has_u {
+                    return (false, false);
+                }
+                has_u = true;
+            }
+            _ => return (false, false),
+        }
+    }
+    (true, has_f)
+}
+
+enum ColorRole {
+    Keyword,
+    TypeName,
+    Builtin,
+    Function,
+    Docstring,
+}
+
+fn palette_color(palette: Palette, theme: Theme, role: ColorRole) -> Color {
+    match (palette, theme, role) {
+        (Palette::Default, Theme::Dark, ColorRole::Keyword) => Color::Magenta,
+        (Palette::Default, Theme::Dark, ColorRole::TypeName) => Color::Cyan,
+        (Palette::Default, Theme::Dark, ColorRole::Builtin) => Color::Green,
+        (Palette::Default, Theme::Dark, ColorRole::Function) => Color::Yellow,
+        (Palette::Default, Theme::Dark, ColorRole::Docstring) => Color::DarkYellow,
+        (Palette::Default, Theme::Light, ColorRole::Keyword) => Color::DarkRed,
+        (Palette::Default, Theme::Light, ColorRole::TypeName) => Color::Blue,
+        (Palette::Default, Theme::Light, ColorRole::Builtin) => Color::DarkGreen,
+        (Palette::Default, Theme::Light, ColorRole::Function) => Color::DarkMagenta,
+        (Palette::Default, Theme::Light, ColorRole::Docstring) => Color::DarkCyan,
+        (Palette::Vivid, Theme::Dark, ColorRole::Keyword) => Color::Red,
+        (Palette::Vivid, Theme::Dark, ColorRole::TypeName) => Color::Blue,
+        (Palette::Vivid, Theme::Dark, ColorRole::Builtin) => Color::Cyan,
+        (Palette::Vivid, Theme::Dark, ColorRole::Function) => Color::Yellow,
+        (Palette::Vivid, Theme::Dark, ColorRole::Docstring) => Color::Magenta,
+        (Palette::Vivid, Theme::Light, ColorRole::Keyword) => Color::DarkRed,
+        (Palette::Vivid, Theme::Light, ColorRole::TypeName) => Color::DarkBlue,
+        (Palette::Vivid, Theme::Light, ColorRole::Builtin) => Color::DarkCyan,
+        (Palette::Vivid, Theme::Light, ColorRole::Function) => Color::DarkYellow,
+        (Palette::Vivid, Theme::Light, ColorRole::Docstring) => Color::DarkMagenta,
+        (Palette::Soft, Theme::Dark, ColorRole::Keyword) => Color::DarkGrey,
+        (Palette::Soft, Theme::Dark, ColorRole::TypeName) => Color::DarkCyan,
+        (Palette::Soft, Theme::Dark, ColorRole::Builtin) => Color::Green,
+        (Palette::Soft, Theme::Dark, ColorRole::Function) => Color::DarkYellow,
+        (Palette::Soft, Theme::Dark, ColorRole::Docstring) => Color::DarkGrey,
+        (Palette::Soft, Theme::Light, ColorRole::Keyword) => Color::DarkGrey,
+        (Palette::Soft, Theme::Light, ColorRole::TypeName) => Color::DarkBlue,
+        (Palette::Soft, Theme::Light, ColorRole::Builtin) => Color::DarkGreen,
+        (Palette::Soft, Theme::Light, ColorRole::Function) => Color::DarkMagenta,
+        (Palette::Soft, Theme::Light, ColorRole::Docstring) => Color::DarkGrey,
+    }
+}
+
+fn is_identifier_prefix(prefix: &str) -> bool {
+    let mut chars = prefix.chars();
+    let Some(first) = chars.next() else {
+        return false;
+    };
+    if !(first.is_ascii_alphabetic() || first == '_') {
+        return false;
+    }
+    chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
 
 fn contains_todo(line: &str) -> bool {
@@ -2873,6 +3962,134 @@ fn config_root() -> PathBuf {
     PathBuf::from(".")
 }
 
+fn resolve_steel_bin() -> Option<PathBuf> {
+    if let Ok(explicit) = std::env::var("STEEL_BIN") {
+        let path = PathBuf::from(explicit);
+        if path.exists() {
+            return Some(path);
+        }
+    }
+    for path in common_steel_paths() {
+        if path.exists() {
+            return Some(path);
+        }
+    }
+    None
+}
+
+fn common_steel_paths() -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    if let Ok(home) = std::env::var("HOME") {
+        paths.push(PathBuf::from(&home).join(".local/bin/steel"));
+    }
+    if let Ok(profile) = std::env::var("USERPROFILE") {
+        paths.push(PathBuf::from(&profile).join(".local/bin/steel.exe"));
+        paths.push(PathBuf::from(&profile).join("AppData/Local/Steel/steel.exe"));
+    }
+    if let Ok(local) = std::env::var("LOCALAPPDATA") {
+        paths.push(PathBuf::from(&local).join("Steel/steel.exe"));
+    }
+    if let Ok(program_files) = std::env::var("ProgramFiles") {
+        paths.push(PathBuf::from(&program_files).join("Steel/steel.exe"));
+    }
+    if let Ok(program_files) = std::env::var("ProgramFiles(x86)") {
+        paths.push(PathBuf::from(&program_files).join("Steel/steel.exe"));
+    } else {
+        paths.push(PathBuf::from("C:/Program Files (x86)/Steel/steel.exe"));
+    }
+    paths.push(PathBuf::from("/usr/local/bin/steel"));
+    paths.push(PathBuf::from("/opt/homebrew/bin/steel"));
+    paths.push(PathBuf::from("/usr/bin/steel"));
+    paths.push(PathBuf::from("/bin/steel"));
+    paths
+}
+
+fn system_clipboard_set(text: &str) -> bool {
+    if cfg!(target_os = "macos") {
+        return Command::new("pbcopy")
+            .stdin(std::process::Stdio::piped())
+            .spawn()
+            .and_then(|mut child| {
+                if let Some(mut stdin) = child.stdin.take() {
+                    use std::io::Write;
+                    let _ = stdin.write_all(text.as_bytes());
+                }
+                child.wait()
+            })
+            .is_ok();
+    }
+    if cfg!(target_os = "windows") {
+        return Command::new("powershell")
+            .args(["-NoProfile", "-Command", "Set-Clipboard -Value ([Console]::In.ReadToEnd())"])
+            .stdin(std::process::Stdio::piped())
+            .spawn()
+            .and_then(|mut child| {
+                if let Some(mut stdin) = child.stdin.take() {
+                    use std::io::Write;
+                    let _ = stdin.write_all(text.as_bytes());
+                }
+                child.wait()
+            })
+            .is_ok();
+    }
+    for cmd in [
+        ("wl-copy", &[] as &[&str]),
+        ("xclip", &["-selection", "clipboard"]),
+        ("xsel", &["--clipboard", "--input"]),
+    ] {
+        let mut child = match Command::new(cmd.0)
+            .args(cmd.1)
+            .stdin(std::process::Stdio::piped())
+            .spawn()
+        {
+            Ok(child) => child,
+            Err(_) => continue,
+        };
+        if let Some(mut stdin) = child.stdin.take() {
+            use std::io::Write;
+            let _ = stdin.write_all(text.as_bytes());
+        }
+        if child.wait().is_ok() {
+            return true;
+        }
+    }
+    false
+}
+
+fn system_clipboard_get() -> Option<String> {
+    if cfg!(target_os = "macos") {
+        if let Ok(out) = Command::new("pbpaste").output() {
+            if out.status.success() {
+                return Some(String::from_utf8_lossy(&out.stdout).to_string());
+            }
+        }
+        return None;
+    }
+    if cfg!(target_os = "windows") {
+        if let Ok(out) = Command::new("powershell")
+            .args(["-NoProfile", "-Command", "Get-Clipboard"])
+            .output()
+        {
+            if out.status.success() {
+                return Some(String::from_utf8_lossy(&out.stdout).to_string());
+            }
+        }
+        return None;
+    }
+    for cmd in [
+        ("wl-paste", &[] as &[&str]),
+        ("xclip", &["-selection", "clipboard", "-o"]),
+        ("xsel", &["--clipboard", "--output"]),
+    ] {
+        if let Ok(out) = Command::new(cmd.0).args(cmd.1).output() {
+            if out.status.success() {
+                return Some(String::from_utf8_lossy(&out.stdout).to_string());
+            }
+        }
+    }
+    None
+}
+
 fn load_session_paths() -> Vec<PathBuf> {
     let path = config_root().join("steel").join("steecleditor.session");
     let content = match fs::read_to_string(path) {
@@ -2906,6 +4123,9 @@ fn load_editor_config() -> EditorConfig {
     let mut config = EditorConfig {
         autosave_interval: None,
         theme: None,
+        palette_c: None,
+        palette_cpp: None,
+        palette_py: None,
     };
     let path = config_root().join("steel").join("steecleditor.conf");
     let content = match fs::read_to_string(path) {
@@ -2937,6 +4157,21 @@ fn load_editor_config() -> EditorConfig {
                 };
                 if theme.is_some() {
                     config.theme = theme;
+                }
+            }
+            "palette_c" => {
+                if let Some(palette) = Palette::from_str(value) {
+                    config.palette_c = Some(palette);
+                }
+            }
+            "palette_cpp" => {
+                if let Some(palette) = Palette::from_str(value) {
+                    config.palette_cpp = Some(palette);
+                }
+            }
+            "palette_py" => {
+                if let Some(palette) = Palette::from_str(value) {
+                    config.palette_py = Some(palette);
                 }
             }
             _ => {}

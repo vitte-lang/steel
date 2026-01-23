@@ -54,6 +54,7 @@ pub type Result<T> = std::result::Result<T, CommandError>;
 #[derive(Debug, Clone)]
 pub enum Cmd {
     Help,
+    Welcome,
     Version,
 
     BuildFlan(build_muf::BuildMufOptions),
@@ -157,9 +158,7 @@ pub fn dispatch(args: &[String]) -> Result<()> {
 /// `args` is expected to be the full argv (including program name at index 0).
 pub fn parse_command(args: &[String]) -> Result<Cmd> {
     if args.len() <= 1 {
-        let mut o = build_muf::BuildMufOptions::default();
-        o.steel_file = Some(PathBuf::from("steelconf"));
-        return Ok(Cmd::BuildFlan(o));
+        return Ok(Cmd::Welcome);
     }
 
     let sub = args[1].as_str();
@@ -205,6 +204,10 @@ pub fn parse_command(args: &[String]) -> Result<Cmd> {
         "cache" => parse_cache(&args[2..]),
         "editor-setup" => Ok(Cmd::EditorSetup),
         "editor" => {
+            let file = args.get(2).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("steelconf"));
+            Ok(Cmd::Editor(file))
+        }
+        "mitsou" => {
             let file = args.get(2).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("steelconf"));
             Ok(Cmd::Editor(file))
         }
@@ -564,7 +567,11 @@ fn map_build_error_with_context(
 pub fn execute(cmd: Cmd) -> Result<()> {
     match cmd {
         Cmd::Help => {
-            println!("{}", help_text_with_welcome());
+            println!("{}", help_text());
+            Ok(())
+        }
+        Cmd::Welcome => {
+            println!("{}", welcome_text());
             Ok(())
         }
         Cmd::Version => {
@@ -780,7 +787,7 @@ fn exec_fmt(o: FmtOptions) -> Result<()> {
 fn exec_editor_setup() -> Result<()> {
     editor_setup::ensure_editor_setup()
         .map_err(|e| CommandError::Failure { code: 1, msg: e.to_string() })?;
-    println!("editor-setup: ok");
+    println!("editor-setup: ok (vim, neovim, nano, emacs, helix, micro, zed)");
     Ok(())
 }
 
@@ -846,22 +853,14 @@ fn usage_err(code: &str, msg: impl Into<String>, help: &str) -> CommandError {
     CommandError::Usage(format_usage(code, msg, help))
 }
 
-#[allow(dead_code)]
-fn welcome_text() -> &'static str {
-    "Welcome Vitte
 
-                ##                         ##
-            ##     #####    #####      ##
- ######   ######   ##       ##         ##
- ###        ##     #####    #####      ###
-   ####     ###    ###      ###        ###
- ######     ###    #####    #####      ###
-
-@Vitte_Lang_org - Steel - Version 1-2026"
+fn help_text() -> String {
+    "USAGE\n  steel <command> [options]\n\nCOMMANDS\n  run            Run a build (steelconf)\n  build          Build once (alias of run)\n  fmt            Format a steelconf\n  doctor         Diagnose environment\n  graph          Inspect graph\n  ninja          Emit Ninja (stub)\n  cache          Cache utilities\n  toolchain      Toolchain utilities\n  editor         Open steelconf editor\n  mitsou         Open Mitsou editor\n  editor-setup   Install editor settings for steelconf (vim/nano/emacs/etc)\n  help           Show help\n  version        Show version\n\nGLOBAL FLAGS\n  -h, --help     Show help\n  -v, --version  Show version\n\nKEYWORDS (steelconf core)\n  steel          File header / format marker\n  bake           Recipe block\n  store          Store block\n  capsule        Sandbox / policy block\n  var            Variable block\n  profile        Profile block\n  tool           Tool declaration\n  plan           Plan block\n  switch         Conditional block\n  run            Execution step\n  export         Export recipe\n  exports        Export list\n  wire           Wire outputs/inputs\n\nKEYWORDS (io + build)\n  in             Input binding\n  out            Output binding\n  make           Source collection (glob)\n  takes          Inputs -> flags\n  emits          Outputs -> flags\n  output         Final output\n  set            Add flag/value\n  at             Path anchor\n\nKEYWORDS (cache + sandbox)\n  cache          Cache block\n  mode           Cache or policy mode\n  path           Path policy\n  env            Env policy\n  fs             Filesystem policy\n  net            Network policy\n  time           Time policy\n  allow          Allow rule\n  deny           Deny rule\n  allow_read     Allow read access\n  allow_write    Allow write access\n  allow_write_exact Allow exact write path\n  stable         Mark stable inputs/outputs\n".to_string()
 }
 
-fn help_text_with_welcome() -> String {
-    "USAGE\n  steel <command> [options]\n\nCOMMANDS\n  run            Run a build (steelconf)\n  build          Build once (alias of run)\n  fmt            Format a steelconf\n  doctor         Diagnose environment\n  graph          Inspect graph\n  ninja          Emit Ninja (stub)\n  cache          Cache utilities\n  toolchain      Toolchain utilities\n  editor         Open steelconf editor\n  editor-setup   Install editor settings for steelconf\n  help           Show help\n  version        Show version\n\nGLOBAL FLAGS\n  -h, --help     Show help\n  -v, --version  Show version\n\nKEYWORDS (steelconf core)\n  steel          File header / format marker\n  bake           Recipe block\n  store          Store block\n  capsule        Sandbox / policy block\n  var            Variable block\n  profile        Profile block\n  tool           Tool declaration\n  plan           Plan block\n  switch         Conditional block\n  run            Execution step\n  export         Export recipe\n  exports        Export list\n  wire           Wire outputs/inputs\n\nKEYWORDS (io + build)\n  in             Input binding\n  out            Output binding\n  make           Source collection (glob)\n  takes          Inputs -> flags\n  emits          Outputs -> flags\n  output         Final output\n  set            Add flag/value\n  at             Path anchor\n\nKEYWORDS (cache + sandbox)\n  cache          Cache block\n  mode           Cache or policy mode\n  path           Path policy\n  env            Env policy\n  fs             Filesystem policy\n  net            Network policy\n  time           Time policy\n  allow          Allow rule\n  deny           Deny rule\n  allow_read     Allow read access\n  allow_write    Allow write access\n  allow_write_exact Allow exact write path\n  stable         Mark stable inputs/outputs\n".to_string()
+#[allow(dead_code)]
+fn welcome_text() -> &'static str {
+    "Welcome Vitte\n    _________ __                .__    _________                                           .___\n   /   _____//  |_  ____   ____ |  |   \\_   ___ \\  ____   _____   _____ _____    ____    __| _/\n   \\_____  \\\\   __\\/ __ \\_/ __ \\|  |   /    \\  \\/ /  _ \\ /     \\ /     \\\\__  \\  /    \\  / __ | \n   /        \\|  | \\  ___/\\  ___/|  |__ \\     \\___(  <_> )  Y Y  \\  Y Y  \\/ __ \\|   |  \\/ /_/ | \n  /_______  /|__|  \\___  >\\___  >____/  \\______  /\\____/|__|_|  /__|_|  (____  /___|  /\\____ | \n          \\/           \\/     \\/               \\/             \\/      \\/     \\/     \\/      \\/ \n<Vitte_ORG> 2026"
 }
 
 fn graph_help() -> &'static str {
