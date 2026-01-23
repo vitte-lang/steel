@@ -38,6 +38,9 @@ type I18n = {
     otherTitle: string;
     otherDesc: string;
     otherHint: string;
+    vscodeTitle: string;
+    vscodeDesc: string;
+    vscodeButton: string;
     quickInstall: string;
   };
   about: {
@@ -119,7 +122,13 @@ type I18n = {
 };
 
 const DOWNLOAD_MAC_URL =
-  'https://github.com/vitte-lang/steel.org/releases/download/Steel-0.1.0-1.2026/steel-0.1.0-MacOS_universal_test.pkg';
+  'https://github.com/vitte-lang/steel.org/releases';
+const DOWNLOAD_LINUX_DEB_URL =
+  'https://github.com/vitte-lang/steel.org/releases';
+const DOWNLOAD_WINDOWS_URL =
+  'https://github.com/vitte-lang/steel.org/releases';
+const VSCODE_EXTENSION_URL =
+  'https://marketplace.visualstudio.com/items?itemName=steelcommand.steel-command';
 
 const I18N: Record<LangKey, I18n> = {
   en: {
@@ -134,7 +143,7 @@ const I18N: Record<LangKey, I18n> = {
     hero: {
       eyebrow: 'Private Edition',
       title: 'Steel, delivered direct. No setup drama.',
-      lead: 'Minimal text. Maximum examples. Download, run, copy, ship.',
+      lead: 'Minimal text. Maximum examples. Download, run, copy, ship. Clear inputs, explicit outputs.',
       primary: 'Download Steel',
       ghost: 'See examples',
       pills: ['Beginner friendly', 'Clean installs', 'Multi-OS'],
@@ -145,15 +154,18 @@ const I18N: Record<LangKey, I18n> = {
     download: {
       eyebrow: 'Download',
       title: 'One button. One file.',
-      lead: 'Direct installer link with no extra steps.',
-      macTitle: 'macOS (0.1.0_test)',
-      macDesc: 'Direct macOS installer. Open and install.',
-      macButton: 'Download Steel for macOS',
-      macHint: 'File type: .pkg',
-      otherTitle: 'Windows + Linux',
-      otherDesc: 'In progress.',
-      otherHint: 'Windows: .exe — Linux: .deb',
-      quickInstall: 'Quick install'
+      lead: 'Direct installer link with no extra steps. No scripts, no account.',
+      macTitle: 'All platforms',
+      macDesc: 'Open the GitHub releases page for every build.',
+      macButton: 'Open Releases',
+      macHint: 'macOS, Windows, Linux',
+      otherTitle: 'Release page',
+      otherDesc: 'Single link for all systems.',
+      otherHint: 'GitHub Releases',
+      vscodeTitle: 'VS Code Extension',
+      vscodeDesc: 'Syntax and steelconf helpers inside VS Code.',
+      vscodeButton: 'Open Marketplace',
+      quickInstall: 'Quick install',
     },
     about: {
       eyebrow: 'Why Steel',
@@ -176,7 +188,7 @@ const I18N: Record<LangKey, I18n> = {
     showcase: {
       eyebrow: 'Use cases',
       title: 'Where Steel fits best.',
-      lead: 'Small teams, mixed stacks, or one language done well.',
+      lead: 'Small teams, mixed stacks, or one language done well. One bake per toolchain keeps builds readable.',
       cards: [
         { title: 'Solo projects', text: 'Start with one file and grow as needed.' },
         { title: 'Multi-language apps', text: 'Keep C, Rust, Swift, and Java together.' },
@@ -186,7 +198,7 @@ const I18N: Record<LangKey, I18n> = {
     showcasePage: {
       eyebrow: 'Showcase',
       title: 'Real-world steelconf patterns.',
-      lead: 'Pick a pattern and adapt it to your stack.',
+      lead: 'Pick a pattern and adapt it to your stack. Each block shows tools, inputs, outputs.',
       cards: [
         { title: 'CLI app', text: 'One target, fast output, zero surprises.' },
         { title: 'App + lib', text: 'Split build steps with clean outputs.' },
@@ -197,7 +209,7 @@ const I18N: Record<LangKey, I18n> = {
     security: {
       eyebrow: 'Security',
       title: 'Security by default.',
-      lead: 'Safe defaults, explicit tools, and clear outputs.',
+      lead: 'Safe defaults, explicit tools, and clear outputs. Only declared tools run.',
       cards: [
         { title: 'Explicit tools', text: 'Only tools you declare are executed.' },
         { title: 'Deterministic inputs', text: 'Known inputs keep builds predictable.' },
@@ -212,7 +224,7 @@ const I18N: Record<LangKey, I18n> = {
     status: {
       eyebrow: 'Status',
       title: 'Current service status.',
-      lead: 'Latest build pipelines and download availability.',
+      lead: 'Latest build pipelines and download availability. Plain metrics, no fluff.',
       metrics: [
         { label: 'Uptime', value: '99.9%' },
         { label: 'Build latency', value: '< 2 min' },
@@ -232,7 +244,7 @@ const I18N: Record<LangKey, I18n> = {
     examples: {
       eyebrow: 'Examples',
       title: 'Copy, paste, run.',
-      lead: 'Short snippets you can drop into a project.',
+      lead: 'Short snippets you can drop into a project. Copy, run, see target/out.',
       checkTitle: 'Check install',
       runTitle: 'Run',
       minimalTitle: 'Minimal steelconf',
@@ -242,7 +254,7 @@ const I18N: Record<LangKey, I18n> = {
     docs: {
       eyebrow: 'Docs',
       title: 'Just enough to move fast.',
-      lead: 'Short guides for beginners with real commands.',
+      lead: 'Short guides for beginners with real commands. Commands and patterns in plain words.',
       sections: [
         { title: '1) Create a file', text: 'Make a steelconf at project root.' },
         { title: '2) Define tools', text: 'Declare the compiler you want to use.' },
@@ -283,7 +295,7 @@ const I18N: Record<LangKey, I18n> = {
     changelog: {
       eyebrow: 'Changelog',
       title: 'Release notes',
-      lead: 'What is new and what to expect next.',
+      lead: 'What is new and what to expect next. Focused notes, fewer surprises.',
       items: [
         {
           version: '0.1.0_test',
@@ -314,7 +326,7 @@ const I18N: Record<LangKey, I18n> = {
     hero: {
       eyebrow: 'Edition privee',
       title: 'Steel, telecharge direct. Sans prise de tete.',
-      lead: 'Moins de texte. Plus d\'exemples. Telechargez, lancez, copiez.',
+      lead: 'Moins de texte. Plus d\'exemples. Telechargez, lancez, copiez. Entrees claires, sorties explicites.',
       primary: 'Telecharger Steel',
       ghost: 'Voir les exemples',
       pills: ['Debutant', 'Install propre', 'Multi-OS'],
@@ -325,15 +337,18 @@ const I18N: Record<LangKey, I18n> = {
     download: {
       eyebrow: 'Telecharger',
       title: 'Un bouton. Un fichier.',
-      lead: 'Lien direct, pas d\'etapes en plus.',
-      macTitle: 'macOS (0.1.0_test)',
-      macDesc: 'Installeur macOS direct. Ouvrir et installer.',
-      macButton: 'Telecharger Steel pour macOS',
-      macHint: 'Type: .pkg',
-      otherTitle: 'Windows + Linux',
-      otherDesc: 'En cours.',
-      otherHint: 'Windows: .exe — Linux: .deb',
-      quickInstall: 'Installation rapide'
+      lead: 'Lien direct, pas d\'etapes en plus. Sans script, sans compte.',
+      macTitle: 'Toutes les plateformes',
+      macDesc: 'Ouvrir la page releases pour tous les builds.',
+      macButton: 'Ouvrir les releases',
+      macHint: 'macOS, Windows, Linux',
+      otherTitle: 'Page releases',
+      otherDesc: 'Un seul lien pour tous les systemes.',
+      otherHint: 'GitHub Releases',
+      vscodeTitle: 'Extension VS Code',
+      vscodeDesc: 'Syntaxe et aides steelconf dans VS Code.',
+      vscodeButton: 'Ouvrir le Marketplace',
+      quickInstall: 'Installation rapide',
     },
     about: {
       eyebrow: 'Pourquoi Steel',
@@ -356,7 +371,7 @@ const I18N: Record<LangKey, I18n> = {
     showcase: {
       eyebrow: 'Cas d\'usage',
       title: 'La ou Steel est le plus utile.',
-      lead: 'Petites equipes, stacks mixtes, ou un seul langage.',
+      lead: 'Petites equipes, stacks mixtes, ou un seul langage. Un bake par toolchain, lecture simple.',
       cards: [
         { title: 'Projets solo', text: 'Un seul fichier pour demarrer vite.' },
         { title: 'Apps multi-langage', text: 'C, Rust, Swift et Java ensemble.' },
@@ -366,7 +381,7 @@ const I18N: Record<LangKey, I18n> = {
     showcasePage: {
       eyebrow: 'Showcase',
       title: 'Patrons steelconf en production.',
-      lead: 'Choisir un pattern et l\'adapter a votre stack.',
+      lead: 'Choisir un pattern et l\'adapter a votre stack. Chaque bloc montre outils, entrees, sorties.',
       cards: [
         { title: 'CLI', text: 'Un target, sortie rapide, sans surprise.' },
         { title: 'App + lib', text: 'Etapes claires et sorties propres.' },
@@ -377,7 +392,7 @@ const I18N: Record<LangKey, I18n> = {
     security: {
       eyebrow: 'Securite',
       title: 'Securite par defaut.',
-      lead: 'Outils explicites et sorties claires.',
+      lead: 'Outils explicites et sorties claires. Seuls les outils declares s\'executent.',
       cards: [
         { title: 'Outils explicites', text: 'Seuls les outils declares sont executes.' },
         { title: 'Entrees deterministes', text: 'Inputs connus pour builds stables.' },
@@ -392,7 +407,7 @@ const I18N: Record<LangKey, I18n> = {
     status: {
       eyebrow: 'Statut',
       title: 'Etat des services.',
-      lead: 'Telechargements et pipelines en temps reel.',
+      lead: 'Telechargements et pipelines en temps reel. Chiffres clairs, sans marketing.',
       metrics: [
         { label: 'Disponibilite', value: '99.9%' },
         { label: 'Latence build', value: '< 2 min' },
@@ -412,7 +427,7 @@ const I18N: Record<LangKey, I18n> = {
     examples: {
       eyebrow: 'Exemples',
       title: 'Copier, coller, lancer.',
-      lead: 'Petits extraits a poser dans votre projet.',
+      lead: 'Petits extraits a poser dans votre projet. Copier, lancer, voir target/out.',
       checkTitle: 'Verifier',
       runTitle: 'Lancer',
       minimalTitle: 'steelconf minimal',
@@ -422,7 +437,7 @@ const I18N: Record<LangKey, I18n> = {
     docs: {
       eyebrow: 'Docs',
       title: 'Le strict minimum pour avancer vite.',
-      lead: 'Guides courts avec commandes utiles.',
+      lead: 'Guides courts avec commandes utiles. Commandes et patterns en clair.',
       sections: [
         { title: '1) Creer un fichier', text: 'Mettre un steelconf a la racine.' },
         { title: '2) Definir les outils', text: 'Declarer le compilateur a utiliser.' },
@@ -463,7 +478,7 @@ const I18N: Record<LangKey, I18n> = {
     changelog: {
       eyebrow: 'Changelog',
       title: 'Notes de version',
-      lead: 'Nouveautes et prochaines etapes.',
+      lead: 'Nouveautes et prochaines etapes. Notes courtes, pas de surprise.',
       items: [
         {
           version: '0.1.0_test',
@@ -494,7 +509,7 @@ const I18N: Record<LangKey, I18n> = {
     hero: {
       eyebrow: 'Private Edition',
       title: 'Steel, direkt geliefert. Kein Setup-Stress.',
-      lead: 'Wenig Text. Viele Beispiele. Download, starten, kopieren.',
+      lead: 'Wenig Text. Viele Beispiele. Download, starten, kopieren. Klare Inputs, explizite Outputs.',
       primary: 'Steel herunterladen',
       ghost: 'Beispiele ansehen',
       pills: ['Einsteigerfreundlich', 'Saubere Installation', 'Multi-OS'],
@@ -505,15 +520,18 @@ const I18N: Record<LangKey, I18n> = {
     download: {
       eyebrow: 'Download',
       title: 'Ein Knopf. Eine Datei.',
-      lead: 'Direkter Installer-Link ohne Extra-Schritte.',
-      macTitle: 'macOS (0.1.0_test)',
-      macDesc: 'Direkter macOS-Installer. Offnen und installieren.',
-      macButton: 'Steel fur macOS herunterladen',
-      macHint: 'Dateityp: .pkg',
-      otherTitle: 'Windows + Linux',
-      otherDesc: 'In Arbeit.',
-      otherHint: 'Windows: .exe — Linux: .deb',
-      quickInstall: 'Schnellinstallation'
+      lead: 'Direkter Installer-Link ohne Extra-Schritte. Ohne Skripte, ohne Konto.',
+      macTitle: 'Alle Plattformen',
+      macDesc: 'Release-Seite fur alle Builds.',
+      macButton: 'Releases offnen',
+      macHint: 'macOS, Windows, Linux',
+      otherTitle: 'Release-Seite',
+      otherDesc: 'Ein Link fur alle Systeme.',
+      otherHint: 'GitHub Releases',
+      vscodeTitle: 'VS Code Erweiterung',
+      vscodeDesc: 'Syntax und steelconf-Hilfen in VS Code.',
+      vscodeButton: 'Marketplace offnen',
+      quickInstall: 'Schnellinstallation',
     },
     about: {
       eyebrow: 'Warum Steel',
@@ -536,7 +554,7 @@ const I18N: Record<LangKey, I18n> = {
     showcase: {
       eyebrow: 'Einsatzfalle',
       title: 'Wo Steel am besten passt.',
-      lead: 'Kleine Teams, gemischte Stacks, oder ein Fokus.',
+      lead: 'Kleine Teams, gemischte Stacks, oder ein Fokus. Ein Bake pro Toolchain, gut lesbar.',
       cards: [
         { title: 'Solo-Projekte', text: 'Ein File reicht fur den Start.' },
         { title: 'Multi-Language', text: 'C, Rust, Swift und Java zusammen.' },
@@ -546,7 +564,7 @@ const I18N: Record<LangKey, I18n> = {
     showcasePage: {
       eyebrow: 'Showcase',
       title: 'Steelconf Muster aus der Praxis.',
-      lead: 'Wahle ein Muster und passe es an.',
+      lead: 'Wahle ein Muster und passe es an. Jeder Block zeigt Tools, Inputs, Outputs.',
       cards: [
         { title: 'CLI-App', text: 'Ein Target, schneller Output, keine Uberraschungen.' },
         { title: 'App + Lib', text: 'Klare Schritte und Outputs.' },
@@ -557,7 +575,7 @@ const I18N: Record<LangKey, I18n> = {
     security: {
       eyebrow: 'Sicherheit',
       title: 'Sicherheit by default.',
-      lead: 'Explizite Tools und klare Outputs.',
+      lead: 'Explizite Tools und klare Outputs. Nur deklarierte Tools laufen.',
       cards: [
         { title: 'Explizite Tools', text: 'Nur deklarierte Tools werden ausgefuhrt.' },
         { title: 'Deterministische Inputs', text: 'Bekannte Inputs fur stabile Builds.' },
@@ -572,7 +590,7 @@ const I18N: Record<LangKey, I18n> = {
     status: {
       eyebrow: 'Status',
       title: 'Aktueller Status.',
-      lead: 'Downloads und Pipelines im Blick.',
+      lead: 'Downloads und Pipelines im Blick. Klare Metriken, ohne Marketing.',
       metrics: [
         { label: 'Uptime', value: '99.9%' },
         { label: 'Build-Latenz', value: '< 2 min' },
@@ -592,7 +610,7 @@ const I18N: Record<LangKey, I18n> = {
     examples: {
       eyebrow: 'Beispiele',
       title: 'Kopieren, einfugen, starten.',
-      lead: 'Kurze Snippets fur dein Projekt.',
+      lead: 'Kurze Snippets fur dein Projekt. Kopieren, ausfuhren, target/out sehen.',
       checkTitle: 'Installation prufen',
       runTitle: 'Starten',
       minimalTitle: 'Minimales steelconf',
@@ -602,7 +620,7 @@ const I18N: Record<LangKey, I18n> = {
     docs: {
       eyebrow: 'Dokumente',
       title: 'Nur das Notige, um schnell zu starten.',
-      lead: 'Kurze Anleitungen mit echten Befehlen.',
+      lead: 'Kurze Anleitungen mit echten Befehlen. Befehle und Muster in klaren Worten.',
       sections: [
         { title: '1) Datei erstellen', text: 'steelconf im Projekt-Root anlegen.' },
         { title: '2) Tools definieren', text: 'Compiler deklarieren.' },
@@ -643,7 +661,7 @@ const I18N: Record<LangKey, I18n> = {
     changelog: {
       eyebrow: 'Changelog',
       title: 'Release-Notizen',
-      lead: 'Neues und was als nachstes kommt.',
+      lead: 'Neues und was als nachstes kommt. Kurze Notizen, weniger Uberraschungen.',
       items: [
         {
           version: '0.1.0_test',
@@ -674,7 +692,7 @@ const I18N: Record<LangKey, I18n> = {
     hero: {
       eyebrow: 'Edizione privata',
       title: 'Steel, consegnato diretto. Niente complicazioni.',
-      lead: 'Poco testo. Tanti esempi. Scarica, avvia, copia.',
+      lead: 'Poco testo. Tanti esempi. Scarica, avvia, copia. Input chiari, output espliciti.',
       primary: 'Scarica Steel',
       ghost: 'Vedi esempi',
       pills: ['Per principianti', 'Installazione pulita', 'Multi-OS'],
@@ -685,15 +703,18 @@ const I18N: Record<LangKey, I18n> = {
     download: {
       eyebrow: 'Download',
       title: 'Un pulsante. Un file.',
-      lead: 'Link diretto senza passaggi extra.',
-      macTitle: 'macOS (0.1.0_test)',
-      macDesc: 'Installer macOS diretto. Apri e installa.',
-      macButton: 'Scarica Steel per macOS',
-      macHint: 'Tipo file: .pkg',
-      otherTitle: 'Windows + Linux',
-      otherDesc: 'In corso.',
-      otherHint: 'Windows: .exe — Linux: .deb',
-      quickInstall: 'Installazione rapida'
+      lead: 'Link diretto senza passaggi extra. Senza script, senza account.',
+      macTitle: 'Tutte le piattaforme',
+      macDesc: 'Apri la pagina release per tutti i build.',
+      macButton: 'Apri release',
+      macHint: 'macOS, Windows, Linux',
+      otherTitle: 'Pagina release',
+      otherDesc: 'Un link per tutti i sistemi.',
+      otherHint: 'GitHub Releases',
+      vscodeTitle: 'Estensione VS Code',
+      vscodeDesc: 'Sintassi e aiuti steelconf in VS Code.',
+      vscodeButton: 'Apri Marketplace',
+      quickInstall: 'Installazione rapida',
     },
     about: {
       eyebrow: 'Perche Steel',
@@ -716,7 +737,7 @@ const I18N: Record<LangKey, I18n> = {
     showcase: {
       eyebrow: 'Casi d\'uso',
       title: 'Dove Steel rende di piu.',
-      lead: 'Team piccoli, stack misti, o un solo linguaggio.',
+      lead: 'Team piccoli, stack misti, o un solo linguaggio. Un bake per toolchain, piu leggibile.',
       cards: [
         { title: 'Progetti singoli', text: 'Un file basta per partire.' },
         { title: 'Multi-linguaggio', text: 'C, Rust, Swift e Java insieme.' },
@@ -726,7 +747,7 @@ const I18N: Record<LangKey, I18n> = {
     showcasePage: {
       eyebrow: 'Showcase',
       title: 'Pattern steelconf reali.',
-      lead: 'Scegli un pattern e adattalo al tuo stack.',
+      lead: 'Scegli un pattern e adattalo al tuo stack. Ogni blocco mostra tool, input, output.',
       cards: [
         { title: 'CLI', text: 'Un target, output rapido, zero sorprese.' },
         { title: 'App + lib', text: 'Passi chiari e output puliti.' },
@@ -737,7 +758,7 @@ const I18N: Record<LangKey, I18n> = {
     security: {
       eyebrow: 'Sicurezza',
       title: 'Sicurezza di default.',
-      lead: 'Tool espliciti e output chiari.',
+      lead: 'Tool espliciti e output chiari. Si eseguono solo i tool dichiarati.',
       cards: [
         { title: 'Tool espliciti', text: 'Solo i tool dichiarati vengono eseguiti.' },
         { title: 'Input deterministici', text: 'Input noti per build stabili.' },
@@ -752,7 +773,7 @@ const I18N: Record<LangKey, I18n> = {
     status: {
       eyebrow: 'Stato',
       title: 'Stato attuale dei servizi.',
-      lead: 'Download e pipeline piu recenti.',
+      lead: 'Download e pipeline piu recenti. Metriche chiare, senza marketing.',
       metrics: [
         { label: 'Uptime', value: '99.9%' },
         { label: 'Latenza build', value: '< 2 min' },
@@ -772,7 +793,7 @@ const I18N: Record<LangKey, I18n> = {
     examples: {
       eyebrow: 'Esempi',
       title: 'Copia, incolla, esegui.',
-      lead: 'Snippet brevi per il tuo progetto.',
+      lead: 'Snippet brevi per il tuo progetto. Copia, esegui, vedi target/out.',
       checkTitle: 'Verifica',
       runTitle: 'Esegui',
       minimalTitle: 'steelconf minimale',
@@ -782,7 +803,7 @@ const I18N: Record<LangKey, I18n> = {
     docs: {
       eyebrow: 'Documenti',
       title: 'Solo il necessario per partire.',
-      lead: 'Guide brevi con comandi reali.',
+      lead: 'Guide brevi con comandi reali. Comandi e pattern in parole semplici.',
       sections: [
         { title: '1) Crea un file', text: 'Crea steelconf alla radice.' },
         { title: '2) Definisci gli strumenti', text: 'Dichiara il compilatore.' },
@@ -823,7 +844,7 @@ const I18N: Record<LangKey, I18n> = {
     changelog: {
       eyebrow: 'Changelog',
       title: 'Note di rilascio',
-      lead: 'Novita e prossimi passi.',
+      lead: 'Novita e prossimi passi. Note concise, meno sorprese.',
       items: [
         {
           version: '0.1.0_test',
@@ -854,7 +875,7 @@ const I18N: Record<LangKey, I18n> = {
     hero: {
       eyebrow: 'إصدار خاص',
       title: 'Steel، تسليم مباشر. بلا تعقيد.',
-      lead: 'نص قليل. أمثلة كثيرة. حمّل، شغّل، انسخ.',
+      lead: 'نص قليل. أمثلة كثيرة. حمّل، شغّل، انسخ. مدخلات واضحة ومخرجات صريحة.',
       primary: 'حمّل Steel',
       ghost: 'شاهد الأمثلة',
       pills: ['سهل للمبتدئين', 'تثبيت نظيف', 'متعدد الأنظمة'],
@@ -865,15 +886,18 @@ const I18N: Record<LangKey, I18n> = {
     download: {
       eyebrow: 'التنزيل',
       title: 'زر واحد. ملف واحد.',
-      lead: 'رابط مباشر بلا خطوات إضافية.',
-      macTitle: 'macOS (0.1.0_test)',
-      macDesc: 'مثبّت macOS مباشر. افتح وثبّت.',
-      macButton: 'حمّل Steel لـ macOS',
-      macHint: 'نوع الملف: .pkg',
-      otherTitle: 'Windows + Linux',
-      otherDesc: 'قيد العمل.',
-      otherHint: 'Windows: .exe — Linux: .deb',
-      quickInstall: 'تثبيت سريع'
+      lead: 'رابط مباشر بلا خطوات إضافية. بدون سكربت وبدون حساب.',
+      macTitle: 'كل المنصات',
+      macDesc: 'افتح صفحة الإصدارات لكل النسخ.',
+      macButton: 'افتح الإصدارات',
+      macHint: 'macOS و Windows و Linux',
+      otherTitle: 'صفحة الإصدارات',
+      otherDesc: 'رابط واحد لكل الأنظمة.',
+      otherHint: 'GitHub Releases',
+      vscodeTitle: 'امتداد VS Code',
+      vscodeDesc: 'صياغة ومساعدات steelconf داخل VS Code.',
+      vscodeButton: 'فتح Marketplace',
+      quickInstall: 'تثبيت سريع',
     },
     about: {
       eyebrow: 'لماذا Steel',
@@ -896,7 +920,7 @@ const I18N: Record<LangKey, I18n> = {
     showcase: {
       eyebrow: 'حالات الاستخدام',
       title: 'أين يناسب Steel.',
-      lead: 'فرق صغيرة، تقنيات متعددة، أو لغة واحدة بإتقان.',
+      lead: 'فرق صغيرة، تقنيات متعددة، أو لغة واحدة بإتقان. وصفة لكل أداة، قراءة أسهل.',
       cards: [
         { title: 'مشاريع فردية', text: 'ابدأ بملف واحد وتوسّع لاحقًا.' },
         { title: 'تطبيقات متعددة اللغات', text: 'اجمع C وRust وSwift وJava.' },
@@ -906,7 +930,7 @@ const I18N: Record<LangKey, I18n> = {
     showcasePage: {
       eyebrow: 'Showcase',
       title: 'أنماط steelconf حقيقية.',
-      lead: 'اختر نمطًا وكيّفه مع تقنيتك.',
+      lead: 'اختر نمطًا وكيّفه مع تقنيتك. كل كتلة تعرض الأدوات والمدخلات والمخرجات.',
       cards: [
         { title: 'تطبيق CLI', text: 'هدف واحد، مخرجات سريعة، بلا مفاجآت.' },
         { title: 'تطبيق + مكتبة', text: 'قسّم البناء بمخرجات واضحة.' },
@@ -917,7 +941,7 @@ const I18N: Record<LangKey, I18n> = {
     security: {
       eyebrow: 'الأمان',
       title: 'أمان افتراضي.',
-      lead: 'أدوات صريحة ومخرجات واضحة.',
+      lead: 'أدوات صريحة ومخرجات واضحة. تعمل الأدوات المعلنة فقط.',
       cards: [
         { title: 'أدوات صريحة', text: 'تُنفّذ الأدوات المصرّح بها فقط.' },
         { title: 'مدخلات حتمية', text: 'مدخلات معروفة لبناء ثابت.' },
@@ -932,7 +956,7 @@ const I18N: Record<LangKey, I18n> = {
     status: {
       eyebrow: 'الحالة',
       title: 'الحالة الحالية للخدمات.',
-      lead: 'أحدث التنزيلات وخطوط البناء.',
+      lead: 'أحدث التنزيلات وخطوط البناء. مقاييس واضحة بلا تسويق.',
       metrics: [
         { label: 'الجاهزية', value: '99.9%' },
         { label: 'زمن البناء', value: '< 2 دقيقة' },
@@ -952,7 +976,7 @@ const I18N: Record<LangKey, I18n> = {
     examples: {
       eyebrow: 'أمثلة',
       title: 'انسخ، الصق، شغّل.',
-      lead: 'مقاطع قصيرة لمشروعك.',
+      lead: 'مقاطع قصيرة لمشروعك. انسخ، شغّل، وشاهد target/out.',
       checkTitle: 'تحقق',
       runTitle: 'تشغيل',
       minimalTitle: 'steelconf بسيط',
@@ -962,7 +986,7 @@ const I18N: Record<LangKey, I18n> = {
     docs: {
       eyebrow: 'الوثائق',
       title: 'فقط ما تحتاجه للبداية.',
-      lead: 'أدلة قصيرة مع أوامر حقيقية.',
+      lead: 'أدلة قصيرة مع أوامر حقيقية. أوامر وأنماط بكلمات واضحة.',
       sections: [
         { title: '1) أنشئ ملفًا', text: 'ضع steelconf في الجذر.' },
         { title: '2) عرّف الأدوات', text: 'صرّح بالمُصرّف المستخدم.' },
@@ -1003,7 +1027,7 @@ const I18N: Record<LangKey, I18n> = {
     changelog: {
       eyebrow: 'سجل التغييرات',
       title: 'ملاحظات الإصدار',
-      lead: 'الجديد وما القادم.',
+      lead: 'الجديد وما القادم. ملاحظات مختصرة، مفاجآت أقل.',
       items: [
         {
           version: '0.1.0_test',
@@ -1034,7 +1058,7 @@ const I18N: Record<LangKey, I18n> = {
     hero: {
       eyebrow: '私有版',
       title: 'Steel，直达交付。无需折腾。',
-      lead: '文本极简，示例极多。下载、运行、复制、上线。',
+      lead: '文本极简，示例极多。下载、运行、复制、上线。输入清晰，输出明确。',
       primary: '下载 Steel',
       ghost: '查看示例',
       pills: ['新手友好', '安装干净', '多平台'],
@@ -1045,15 +1069,18 @@ const I18N: Record<LangKey, I18n> = {
     download: {
       eyebrow: '下载',
       title: '一个按钮，一个文件。',
-      lead: '直链安装，无额外步骤。',
-      macTitle: 'macOS (0.1.0_test)',
-      macDesc: 'macOS 直装包。打开并安装。',
-      macButton: '下载 macOS 版 Steel',
-      macHint: '文件类型: .pkg',
-      otherTitle: 'Windows + Linux',
-      otherDesc: '进行中。',
-      otherHint: 'Windows: .exe — Linux: .deb',
-      quickInstall: '快速安装'
+      lead: '直链安装，无额外步骤。无需脚本或账号。',
+      macTitle: '所有平台',
+      macDesc: '打开发布页查看所有构建。',
+      macButton: '打开发布页',
+      macHint: 'macOS / Windows / Linux',
+      otherTitle: '发布页',
+      otherDesc: '一个链接覆盖所有系统。',
+      otherHint: 'GitHub Releases',
+      vscodeTitle: 'VS Code 扩展',
+      vscodeDesc: '在 VS Code 中提供 steelconf 语法与辅助。',
+      vscodeButton: '打开 Marketplace',
+      quickInstall: '快速安装',
     },
     about: {
       eyebrow: '为什么选择 Steel',
@@ -1076,7 +1103,7 @@ const I18N: Record<LangKey, I18n> = {
     showcase: {
       eyebrow: '使用场景',
       title: 'Steel 最合适的地方。',
-      lead: '小团队、混合技术栈，或单一语言。',
+      lead: '小团队、混合技术栈，或单一语言。每个 bake 对应一套工具链，易读可审。',
       cards: [
         { title: '个人项目', text: '用一个文件起步，按需扩展。' },
         { title: '多语言应用', text: '把 C、Rust、Swift、Java 放在一起。' },
@@ -1086,7 +1113,7 @@ const I18N: Record<LangKey, I18n> = {
     showcasePage: {
       eyebrow: 'Showcase',
       title: '真实 steelconf 模式。',
-      lead: '选择一个模式并适配你的技术栈。',
+      lead: '选择一个模式并适配你的技术栈。每个代码块展示工具、输入、输出。',
       cards: [
         { title: 'CLI 应用', text: '一个目标，快速输出，零惊喜。' },
         { title: '应用 + 库', text: '清晰分步与整洁输出。' },
@@ -1097,7 +1124,7 @@ const I18N: Record<LangKey, I18n> = {
     security: {
       eyebrow: '安全',
       title: '默认安全。',
-      lead: '显式工具，清晰输出。',
+      lead: '显式工具，清晰输出。只运行已声明的工具。',
       cards: [
         { title: '显式工具', text: '只执行已声明的工具。' },
         { title: '确定性输入', text: '已知输入带来稳定构建。' },
@@ -1112,7 +1139,7 @@ const I18N: Record<LangKey, I18n> = {
     status: {
       eyebrow: '状态',
       title: '当前服务状态。',
-      lead: '最新下载与流水线。',
+      lead: '最新下载与流水线。指标清晰，不绕弯。',
       metrics: [
         { label: '可用性', value: '99.9%' },
         { label: '构建延迟', value: '< 2 分钟' },
@@ -1132,7 +1159,7 @@ const I18N: Record<LangKey, I18n> = {
     examples: {
       eyebrow: '示例',
       title: '复制、粘贴、运行。',
-      lead: '适合项目的短片段。',
+      lead: '适合项目的短片段。复制运行，查看 target/out。',
       checkTitle: '检查',
       runTitle: '运行',
       minimalTitle: '最小 steelconf',
@@ -1142,7 +1169,7 @@ const I18N: Record<LangKey, I18n> = {
     docs: {
       eyebrow: '文档',
       title: '启动只需这些。',
-      lead: '带真实命令的短指南。',
+      lead: '带真实命令的短指南。命令与模式解释直白。',
       sections: [
         { title: '1) 创建文件', text: '在根目录创建 steelconf。' },
         { title: '2) 定义工具', text: '声明要使用的编译器。' },
@@ -1179,7 +1206,7 @@ const I18N: Record<LangKey, I18n> = {
     changelog: {
       eyebrow: '变更日志',
       title: '发布说明',
-      lead: '新内容与下一步。',
+      lead: '新内容与下一步。短说明，少意外。',
       items: [
         {
           version: '0.1.0_test',
@@ -1210,7 +1237,7 @@ const I18N: Record<LangKey, I18n> = {
     hero: {
       eyebrow: 'プライベート版',
       title: 'Steel、直送。セットアップの面倒なし。',
-      lead: '短いテキスト。豊富な例。ダウンロードして実行、コピー。',
+      lead: '短いテキスト。豊富な例。ダウンロードして実行、コピー。入力は明確、出力は明示。',
       primary: 'Steelをダウンロード',
       ghost: '例を見る',
       pills: ['初心者向け', 'クリーンインストール', 'マルチOS'],
@@ -1221,15 +1248,18 @@ const I18N: Record<LangKey, I18n> = {
     download: {
       eyebrow: 'ダウンロード',
       title: '1ボタン、1ファイル。',
-      lead: '追加手順なしの直リンク。',
-      macTitle: 'macOS (0.1.0_test)',
-      macDesc: 'macOS 直インストーラ。開いてインストール。',
-      macButton: 'macOS版 Steel をダウンロード',
-      macHint: 'ファイル形式: .pkg',
-      otherTitle: 'Windows + Linux',
-      otherDesc: '準備中。',
-      otherHint: 'Windows: .exe — Linux: .deb',
-      quickInstall: 'クイックインストール'
+      lead: '追加手順なしの直リンク。スクリプトやアカウント不要。',
+      macTitle: '全プラットフォーム',
+      macDesc: '全ビルドはリリースページにあります。',
+      macButton: 'リリースを開く',
+      macHint: 'macOS / Windows / Linux',
+      otherTitle: 'リリースページ',
+      otherDesc: '全システム共通のリンク。',
+      otherHint: 'GitHub Releases',
+      vscodeTitle: 'VS Code 拡張',
+      vscodeDesc: 'VS Code で steelconf の構文と補助。',
+      vscodeButton: 'Marketplace を開く',
+      quickInstall: 'クイックインストール',
     },
     about: {
       eyebrow: 'なぜSteel',
@@ -1252,7 +1282,7 @@ const I18N: Record<LangKey, I18n> = {
     showcase: {
       eyebrow: 'ユースケース',
       title: 'Steelが合う場面。',
-      lead: '小さなチーム、混在スタック、または単一言語。',
+      lead: '小さなチーム、混在スタック、または単一言語。1つのbakeに1つのツールチェーンで読みやすい。',
       cards: [
         { title: '個人プロジェクト', text: '1ファイルで始めて拡張。' },
         { title: '多言語アプリ', text: 'C/Rust/Swift/Java をまとめる。' },
@@ -1262,7 +1292,7 @@ const I18N: Record<LangKey, I18n> = {
     showcasePage: {
       eyebrow: 'ショーケース',
       title: '実際の steelconf パターン。',
-      lead: 'パターンを選んでスタックに合わせる。',
+      lead: 'パターンを選んでスタックに合わせる。各ブロックがツール・入力・出力を示す。',
       cards: [
         { title: 'CLI アプリ', text: '1ターゲット、速い出力、サプライズなし。' },
         { title: 'アプリ + ライブラリ', text: '明確なステップと綺麗な出力。' },
@@ -1273,7 +1303,7 @@ const I18N: Record<LangKey, I18n> = {
     security: {
       eyebrow: 'セキュリティ',
       title: 'デフォルトで安全。',
-      lead: '明示的なツールと明確な出力。',
+      lead: '明示的なツールと明確な出力。宣言したツールだけ実行。',
       cards: [
         { title: '明示的ツール', text: '宣言されたツールだけを実行。' },
         { title: '決定的入力', text: '既知の入力で安定ビルド。' },
@@ -1288,7 +1318,7 @@ const I18N: Record<LangKey, I18n> = {
     status: {
       eyebrow: 'ステータス',
       title: 'サービスの現在状況。',
-      lead: '最新のダウンロードとパイプライン。',
+      lead: '最新のダウンロードとパイプライン。指標を分かりやすく表示。',
       metrics: [
         { label: '稼働率', value: '99.9%' },
         { label: 'ビルド遅延', value: '< 2分' },
@@ -1308,7 +1338,7 @@ const I18N: Record<LangKey, I18n> = {
     examples: {
       eyebrow: '例',
       title: 'コピーして実行。',
-      lead: 'プロジェクト向けの短いスニペット。',
+      lead: 'プロジェクト向けの短いスニペット。コピーして実行、target/outを確認。',
       checkTitle: 'チェック',
       runTitle: '実行',
       minimalTitle: '最小 steelconf',
@@ -1318,7 +1348,7 @@ const I18N: Record<LangKey, I18n> = {
     docs: {
       eyebrow: 'ドキュメント',
       title: '始めるために必要なだけ。',
-      lead: '実際のコマンド付きの短いガイド。',
+      lead: '実際のコマンド付きの短いガイド。コマンドとパターンを平易に説明。',
       sections: [
         { title: '1) ファイル作成', text: 'ルートに steelconf を置く。' },
         { title: '2) ツール定義', text: '使うコンパイラを宣言。' },
@@ -1355,7 +1385,7 @@ const I18N: Record<LangKey, I18n> = {
     changelog: {
       eyebrow: '変更履歴',
       title: 'リリースノート',
-      lead: '新機能と次の予定。',
+      lead: '新機能と次の予定。短く要点だけ。',
       items: [
         {
           version: '0.1.0_test',
@@ -1386,7 +1416,7 @@ const I18N: Record<LangKey, I18n> = {
     hero: {
       eyebrow: 'Edicao privada',
       title: 'Steel, entregue direto. Sem drama de setup.',
-      lead: 'Texto minimo. Muitos exemplos. Baixe, rode, copie.',
+      lead: 'Texto minimo. Muitos exemplos. Baixe, rode, copie. Entradas claras, saidas explicitas.',
       primary: 'Baixar Steel',
       ghost: 'Ver exemplos',
       pills: ['Amigavel para iniciantes', 'Instalacao limpa', 'Multi-OS'],
@@ -1397,15 +1427,18 @@ const I18N: Record<LangKey, I18n> = {
     download: {
       eyebrow: 'Download',
       title: 'Um botao. Um arquivo.',
-      lead: 'Link direto sem etapas extras.',
-      macTitle: 'macOS (0.1.0_test)',
-      macDesc: 'Instalador macOS direto. Abra e instale.',
-      macButton: 'Baixar Steel para macOS',
-      macHint: 'Tipo de arquivo: .pkg',
-      otherTitle: 'Windows + Linux',
-      otherDesc: 'Em andamento.',
-      otherHint: 'Windows: .exe — Linux: .deb',
-      quickInstall: 'Instalacao rapida'
+      lead: 'Link direto sem etapas extras. Sem scripts, sem conta.',
+      macTitle: 'Todas as plataformas',
+      macDesc: 'Abrir a pagina de releases para todos os builds.',
+      macButton: 'Abrir releases',
+      macHint: 'macOS, Windows, Linux',
+      otherTitle: 'Pagina de releases',
+      otherDesc: 'Um link para todos os sistemas.',
+      otherHint: 'GitHub Releases',
+      vscodeTitle: 'Extensao do VS Code',
+      vscodeDesc: 'Sintaxe e ajudas steelconf no VS Code.',
+      vscodeButton: 'Abrir Marketplace',
+      quickInstall: 'Instalacao rapida',
     },
     about: {
       eyebrow: 'Por que Steel',
@@ -1428,7 +1461,7 @@ const I18N: Record<LangKey, I18n> = {
     showcase: {
       eyebrow: 'Casos de uso',
       title: 'Onde o Steel funciona melhor.',
-      lead: 'Times pequenos, stacks mistos ou uma linguagem so.',
+      lead: 'Times pequenos, stacks mistos ou uma linguagem so. Um bake por toolchain, leitura simples.',
       cards: [
         { title: 'Projetos solo', text: 'Comece com um arquivo e cresca.' },
         { title: 'Apps multi-linguagem', text: 'C, Rust, Swift e Java juntos.' },
@@ -1438,7 +1471,7 @@ const I18N: Record<LangKey, I18n> = {
     showcasePage: {
       eyebrow: 'Showcase',
       title: 'Padroes steelconf reais.',
-      lead: 'Escolha um padrao e adapte ao seu stack.',
+      lead: 'Escolha um padrao e adapte ao seu stack. Cada bloco mostra ferramentas, entradas, saidas.',
       cards: [
         { title: 'App CLI', text: 'Um target, output rapido, zero surpresa.' },
         { title: 'App + lib', text: 'Divida etapas com outputs limpos.' },
@@ -1449,7 +1482,7 @@ const I18N: Record<LangKey, I18n> = {
     security: {
       eyebrow: 'Seguranca',
       title: 'Seguranca por padrao.',
-      lead: 'Ferramentas explicitas e outputs claros.',
+      lead: 'Ferramentas explicitas e outputs claros. So executa ferramentas declaradas.',
       cards: [
         { title: 'Ferramentas explicitas', text: 'So executa as ferramentas declaradas.' },
         { title: 'Entradas deterministas', text: 'Entradas conhecidas para build estavel.' },
@@ -1464,7 +1497,7 @@ const I18N: Record<LangKey, I18n> = {
     status: {
       eyebrow: 'Status',
       title: 'Status atual dos servicos.',
-      lead: 'Downloads e pipelines mais recentes.',
+      lead: 'Downloads e pipelines mais recentes. Metricas claras, sem marketing.',
       metrics: [
         { label: 'Uptime', value: '99.9%' },
         { label: 'Latencia de build', value: '< 2 min' },
@@ -1484,7 +1517,7 @@ const I18N: Record<LangKey, I18n> = {
     examples: {
       eyebrow: 'Exemplos',
       title: 'Copie, cole, rode.',
-      lead: 'Snippets curtos para seu projeto.',
+      lead: 'Snippets curtos para seu projeto. Copie, rode, veja target/out.',
       checkTitle: 'Verificar',
       runTitle: 'Executar',
       minimalTitle: 'steelconf minimo',
@@ -1494,7 +1527,7 @@ const I18N: Record<LangKey, I18n> = {
     docs: {
       eyebrow: 'Documentos',
       title: 'So o necessario para comecar.',
-      lead: 'Guias curtos com comandos reais.',
+      lead: 'Guias curtos com comandos reais. Comandos e padroes em linguagem simples.',
       sections: [
         { title: '1) Crie um arquivo', text: 'Crie o steelconf na raiz.' },
         { title: '2) Defina as ferramentas', text: 'Declare o compilador usado.' },
@@ -1535,7 +1568,7 @@ const I18N: Record<LangKey, I18n> = {
     changelog: {
       eyebrow: 'Changelog',
       title: 'Notas de release',
-      lead: 'Novidades e proximos passos.',
+      lead: 'Novidades e proximos passos. Notas curtas, menos surpresas.',
       items: [
         {
           version: '0.1.0_test',
@@ -1566,7 +1599,7 @@ const I18N: Record<LangKey, I18n> = {
     hero: {
       eyebrow: 'Edicion privada',
       title: 'Steel, entrega directa. Sin drama de setup.',
-      lead: 'Texto minimo. Maximos ejemplos. Descarga, ejecuta, copia.',
+      lead: 'Texto minimo. Maximos ejemplos. Descarga, ejecuta, copia. Entradas claras, salidas explicitas.',
       primary: 'Descargar Steel',
       ghost: 'Ver ejemplos',
       pills: ['Amigable para principiantes', 'Instalacion limpia', 'Multi-OS'],
@@ -1577,15 +1610,18 @@ const I18N: Record<LangKey, I18n> = {
     download: {
       eyebrow: 'Descarga',
       title: 'Un boton. Un archivo.',
-      lead: 'Link directo sin pasos extra.',
-      macTitle: 'macOS (0.1.0_test)',
-      macDesc: 'Instalador macOS directo. Abre e instala.',
-      macButton: 'Descargar Steel para macOS',
-      macHint: 'Tipo de archivo: .pkg',
-      otherTitle: 'Windows + Linux',
-      otherDesc: 'En progreso.',
-      otherHint: 'Windows: .exe — Linux: .deb',
-      quickInstall: 'Instalacion rapida'
+      lead: 'Link directo sin pasos extra. Sin scripts, sin cuenta.',
+      macTitle: 'Todas las plataformas',
+      macDesc: 'Abrir la pagina de releases para todos los builds.',
+      macButton: 'Abrir releases',
+      macHint: 'macOS, Windows, Linux',
+      otherTitle: 'Pagina de releases',
+      otherDesc: 'Un solo enlace para todos los sistemas.',
+      otherHint: 'GitHub Releases',
+      vscodeTitle: 'Extension VS Code',
+      vscodeDesc: 'Sintaxis y ayudas steelconf en VS Code.',
+      vscodeButton: 'Abrir Marketplace',
+      quickInstall: 'Instalacion rapida',
     },
     about: {
       eyebrow: 'Por que Steel',
@@ -1608,7 +1644,7 @@ const I18N: Record<LangKey, I18n> = {
     showcase: {
       eyebrow: 'Casos de uso',
       title: 'Donde Steel encaja mejor.',
-      lead: 'Equipos pequenos, stacks mixtos o un solo lenguaje.',
+      lead: 'Equipos pequenos, stacks mixtos o un solo lenguaje. Un bake por toolchain, lectura simple.',
       cards: [
         { title: 'Proyectos solo', text: 'Empieza con un archivo y crece.' },
         { title: 'Apps multi-lenguaje', text: 'C, Rust, Swift y Java juntos.' },
@@ -1618,7 +1654,7 @@ const I18N: Record<LangKey, I18n> = {
     showcasePage: {
       eyebrow: 'Showcase',
       title: 'Patrones steelconf reales.',
-      lead: 'Elige un patron y adaptalo a tu stack.',
+      lead: 'Elige un patron y adaptalo a tu stack. Cada bloque muestra herramientas, entradas, salidas.',
       cards: [
         { title: 'App CLI', text: 'Un target, salida rapida, cero sorpresas.' },
         { title: 'App + lib', text: 'Divide pasos con salidas limpias.' },
@@ -1629,7 +1665,7 @@ const I18N: Record<LangKey, I18n> = {
     security: {
       eyebrow: 'Seguridad',
       title: 'Seguridad por defecto.',
-      lead: 'Herramientas explicitas y salidas claras.',
+      lead: 'Herramientas explicitas y salidas claras. Solo corren herramientas declaradas.',
       cards: [
         { title: 'Herramientas explicitas', text: 'Solo se ejecutan las herramientas declaradas.' },
         { title: 'Entradas deterministas', text: 'Entradas conocidas para builds estables.' },
@@ -1644,7 +1680,7 @@ const I18N: Record<LangKey, I18n> = {
     status: {
       eyebrow: 'Estado',
       title: 'Estado actual de los servicios.',
-      lead: 'Descargas y pipelines mas recientes.',
+      lead: 'Descargas y pipelines mas recientes. Metricas claras, sin marketing.',
       metrics: [
         { label: 'Uptime', value: '99.9%' },
         { label: 'Latencia build', value: '< 2 min' },
@@ -1664,7 +1700,7 @@ const I18N: Record<LangKey, I18n> = {
     examples: {
       eyebrow: 'Ejemplos',
       title: 'Copia, pega, ejecuta.',
-      lead: 'Snippets cortos para tu proyecto.',
+      lead: 'Snippets cortos para tu proyecto. Copia, ejecuta, mira target/out.',
       checkTitle: 'Verificar',
       runTitle: 'Ejecutar',
       minimalTitle: 'steelconf minimo',
@@ -1674,7 +1710,7 @@ const I18N: Record<LangKey, I18n> = {
     docs: {
       eyebrow: 'Documentos',
       title: 'Solo lo necesario para empezar.',
-      lead: 'Guias cortas con comandos reales.',
+      lead: 'Guias cortas con comandos reales. Comandos y patrones en lenguaje claro.',
       sections: [
         { title: '1) Crea un archivo', text: 'Crea steelconf en la raiz.' },
         { title: '2) Define herramientas', text: 'Declara el compilador a usar.' },
@@ -1715,7 +1751,7 @@ const I18N: Record<LangKey, I18n> = {
     changelog: {
       eyebrow: 'Changelog',
       title: 'Notas de release',
-      lead: 'Novedades y proximos pasos.',
+      lead: 'Novedades y proximos pasos. Notas breves, menos sorpresas.',
       items: [
         {
           version: '0.1.0_test',
@@ -1739,50 +1775,50 @@ const I18N: Record<LangKey, I18n> = {
 const CORE_EXAMPLES: Example[] = [
   {
     title: 'Swift',
-    code: `[tool swiftc]\n\t.exec "swiftc"\n..\n\n[bake build_debug]\n\t.make swift_src cglob "Sources/**/*.swift"\n\t[run swiftc]\n\t\t.set "-g" 1\n\t\t.takes swift_src as "@args"\n\t\t.emits exe as "-o"\n\t..\n\t.output exe "target/out/swift_app_debug"\n..`
+    code: `!muf 4\n\n[workspace]\n\t.set name "swift_app"\n\t.set root "."\n\t.set target_dir "target"\n\t.set profile "debug"\n..\n\n[profile debug]\n\t.set opt 0\n\t.set debug 1\n..\n\n[profile release]\n\t.set opt 2\n\t.set debug 0\n..\n\n[tool swiftc]\n\t.exec "swiftc"\n..\n\n[bake build_debug]\n\t.make swift_src cglob "Sources/**/*.swift"\n\t[run swiftc]\n\t\t.set "-O${'${'}opt}" 1\n\t\t.set "-g" "${'${'}debug}"\n\t\t.takes swift_src as "@args"\n\t\t.emits exe as "-o"\n\t..\n\t.output exe "target/out/swift_app_debug"\n..\n\n[export]\n\t.ref build_debug\n..`
   },
   {
     title: 'Rust',
-    code: `[tool sh]\n\t.exec "sh"\n..\n\n[bake rust_build]\n\t.make rust_src cglob "src/**/*.rs"\n\t[run sh]\n\t\t.set "-c" "cargo build"\n\t..\n\t.output exe "target/debug/steel"\n..`
+    code: `!muf 4\n\n[workspace]\n\t.set name "rust_app"\n\t.set root "."\n\t.set target_dir "target"\n\t.set profile "debug"\n..\n\n[tool sh]\n\t.exec "sh"\n..\n\n[bake rust_build]\n\t.make rust_src cglob "src/**/*.rs"\n\t[run sh]\n\t\t.set "-c" "cargo build"\n\t..\n\t.output exe "target/debug/steel"\n..\n\n[export]\n\t.ref rust_build\n..`
   },
   {
     title: 'Python',
-    code: `[tool sh]\n\t.exec "sh"\n..\n\n[bake python_run]\n\t.make py_src cglob "src/**/*.py"\n\t[run sh]\n\t\t.set "-c" "python3 -u src/main.py"\n\t..\n\t.output exe "target/out/python.run"\n..`
+    code: `!muf 4\n\n[workspace]\n\t.set name "python_app"\n\t.set root "."\n\t.set target_dir "target"\n\t.set profile "debug"\n..\n\n[tool python]\n\t.exec "python3"\n..\n\n[bake python_run]\n\t.make py_src cglob "src/**/*.py"\n\t[run python]\n\t\t.set "-u" 1\n\t\t.set "-m" "src.main"\n\t..\n\t.output exe "target/out/python.run"\n..\n\n[export]\n\t.ref python_run\n..`
   },
   {
     title: 'Java',
-    code: `[tool javac]\n\t.exec "javac"\n..\n\n[bake java_build]\n\t.make java_src cglob "src/**/*.java"\n\t[run javac]\n\t\t.set "-d" "target/classes"\n\t\t.takes java_src as "@args"\n\t..\n\t.output classes "target/classes"\n..`
+    code: `!muf 4\n\n[workspace]\n\t.set name "java_app"\n\t.set root "."\n\t.set target_dir "target"\n\t.set profile "debug"\n..\n\n[tool javac]\n\t.exec "javac"\n..\n\n[bake java_build]\n\t.make java_src cglob "src/**/*.java"\n\t[run javac]\n\t\t.set "-g" 1\n\t\t.set "-d" "target/classes"\n\t\t.takes java_src as "@args"\n\t..\n\t.output classes "target/classes"\n..\n\n[export]\n\t.ref java_build\n..`
   },
   {
     title: 'OCaml',
-    code: `[tool ocamlc]\n\t.exec "ocamlc"\n..\n\n[bake ocaml_build]\n\t.make ml_src cglob "src/**/*.ml"\n\t[run ocamlc]\n\t\t.set "-g" 1\n\t\t.takes ml_src as "@args"\n\t\t.emits exe as "-o"\n\t..\n\t.output exe "target/out/ocaml_app.byte"\n..`
+    code: `!muf 4\n\n[workspace]\n\t.set name "ocaml_app"\n\t.set root "."\n\t.set target_dir "target"\n\t.set profile "debug"\n..\n\n[tool ocamlc]\n\t.exec "ocamlc"\n..\n\n[bake ocaml_build]\n\t.make ml_src cglob "src/**/*.ml"\n\t[run ocamlc]\n\t\t.set "-g" 1\n\t\t.takes ml_src as "@args"\n\t\t.emits exe as "-o"\n\t..\n\t.output exe "target/out/ocaml_app.byte"\n..\n\n[export]\n\t.ref ocaml_build\n..`
   },
   {
     title: 'C',
-    code: `[tool cc]\n\t.exec "cc"\n..\n\n[bake c_build]\n\t.make c_src cglob "src/**/*.c"\n\t[run cc]\n\t\t.takes c_src as "@args"\n\t\t.set "-O2" 1\n\t\t.set "-g" 1\n\t\t.emits exe as "-o"\n\t..\n\t.output exe "target/out/app_c"\n..`
+    code: `!muf 4\n\n[workspace]\n\t.set name "c_app"\n\t.set root "."\n\t.set target_dir "target"\n\t.set profile "debug"\n..\n\n[profile debug]\n\t.set opt 0\n\t.set debug 1\n..\n\n[profile release]\n\t.set opt 2\n\t.set debug 0\n..\n\n[tool cc]\n\t.exec "cc"\n..\n\n[bake c_build]\n\t.make c_src cglob "src/**/*.c"\n\t[run cc]\n\t\t.takes c_src as "@args"\n\t\t.set "-O${'${'}opt}" 1\n\t\t.set "-g" "${'${'}debug}"\n\t\t.emits exe as "-o"\n\t..\n\t.output exe "target/out/app_c"\n..\n\n[export]\n\t.ref c_build\n..`
   }
 ];
 
 const EXTRA_EXAMPLES: Example[] = [
   {
     title: 'Go',
-    code: `[tool go]\n\t.exec "go"\n..\n\n[bake go_build]\n\t.make go_src cglob "src/**/*.go"\n\t[run go]\n\t\t.set "build" 1\n\t\t.set "-o" "target/out/app_go"\n\t\t.set "./src" 1\n\t..\n\t.output exe "target/out/app_go"\n..`
+    code: `!muf 4\n\n[workspace]\n\t.set name "go_app"\n\t.set root "."\n\t.set target_dir "target"\n\t.set profile "debug"\n..\n\n[tool go]\n\t.exec "go"\n..\n\n[bake go_build]\n\t.make go_src cglob "src/**/*.go"\n\t[run go]\n\t\t.set "build" 1\n\t\t.set "-o" "target/out/app_go"\n\t\t.set "./src" 1\n\t..\n\t.output exe "target/out/app_go"\n..\n\n[export]\n\t.ref go_build\n..`
   },
   {
     title: 'C++',
-    code: `[tool cxx]\n\t.exec "c++"\n..\n\n[bake cpp_build]\n\t.make cpp_src cglob "src/**/*.cpp"\n\t[run cxx]\n\t\t.takes cpp_src as "@args"\n\t\t.set "-O2" 1\n\t\t.set "-std=c++20" 1\n\t\t.emits exe as "-o"\n\t..\n\t.output exe "target/out/app_cpp"\n..`
+    code: `!muf 4\n\n[workspace]\n\t.set name "cpp_app"\n\t.set root "."\n\t.set target_dir "target"\n\t.set profile "debug"\n..\n\n[profile debug]\n\t.set opt 0\n\t.set debug 1\n..\n\n[profile release]\n\t.set opt 2\n\t.set debug 0\n..\n\n[tool cxx]\n\t.exec "c++"\n..\n\n[bake cpp_build]\n\t.make cpp_src cglob "src/**/*.cpp"\n\t[run cxx]\n\t\t.takes cpp_src as "@args"\n\t\t.set "-O${'${'}opt}" 1\n\t\t.set "-std=c++20" 1\n\t\t.set "-g" "${'${'}debug}"\n\t\t.emits exe as "-o"\n\t..\n\t.output exe "target/out/app_cpp"\n..\n\n[export]\n\t.ref cpp_build\n..`
   },
   {
     title: 'Zig',
-    code: `[tool zig]\n\t.exec "zig"\n..\n\n[bake zig_build]\n\t.make zig_src cglob "src/**/*.zig"\n\t[run zig]\n\t\t.set "build-exe" 1\n\t\t.takes zig_src as "@args"\n\t\t.set "-O" "ReleaseFast"\n\t..\n\t.output exe "target/out/app_zig"\n..`
+    code: `!muf 4\n\n[workspace]\n\t.set name "zig_app"\n\t.set root "."\n\t.set target_dir "target"\n\t.set profile "release"\n..\n\n[tool zig]\n\t.exec "zig"\n..\n\n[bake zig_build]\n\t.make zig_src cglob "src/**/*.zig"\n\t[run zig]\n\t\t.set "build-exe" 1\n\t\t.takes zig_src as "@args"\n\t\t.set "-O" "ReleaseFast"\n\t..\n\t.output exe "target/out/app_zig"\n..\n\n[export]\n\t.ref zig_build\n..`
   },
   {
     title: 'C#',
-    code: `[tool dotnet]\n\t.exec "dotnet"\n..\n\n[bake cs_build]\n\t.make csproj cglob "src/**/*.csproj"\n\t[run dotnet]\n\t\t.set "build" 1\n\t\t.takes csproj as "@args"\n\t\t.set "-c" "Release"\n\t..\n\t.output exe "target/out/app_cs"\n..`
+    code: `!muf 4\n\n[workspace]\n\t.set name "csharp_app"\n\t.set root "."\n\t.set target_dir "target"\n\t.set profile "release"\n..\n\n[tool dotnet]\n\t.exec "dotnet"\n..\n\n[bake cs_build]\n\t.make csproj cglob "src/**/*.csproj"\n\t[run dotnet]\n\t\t.set "build" 1\n\t\t.takes csproj as "@args"\n\t\t.set "-c" "Release"\n\t..\n\t.output exe "target/out/app_cs"\n..\n\n[export]\n\t.ref cs_build\n..`
   },
   {
     title: 'Kotlin',
-    code: `[tool kotlinc]\n\t.exec "kotlinc"\n..\n\n[bake kt_build]\n\t.make kt_src cglob "src/**/*.kt"\n\t[run kotlinc]\n\t\t.takes kt_src as "@args"\n\t\t.set "-d" "target/out/app.jar"\n\t..\n\t.output jar "target/out/app.jar"\n..`
+    code: `!muf 4\n\n[workspace]\n\t.set name "kotlin_app"\n\t.set root "."\n\t.set target_dir "target"\n\t.set profile "release"\n..\n\n[tool kotlinc]\n\t.exec "kotlinc"\n..\n\n[bake kt_build]\n\t.make kt_src cglob "src/**/*.kt"\n\t[run kotlinc]\n\t\t.takes kt_src as "@args"\n\t\t.set "-d" "target/out/app.jar"\n\t..\n\t.output jar "target/out/app.jar"\n..\n\n[export]\n\t.ref kt_build\n..`
   }
 ];
 
@@ -1794,6 +1830,9 @@ export class AppState {
   readonly t = computed(() => I18N[this.lang()]);
   readonly isRtl = computed(() => this.lang() === 'ar');
   readonly downloadUrl = DOWNLOAD_MAC_URL;
+  readonly downloadLinuxUrl = DOWNLOAD_LINUX_DEB_URL;
+  readonly downloadWindowsUrl = DOWNLOAD_WINDOWS_URL;
+  readonly vscodeExtensionUrl = VSCODE_EXTENSION_URL;
   readonly examples = [...CORE_EXAMPLES, ...EXTRA_EXAMPLES];
 
   setLang(lang: LangKey): void {
