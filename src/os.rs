@@ -370,10 +370,10 @@ impl OsAdapter for UnixAdapter {
 
 #[cfg(unix)]
 fn detect_unix_version() -> OsVersion {
-    use std::process::Command;
-
     #[cfg(target_os = "macos")]
     {
+        use std::process::Command;
+
         if let Ok(output) = Command::new("sw_vers")
             .arg("-productVersion")
             .output()
