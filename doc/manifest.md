@@ -1,18 +1,18 @@
 <a id="steel-manifest-documentation-complete"></a>
 # Steel Manifest (documentation complete)
 
-Ce document est une reference exhaustive sur Steel dans ce depot. Il couvre la CLI, les formats, la syntaxe MUF, les regles de resolution, les logs et les conventions effectives dans le code source.
+Ce document est la reference complete du projet. Il couvre la CLI, les formats, la syntaxe MUF, les regles de resolution, les logs et les conventions en usage dans le code.
 
 <a id="1-vision-et-modele-mental"></a>
 ## 1. Vision et modele mental
 
 Steel est la couche **de configuration declarative** du build. Il:
-- parse et valide des fichiers MUF,
-- resolve les selections (profil/target) et les valeurs derivees,
-- emet un artefact canonique **steelconfig.mff**,
+- lit et valide des fichiers MUF,
+- resout les selections (profil/target) et les valeurs derivees,
+- emet l artefact canonique **steelconfig.mff**,
 - fournit un runner minimal pour executer des bakes declaratifs.
 
-Le pipeline est scinde en deux phases:
+Le pipeline est en deux phases:
 1) **Configuration** (steel / build steelconf) -> produit steelconfig.mff.
 2) **Execution** (run) -> interprete steelconf pour executer des outils.
 

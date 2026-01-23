@@ -137,6 +137,7 @@ pub mod directory;
 pub mod error;
 pub mod expand;
 pub mod externs;
+mod editor_setup;
 pub mod generator;
 pub mod gettext;
 pub mod hash;

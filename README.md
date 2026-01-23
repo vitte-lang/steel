@@ -2,23 +2,21 @@
 
 ![Steel](https://img.shields.io/badge/Steel-config-orange)
 
-Steel est la couche de configuration **déclarative** du build Vitte. Il **parse**, **valide** et **résout** un workspace (packages, profils, toolchains, targets), puis **génère un artefact de configuration stable** `steel.log`. Cet artefact est ensuite **consommé par Vitte** pour appliquer les règles de construction et exécuter les étapes de compilation de manière déterministe.
+Steel est la couche de configuration **declarative** du build Vitte. Il **lit**, **valide** et **resout** un workspace (packages, profils, toolchains, targets), puis **genere un artefact stable** (`steel.log` / `steelconfig.mff`). Vitte consomme cet artefact pour appliquer les regles de build et executer les etapes de compilation de facon deterministe.
 
 
 ## Points forts
 
-- Configuration déclarative, séparée de l'exécution.
-- Artefact canonique de configuration (`steel.log` / `config.mff`) pour audit/CI.
-- Résolution déterministe et sorties facilement outillables.
-- Introspection intégrée (print/graph/why) pour diagnostiquer le build.
-- Portabilité multi-OS/arch et profils explicites.
-- Introspection via commandes `print` et export de graphes.
-- Mode dev via `build steel -watch` et diagnostics `-why` / `-graph`.
-- Overrides non-invasifs via `-D KEY=VALUE` (sans modifier le buildfile).
+- Configuration declarative, separee de l execution.
+- Artefact canonique (`steel.log` / `steelconfig.mff`) pour audit et CI.
+- Résolution déterministe et sorties faciles a outiller.
+- Introspection integree (`print`, `graph`, `why`) pour diagnostiquer.
+- Multi-OS/arch avec profils explicites.
+- Mode dev et overrides via `-D KEY=VALUE` sans modifier le fichier.
 
 ## Configuration déclarative (exemple)
 
-Un `steelconf` décrit explicitement le **workspace**, les **profils**, les **targets** et la **toolchain**. Pas de règles ad-hoc : la structure est lisible, composable et stable.
+Un `steelconf` décrit explicitement le **workspace**, les **profils**, les **targets** et la **toolchain**. Pas de regles ad-hoc : la structure reste lisible, composable et stable.
 
 ```text
 !muf 4
@@ -76,6 +74,37 @@ steel
 steel run --log target/run.mff --log-mode truncate --all
 ```
 
+## Steel Editor (steecleditor)
+
+Steel fournit un editeur terminal integre pour `steelconf` : **steecleditor**.
+
+Lancer:
+```text
+steel editor
+steel editor path/to/steelconf
+```
+
+Fonctions principales:
+- Autocompletion steelconf (blocs/directives + snippets, type VSCode).
+- Indentation intelligente, auto-close des crochets.
+- Recherche, aller a une ligne, remplacement.
+- Tabs multi-fichiers, recent files, session restore.
+- Diff rapide vs disque et mini-map.
+- Syntax highlight (steelconf + C/C++/Python/Java/etc).
+- Autosave optionnel, mode lecture seule, themes.
+
+Raccourcis utiles:
+- `Ctrl+S` save, `Ctrl+O` open, `Ctrl+Q` quit
+- `Ctrl+F` search, `F3` next match, `Ctrl+L` go to line
+- `Ctrl+P` find file, `F2` recent files
+- `Ctrl+R` steel run, `Ctrl+Shift+E` jump run error
+- `Ctrl+Shift+G` glob preview, `Ctrl+Shift+I` insert snippet
+
+Config (optionnel):
+```text
+~/.config/steel/steecleditor.conf
+```
+
 ## SteelLib: import OCaml
 
 Le backend OCaml est exposé via SteelLib. Exemple d'import:
@@ -92,32 +121,32 @@ use SteelLib::ocaml::{OcamlArgs, OcamlDriver, OcamlSpec};
 
 ## Uniformisation totale (langages + machines)
 
-Steel vise une **uniformisation totale** du build : même modèle, mêmes commandes et mêmes sorties logiques, quel que soit le langage (Vitte, C/C++, C#, Rust, …) et quel que soit l’environnement (machines anciennes ou récentes, OS/arch hétérogènes).
+Steel vise une **uniformisation totale** du build : meme modele, memes commandes et memes sorties logiques, quel que soit le langage (Vitte, C/C++, C#, Rust, …) et l’environnement (machines anciennes ou recentes, OS/arch heterogenes).
 
-- **Langage-agnostique** : l’intégration se fait via des **tools déclaratifs** (compile/link/archive/test/package), connectés dans un graphe typé.
-- **Machine-agnostique** : l’exécution est pilotée par des **targets** (triples OS/arch) et des politiques stables (paths normalisés, cache, sandbox).
-- **Contrat unique** : la configuration est gelée dans `steel.log` et consommée ensuite de manière déterministe.
-- **Reproductibilité** : cache content-addressed + empreinte toolchain + policy capsule.
-- **Observabilité** : diagnostics et introspection (`print`, `-why`, `-graph`) pour outiller CI, IDE et scripts.
+- **Langage-agnostique** : integration via des **tools declaratifs** (compile/link/archive/test/package), connectes dans un graphe typé.
+- **Machine-agnostique** : execution pilotee par des **targets** (triples OS/arch) et des politiques stables (paths normalises, cache, sandbox).
+- **Contrat unique** : la configuration est gelee dans `steel.log` et consommee ensuite de maniere deterministe.
+- **Reproductibilite** : cache content-addressed + empreinte toolchain + policy capsule.
+- **Observabilite** : diagnostics et introspection (`print`, `-why`, `-graph`) pour outiller CI, IDE et scripts.
 
-L’objectif est de pouvoir orchestrer des projets **mono-langage** comme des projets **mixtes**, sur des environnements modernes comme sur des configurations plus anciennes, sans divergence de modèle ni de workflow.
+L’objectif est de pouvoir orchestrer des projets **mono-langage** comme des projets **mixtes**, sur des environnements modernes comme plus anciens, sans divergence de modele ni de workflow.
 
 ## Pipeline recommandé
 
-Le pipeline est volontairement scindé en deux phases : **Configuration** puis **Construction**.
+Le pipeline est scinde en deux phases : **Configuration** puis **Construction**.
 
    **Configuration** — `build steel`
    - Charge la config (workspace/packages/profils/targets/toolchains)
-   - Valide la cohérence (contraintes, chemins, compatibilités)
-   - Résout les valeurs (defaults, héritages, overrides)
-   - **Émet** `steel.log` (artefact canonique)
+   - Valide la coherence (contraintes, chemins, compatibilites)
+   - Resout les valeurs (defaults, heritages, overrides)
+   - **Emet** `steel.log` (artefact canonique)
 
 
 ## Architecture
 
 ### Principe : « Freeze then Build »
 
-- `build steel` = **configure** : validation + résolution + **gel** de la configuration.
+- `build steel` = **configure** : validation + resolution + **gel** de la configuration.
 - `build vitte` = **build** : orchestration des étapes + production des artefacts.
 
 

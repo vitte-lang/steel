@@ -3,7 +3,7 @@ set -euo pipefail
 
 APP_NAME="Steel"
 BIN_NAME="steel"
-VERSION="0.1.0"
+VERSION="2.2026"
 IDENT="io.vitte-lang.steel"
 
 MODE="${1:-universal2}"          # x86_64 | universal2
@@ -25,13 +25,14 @@ mkdir -p dist/bin dist/pkgroot/usr/local/bin dist/tmp
 
 if [[ "${MODE}" == "x86_64" ]]; then
   echo "[1/4] Build Rust release (x86_64) ..."
-  cargo build --release --target x86_64-apple-darwin
+  cargo +stable build --release --target x86_64-apple-darwin
   cp "target/x86_64-apple-darwin/release/${BIN_NAME}" "dist/bin/${BIN_NAME}"
+  cp "target/x86_64-apple-darwin/release/steecleditor" "dist/bin/steecleditor"
   FINAL_PKG="dist/${APP_NAME}-${VERSION}-x86_64.pkg"
 else
   echo "[1/4] Build Rust release (aarch64 + x86_64) ..."
-  cargo build --release --target aarch64-apple-darwin
-  cargo build --release --target x86_64-apple-darwin
+  cargo +stable build --release --target aarch64-apple-darwin
+  cargo +stable build --release --target x86_64-apple-darwin
 
   echo "[2/4] lipo universal2 ..."
   lipo -create \
@@ -39,12 +40,18 @@ else
     "target/x86_64-apple-darwin/release/${BIN_NAME}" \
     -output "dist/bin/${BIN_NAME}"
 
+  lipo -create \
+    "target/aarch64-apple-darwin/release/steecleditor" \
+    "target/x86_64-apple-darwin/release/steecleditor" \
+    -output "dist/bin/steecleditor"
+
   FINAL_PKG="dist/${APP_NAME}-${VERSION}-universal2.pkg"
 fi
 
 # --- 2) Payload (install direct dans /usr/local/bin) ---
 echo "[3/4] Préparation pkgroot ..."
 install -m 0755 "dist/bin/${BIN_NAME}" "dist/pkgroot/usr/local/bin/${BIN_NAME}"
+install -m 0755 "dist/bin/steecleditor" "dist/pkgroot/usr/local/bin/steecleditor"
 
 # --- 3) pkgbuild (component) ---
 echo "[4/4] pkgbuild + productbuild (unsigned) ..."

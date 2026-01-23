@@ -25,6 +25,7 @@ use chrono::Utc;
 
 use crate::build_muf;
 use crate::build_muf::BuildMufError;
+use crate::editor_setup;
 use crate::ninja;
 use crate::run_muf;
 use crate::target_file;
@@ -68,6 +69,8 @@ pub enum Cmd {
 
     Graph(GraphOptions),
     Fmt(FmtOptions),
+    EditorSetup,
+    Editor(PathBuf),
 }
 
 #[derive(Debug, Clone, Default)]
@@ -130,6 +133,7 @@ pub struct CacheOptions {
 /// Entry point used by main binaries.
 /// Returns a process exit code (0=OK, 2=usage, 1=runtime failure).
 pub fn run_cli(args: &[String]) -> i32 {
+    let _ = editor_setup::ensure_editor_setup();
     match dispatch(args) {
         Ok(()) => 0,
         Err(CommandError::Usage(msg)) => {
@@ -199,6 +203,11 @@ pub fn parse_command(args: &[String]) -> Result<Cmd> {
         "doctor" => parse_doctor(&args[2..]),
         "toolchain" => parse_toolchain(&args[2..]),
         "cache" => parse_cache(&args[2..]),
+        "editor-setup" => Ok(Cmd::EditorSetup),
+        "editor" => {
+            let file = args.get(2).map(PathBuf::from).unwrap_or_else(|| PathBuf::from("steelconf"));
+            Ok(Cmd::Editor(file))
+        }
         // stubs reserved for future
         "graph" => parse_graph(&args[2..]),
         "fmt" => parse_fmt(&args[2..]),
@@ -624,6 +633,8 @@ pub fn execute(cmd: Cmd) -> Result<()> {
 
         Cmd::Graph(o) => exec_graph(o),
         Cmd::Fmt(o) => exec_fmt(o),
+        Cmd::EditorSetup => exec_editor_setup(),
+        Cmd::Editor(file) => exec_editor(file),
     }
 }
 
@@ -766,11 +777,30 @@ fn exec_fmt(o: FmtOptions) -> Result<()> {
     Ok(())
 }
 
+fn exec_editor_setup() -> Result<()> {
+    editor_setup::ensure_editor_setup()
+        .map_err(|e| CommandError::Failure { code: 1, msg: e.to_string() })?;
+    println!("editor-setup: ok");
+    Ok(())
+}
+
+fn exec_editor(file: PathBuf) -> Result<()> {
+    let status = Command::new("steecleditor")
+        .arg(file)
+        .status()
+        .map_err(|e| CommandError::Failure { code: 1, msg: e.to_string() })?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(CommandError::Failure {
+            code: status.code().unwrap_or(1),
+            msg: "steecleditor exited with error".to_string(),
+        })
+    }
+}
+
 fn version_string() -> String {
-    // Prefer build-time Cargo env if available; fallback is stable.
-    let v = option_env!("CARGO_PKG_VERSION").unwrap_or("0.0.0-dev");
-    let name = option_env!("CARGO_PKG_NAME").unwrap_or(CLI_NAME);
-    format!("{name} {v}")
+    "Steel Version 2.2026".to_string()
 }
 
 fn usage_unknown(cmd: &str) -> CommandError {
@@ -831,7 +861,7 @@ fn welcome_text() -> &'static str {
 }
 
 fn help_text_with_welcome() -> String {
-    "USAGE\n  steel <command> [options]\n\nCOMMANDS\n  run       Run a build (steelconf)\n  build     Build once (alias of run)\n  fmt       Format a steelconf\n  doctor    Diagnose environment\n  graph     Inspect graph\n  ninja     Emit Ninja (stub)\n  cache     Cache utilities\n  toolchain Toolchain utilities\n  help      Show help\n  version   Show version\n\nGLOBAL FLAGS\n  -h, --help     Show help\n  -v, --version  Show version\n\nKEYWORDS (steelconf core)\n  steel          File header / format marker\n  bake           Recipe block\n  store          Store block\n  capsule        Sandbox / policy block\n  var            Variable block\n  profile        Profile block\n  tool           Tool declaration\n  plan           Plan block\n  switch         Conditional block\n  run            Execution step\n  export         Export recipe\n  exports        Export list\n  wire           Wire outputs/inputs\n\nKEYWORDS (io + build)\n  in             Input binding\n  out            Output binding\n  make           Source collection (glob)\n  takes          Inputs -> flags\n  emits          Outputs -> flags\n  output         Final output\n  set            Add flag/value\n  at             Path anchor\n\nKEYWORDS (cache + sandbox)\n  cache          Cache block\n  mode           Cache or policy mode\n  path           Path policy\n  env            Env policy\n  fs             Filesystem policy\n  net            Network policy\n  time           Time policy\n  allow          Allow rule\n  deny           Deny rule\n  allow_read     Allow read access\n  allow_write    Allow write access\n  allow_write_exact Allow exact write path\n  stable         Mark stable inputs/outputs\n".to_string()
+    "USAGE\n  steel <command> [options]\n\nCOMMANDS\n  run            Run a build (steelconf)\n  build          Build once (alias of run)\n  fmt            Format a steelconf\n  doctor         Diagnose environment\n  graph          Inspect graph\n  ninja          Emit Ninja (stub)\n  cache          Cache utilities\n  toolchain      Toolchain utilities\n  editor         Open steelconf editor\n  editor-setup   Install editor settings for steelconf\n  help           Show help\n  version        Show version\n\nGLOBAL FLAGS\n  -h, --help     Show help\n  -v, --version  Show version\n\nKEYWORDS (steelconf core)\n  steel          File header / format marker\n  bake           Recipe block\n  store          Store block\n  capsule        Sandbox / policy block\n  var            Variable block\n  profile        Profile block\n  tool           Tool declaration\n  plan           Plan block\n  switch         Conditional block\n  run            Execution step\n  export         Export recipe\n  exports        Export list\n  wire           Wire outputs/inputs\n\nKEYWORDS (io + build)\n  in             Input binding\n  out            Output binding\n  make           Source collection (glob)\n  takes          Inputs -> flags\n  emits          Outputs -> flags\n  output         Final output\n  set            Add flag/value\n  at             Path anchor\n\nKEYWORDS (cache + sandbox)\n  cache          Cache block\n  mode           Cache or policy mode\n  path           Path policy\n  env            Env policy\n  fs             Filesystem policy\n  net            Network policy\n  time           Time policy\n  allow          Allow rule\n  deny           Deny rule\n  allow_read     Allow read access\n  allow_write    Allow write access\n  allow_write_exact Allow exact write path\n  stable         Mark stable inputs/outputs\n".to_string()
 }
 
 fn graph_help() -> &'static str {

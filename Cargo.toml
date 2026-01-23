@@ -54,6 +54,7 @@ parking_lot = { version = "0.12", optional = true }
 indexmap = "2.1"
 libc = "0.2"
 num_cpus = "1.16"
+crossterm = "0.27"
 
 # Platform-specific
 [target.'cfg(unix)'.dependencies]
@@ -84,6 +85,10 @@ path = "src/lib.rs"
 [[bin]]
 name = "steel"
 path = "src/bin/steel.rs"
+
+[[bin]]
+name = "steecleditor"
+path = "src/bin/steecleditor.rs"
 
 [profile.release]
 opt-level = 3
