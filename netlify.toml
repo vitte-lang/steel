@@ -1,9 +1,0 @@
-[build]
-  base = "docs/angular"
-  publish = "docs/site/browser"
-  command = "npm run build:site"
-
-[[redirects]]
-  from = "/*"
-  to = "/index.html"
-  status = 200
