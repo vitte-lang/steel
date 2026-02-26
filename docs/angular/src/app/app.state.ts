@@ -121,11 +121,7 @@ type I18n = {
   };
 };
 
-const DOWNLOAD_MAC_URL =
-  'https://github.com/vitte-lang/steel.org/releases';
-const DOWNLOAD_LINUX_DEB_URL =
-  'https://github.com/vitte-lang/steel.org/releases';
-const DOWNLOAD_WINDOWS_URL =
+const DOWNLOAD_RELEASES_URL =
   'https://github.com/vitte-lang/steel.org/releases';
 const VSCODE_EXTENSION_URL =
   'https://marketplace.visualstudio.com/items?itemName=steelcommand.steel-command';
@@ -1772,55 +1768,139 @@ const I18N: Record<LangKey, I18n> = {
   }
 };
 
+const HUMANIZED_COPY_SUFFIX: Record<LangKey, { hero: string; download: string; docs: string; guide: string }> = {
+  en: {
+    hero: 'It reads like a checklist, not a puzzle.',
+    download: 'Pick your platform from one Releases page and keep moving.',
+    docs: 'Read one section, copy one block, then run it right away.',
+    guide: 'Keep it practical: one tiny change at a time.'
+  },
+  fr: {
+    hero: 'C\'est plus une check-list qu\'une enigme.',
+    download: 'Choisissez votre plateforme sur une seule page Releases.',
+    docs: 'Lisez une section, copiez un bloc, lancez directement.',
+    guide: 'Restez concret: un petit changement a la fois.'
+  },
+  de: {
+    hero: 'Das liest sich wie eine Checkliste, nicht wie ein Ratsel.',
+    download: 'Wahle deine Plattform uber eine einzige Releases-Seite.',
+    docs: 'Einen Abschnitt lesen, einen Block kopieren, direkt starten.',
+    guide: 'Pragmatisch bleiben: eine kleine Anderung nach der anderen.'
+  },
+  it: {
+    hero: 'Si legge come una check-list, non come un rompicapo.',
+    download: 'Scegli la piattaforma da una sola pagina Releases.',
+    docs: 'Leggi una sezione, copia un blocco, esegui subito.',
+    guide: 'Procedi in modo pratico: una piccola modifica alla volta.'
+  },
+  ar: {
+    hero: 'الفكرة هنا قائمة خطوات واضحة، وليست لغزًا.',
+    download: 'اختر منصتك من صفحة Releases واحدة فقط.',
+    docs: 'اقرأ قسمًا واحدًا، انسخ كتلة واحدة، ثم شغّل مباشرة.',
+    guide: 'تحرّك خطوة بخطوة وبشكل عملي.'
+  },
+  zh: {
+    hero: '它更像清单，而不是谜题。',
+    download: '所有平台都在同一个 Releases 页面里。',
+    docs: '读一节、复制一段、立刻运行。',
+    guide: '保持务实：一次只改一小步。'
+  },
+  ja: {
+    hero: '謎解きではなく、チェックリスト感覚で進められます。',
+    download: '1つの Releases ページから全OS版を選べます。',
+    docs: '1セクション読んで、1ブロック貼って、すぐ実行。',
+    guide: '実務的に、小さな変更を順番に。'
+  },
+  pt: {
+    hero: 'Parece uma checklist, nao um quebra-cabeca.',
+    download: 'Escolha sua plataforma em uma unica pagina de Releases.',
+    docs: 'Leia uma secao, copie um bloco e rode na hora.',
+    guide: 'Mantenha pratico: uma mudanca pequena por vez.'
+  },
+  es: {
+    hero: 'Se siente como una checklist, no como un rompecabezas.',
+    download: 'Elige tu plataforma desde una sola pagina de Releases.',
+    docs: 'Lee una seccion, copia un bloque y ejecuta al instante.',
+    guide: 'Mantenlo practico: un cambio pequeno cada vez.'
+  }
+};
+
+const applyHumanizedSuffix = (
+  locale: I18n,
+  suffix: { hero: string; download: string; docs: string; guide: string }
+): void => {
+  locale.hero.lead = `${locale.hero.lead} ${suffix.hero}`;
+  locale.download.lead = `${locale.download.lead} ${suffix.download}`;
+  locale.docs.lead = `${locale.docs.lead} ${suffix.docs}`;
+  if (locale.docs.guides.length > 0) {
+    locale.docs.guides[0] = {
+      ...locale.docs.guides[0],
+      text: `${locale.docs.guides[0].text} ${suffix.guide}`
+    };
+  }
+};
+
+for (const lang of Object.keys(I18N) as LangKey[]) {
+  applyHumanizedSuffix(I18N[lang], HUMANIZED_COPY_SUFFIX[lang]);
+}
+
 const CORE_EXAMPLES: Example[] = [
   {
     title: 'Swift',
-    code: `!muf 4\n\n[workspace]\n\t.set name "swift_app"\n\t.set root "."\n\t.set target_dir "target"\n\t.set profile "debug"\n..\n\n[profile debug]\n\t.set opt 0\n\t.set debug 1\n..\n\n[profile release]\n\t.set opt 2\n\t.set debug 0\n..\n\n[tool swiftc]\n\t.exec "swiftc"\n..\n\n[bake build_debug]\n\t.make swift_src cglob "Sources/**/*.swift"\n\t[run swiftc]\n\t\t.set "-O${'${'}opt}" 1\n\t\t.set "-g" "${'${'}debug}"\n\t\t.takes swift_src as "@args"\n\t\t.emits exe as "-o"\n\t..\n\t.output exe "target/out/swift_app_debug"\n..\n\n[export]\n\t.ref build_debug\n..`
+    code: `!muf 4\n\n[workspace]\n  .set name "swift_app"\n  .set root "."\n  .set target_dir "target"\n  .set profile "debug"\n..\n\n[profile debug]\n  .set opt 0\n  .set debug 1\n..\n\n[profile release]\n  .set opt 2\n  .set debug 0\n..\n\n[tool swiftc]\n  .exec "swiftc"\n..\n\n[bake build_debug]\n  .make swift_src cglob "Sources/**/*.swift"\n  [run swiftc]\n    .set "-O${'${'}opt}" 1\n    .set "-g" "${'${'}debug}"\n    .takes swift_src as "@args"\n    .emits exe as "-o"\n  ..\n  .output exe "target/out/swift_app_debug"\n..\n\n[export]\n  .ref build_debug\n..`
   },
   {
     title: 'Rust',
-    code: `!muf 4\n\n[workspace]\n\t.set name "rust_app"\n\t.set root "."\n\t.set target_dir "target"\n\t.set profile "debug"\n..\n\n[tool sh]\n\t.exec "sh"\n..\n\n[bake rust_build]\n\t.make rust_src cglob "src/**/*.rs"\n\t[run sh]\n\t\t.set "-c" "cargo build"\n\t..\n\t.output exe "target/debug/steel"\n..\n\n[export]\n\t.ref rust_build\n..`
+    code: `!muf 4\n\n[workspace]\n  .set name "rust_app"\n  .set root "."\n  .set target_dir "target"\n  .set profile "debug"\n..\n\n[tool sh]\n  .exec "sh"\n..\n\n[bake rust_build]\n  .make rust_src cglob "src/**/*.rs"\n  [run sh]\n    .set "-c" "cargo build"\n  ..\n  .output exe "target/debug/steel"\n..\n\n[export]\n  .ref rust_build\n..`
   },
   {
     title: 'Python',
-    code: `!muf 4\n\n[workspace]\n\t.set name "python_app"\n\t.set root "."\n\t.set target_dir "target"\n\t.set profile "debug"\n..\n\n[tool python]\n\t.exec "python3"\n..\n\n[bake python_run]\n\t.make py_src cglob "src/**/*.py"\n\t[run python]\n\t\t.set "-u" 1\n\t\t.set "-m" "src.main"\n\t..\n\t.output exe "target/out/python.run"\n..\n\n[export]\n\t.ref python_run\n..`
+    code: `!muf 4\n\n[workspace]\n  .set name "python_app"\n  .set root "."\n  .set target_dir "target"\n  .set profile "debug"\n..\n\n[tool python]\n  .exec "python3"\n..\n\n[bake python_run]\n  .make py_src cglob "src/**/*.py"\n  [run python]\n    .set "-u" 1\n    .set "-m" "src.main"\n  ..\n  .output exe "target/out/python.run"\n..\n\n[export]\n  .ref python_run\n..`
   },
   {
     title: 'Java',
-    code: `!muf 4\n\n[workspace]\n\t.set name "java_app"\n\t.set root "."\n\t.set target_dir "target"\n\t.set profile "debug"\n..\n\n[tool javac]\n\t.exec "javac"\n..\n\n[bake java_build]\n\t.make java_src cglob "src/**/*.java"\n\t[run javac]\n\t\t.set "-g" 1\n\t\t.set "-d" "target/classes"\n\t\t.takes java_src as "@args"\n\t..\n\t.output classes "target/classes"\n..\n\n[export]\n\t.ref java_build\n..`
+    code: `!muf 4\n\n[workspace]\n  .set name "java_app"\n  .set root "."\n  .set target_dir "target"\n  .set profile "debug"\n..\n\n[tool javac]\n  .exec "javac"\n..\n\n[bake java_build]\n  .make java_src cglob "src/**/*.java"\n  [run javac]\n    .set "-g" 1\n    .set "-d" "target/classes"\n    .takes java_src as "@args"\n  ..\n  .output classes "target/classes"\n..\n\n[export]\n  .ref java_build\n..`
   },
   {
     title: 'OCaml',
-    code: `!muf 4\n\n[workspace]\n\t.set name "ocaml_app"\n\t.set root "."\n\t.set target_dir "target"\n\t.set profile "debug"\n..\n\n[tool ocamlc]\n\t.exec "ocamlc"\n..\n\n[bake ocaml_build]\n\t.make ml_src cglob "src/**/*.ml"\n\t[run ocamlc]\n\t\t.set "-g" 1\n\t\t.takes ml_src as "@args"\n\t\t.emits exe as "-o"\n\t..\n\t.output exe "target/out/ocaml_app.byte"\n..\n\n[export]\n\t.ref ocaml_build\n..`
+    code: `!muf 4\n\n[workspace]\n  .set name "ocaml_app"\n  .set root "."\n  .set target_dir "target"\n  .set profile "debug"\n..\n\n[tool ocamlc]\n  .exec "ocamlc"\n..\n\n[bake ocaml_build]\n  .make ml_src cglob "src/**/*.ml"\n  [run ocamlc]\n    .set "-g" 1\n    .takes ml_src as "@args"\n    .emits exe as "-o"\n  ..\n  .output exe "target/out/ocaml_app.byte"\n..\n\n[export]\n  .ref ocaml_build\n..`
   },
   {
     title: 'C',
-    code: `!muf 4\n\n[workspace]\n\t.set name "c_app"\n\t.set root "."\n\t.set target_dir "target"\n\t.set profile "debug"\n..\n\n[profile debug]\n\t.set opt 0\n\t.set debug 1\n..\n\n[profile release]\n\t.set opt 2\n\t.set debug 0\n..\n\n[tool cc]\n\t.exec "cc"\n..\n\n[bake c_build]\n\t.make c_src cglob "src/**/*.c"\n\t[run cc]\n\t\t.takes c_src as "@args"\n\t\t.set "-O${'${'}opt}" 1\n\t\t.set "-g" "${'${'}debug}"\n\t\t.emits exe as "-o"\n\t..\n\t.output exe "target/out/app_c"\n..\n\n[export]\n\t.ref c_build\n..`
+    code: `!muf 4\n\n[workspace]\n  .set name "c_app"\n  .set root "."\n  .set target_dir "target"\n  .set profile "debug"\n..\n\n[profile debug]\n  .set opt 0\n  .set debug 1\n..\n\n[profile release]\n  .set opt 2\n  .set debug 0\n..\n\n[tool cc]\n  .exec "cc"\n..\n\n[bake c_build]\n  .make c_src cglob "src/**/*.c"\n  [run cc]\n    .takes c_src as "@args"\n    .set "-O${'${'}opt}" 1\n    .set "-g" "${'${'}debug}"\n    .emits exe as "-o"\n  ..\n  .output exe "target/out/app_c"\n..\n\n[export]\n  .ref c_build\n..`
   }
 ];
 
 const EXTRA_EXAMPLES: Example[] = [
   {
     title: 'Go',
-    code: `!muf 4\n\n[workspace]\n\t.set name "go_app"\n\t.set root "."\n\t.set target_dir "target"\n\t.set profile "debug"\n..\n\n[tool go]\n\t.exec "go"\n..\n\n[bake go_build]\n\t.make go_src cglob "src/**/*.go"\n\t[run go]\n\t\t.set "build" 1\n\t\t.set "-o" "target/out/app_go"\n\t\t.set "./src" 1\n\t..\n\t.output exe "target/out/app_go"\n..\n\n[export]\n\t.ref go_build\n..`
+    code: `!muf 4\n\n[workspace]\n  .set name "go_app"\n  .set root "."\n  .set target_dir "target"\n  .set profile "debug"\n..\n\n[tool go]\n  .exec "go"\n..\n\n[bake go_build]\n  .make go_src cglob "src/**/*.go"\n  [run go]\n    .set "build" 1\n    .set "-o" "target/out/app_go"\n    .set "./src" 1\n  ..\n  .output exe "target/out/app_go"\n..\n\n[export]\n  .ref go_build\n..`
   },
   {
     title: 'C++',
-    code: `!muf 4\n\n[workspace]\n\t.set name "cpp_app"\n\t.set root "."\n\t.set target_dir "target"\n\t.set profile "debug"\n..\n\n[profile debug]\n\t.set opt 0\n\t.set debug 1\n..\n\n[profile release]\n\t.set opt 2\n\t.set debug 0\n..\n\n[tool cxx]\n\t.exec "c++"\n..\n\n[bake cpp_build]\n\t.make cpp_src cglob "src/**/*.cpp"\n\t[run cxx]\n\t\t.takes cpp_src as "@args"\n\t\t.set "-O${'${'}opt}" 1\n\t\t.set "-std=c++20" 1\n\t\t.set "-g" "${'${'}debug}"\n\t\t.emits exe as "-o"\n\t..\n\t.output exe "target/out/app_cpp"\n..\n\n[export]\n\t.ref cpp_build\n..`
+    code: `!muf 4\n\n[workspace]\n  .set name "cpp_app"\n  .set root "."\n  .set target_dir "target"\n  .set profile "debug"\n..\n\n[profile debug]\n  .set opt 0\n  .set debug 1\n..\n\n[profile release]\n  .set opt 2\n  .set debug 0\n..\n\n[tool cxx]\n  .exec "c++"\n..\n\n[bake cpp_build]\n  .make cpp_src cglob "src/**/*.cpp"\n  [run cxx]\n    .takes cpp_src as "@args"\n    .set "-O${'${'}opt}" 1\n    .set "-std=c++20" 1\n    .set "-g" "${'${'}debug}"\n    .emits exe as "-o"\n  ..\n  .output exe "target/out/app_cpp"\n..\n\n[export]\n  .ref cpp_build\n..`
   },
   {
     title: 'Zig',
-    code: `!muf 4\n\n[workspace]\n\t.set name "zig_app"\n\t.set root "."\n\t.set target_dir "target"\n\t.set profile "release"\n..\n\n[tool zig]\n\t.exec "zig"\n..\n\n[bake zig_build]\n\t.make zig_src cglob "src/**/*.zig"\n\t[run zig]\n\t\t.set "build-exe" 1\n\t\t.takes zig_src as "@args"\n\t\t.set "-O" "ReleaseFast"\n\t..\n\t.output exe "target/out/app_zig"\n..\n\n[export]\n\t.ref zig_build\n..`
+    code: `!muf 4\n\n[workspace]\n  .set name "zig_app"\n  .set root "."\n  .set target_dir "target"\n  .set profile "release"\n..\n\n[tool zig]\n  .exec "zig"\n..\n\n[bake zig_build]\n  .make zig_src cglob "src/**/*.zig"\n  [run zig]\n    .set "build-exe" 1\n    .takes zig_src as "@args"\n    .set "-O" "ReleaseFast"\n  ..\n  .output exe "target/out/app_zig"\n..\n\n[export]\n  .ref zig_build\n..`
   },
   {
     title: 'C#',
-    code: `!muf 4\n\n[workspace]\n\t.set name "csharp_app"\n\t.set root "."\n\t.set target_dir "target"\n\t.set profile "release"\n..\n\n[tool dotnet]\n\t.exec "dotnet"\n..\n\n[bake cs_build]\n\t.make csproj cglob "src/**/*.csproj"\n\t[run dotnet]\n\t\t.set "build" 1\n\t\t.takes csproj as "@args"\n\t\t.set "-c" "Release"\n\t..\n\t.output exe "target/out/app_cs"\n..\n\n[export]\n\t.ref cs_build\n..`
+    code: `!muf 4\n\n[workspace]\n  .set name "csharp_app"\n  .set root "."\n  .set target_dir "target"\n  .set profile "release"\n..\n\n[tool dotnet]\n  .exec "dotnet"\n..\n\n[bake cs_build]\n  .make csproj cglob "src/**/*.csproj"\n  [run dotnet]\n    .set "build" 1\n    .takes csproj as "@args"\n    .set "-c" "Release"\n  ..\n  .output exe "target/out/app_cs"\n..\n\n[export]\n  .ref cs_build\n..`
   },
   {
     title: 'Kotlin',
-    code: `!muf 4\n\n[workspace]\n\t.set name "kotlin_app"\n\t.set root "."\n\t.set target_dir "target"\n\t.set profile "release"\n..\n\n[tool kotlinc]\n\t.exec "kotlinc"\n..\n\n[bake kt_build]\n\t.make kt_src cglob "src/**/*.kt"\n\t[run kotlinc]\n\t\t.takes kt_src as "@args"\n\t\t.set "-d" "target/out/app.jar"\n\t..\n\t.output jar "target/out/app.jar"\n..\n\n[export]\n\t.ref kt_build\n..`
+    code: `!muf 4\n\n[workspace]\n  .set name "kotlin_app"\n  .set root "."\n  .set target_dir "target"\n  .set profile "release"\n..\n\n[tool kotlinc]\n  .exec "kotlinc"\n..\n\n[bake kt_build]\n  .make kt_src cglob "src/**/*.kt"\n  [run kotlinc]\n    .takes kt_src as "@args"\n    .set "-d" "target/out/app.jar"\n  ..\n  .output jar "target/out/app.jar"\n..\n\n[export]\n  .ref kt_build\n..`
   }
 ];
+
+const COPY_READY_APPENDIX = `\n\n;; Copy-ready checklist\n;; 1) Keep workspace/root/target_dir as-is for first run.\n;; 2) Rename tool executables only if your machine uses different names.\n;; 3) Start with one bake, then split into debug/release as needed.\n;; 4) Keep outputs under target/out so cleanup stays easy.\n;; 5) Run: steel --version && steel run`;
+
+const withCopyReadyExamples = (examples: Example[]): Example[] =>
+  examples.map((example) => ({
+    ...example,
+    code: `${example.code}${COPY_READY_APPENDIX}`
+  }));
 
 const STORAGE_KEY = 'steel_lang';
 
@@ -1829,11 +1909,12 @@ export class AppState {
   readonly lang = signal<LangKey>('en');
   readonly t = computed(() => I18N[this.lang()]);
   readonly isRtl = computed(() => this.lang() === 'ar');
-  readonly downloadUrl = DOWNLOAD_MAC_URL;
-  readonly downloadLinuxUrl = DOWNLOAD_LINUX_DEB_URL;
-  readonly downloadWindowsUrl = DOWNLOAD_WINDOWS_URL;
+  readonly downloadUrl = DOWNLOAD_RELEASES_URL;
   readonly vscodeExtensionUrl = VSCODE_EXTENSION_URL;
-  readonly examples = [...CORE_EXAMPLES, ...EXTRA_EXAMPLES];
+  readonly examples = [
+    ...withCopyReadyExamples(CORE_EXAMPLES),
+    ...withCopyReadyExamples(EXTRA_EXAMPLES)
+  ];
 
   setLang(lang: LangKey): void {
     this.lang.set(lang);
