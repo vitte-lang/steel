@@ -4,6 +4,46 @@
 
 Steel est la couche de configuration **declarative** du build. En bref : il lit le `steelconf`, valide le workspace (packages, profils, toolchains, targets) et produit un **artefact stable** (`steel.log` / `steelconfig.mff`). Vitte s appuie ensuite dessus pour executer le build de facon deterministe.
 
+## Site downloads policy
+
+- La page Downloads pointe vers un **lien unique GitHub Releases** pour toutes les plateformes.
+- La page Downloads expose aussi le lien **VS Code extension** (Marketplace).
+- Si vous mettez a jour le copy site, gardez cette convention pour eviter les regressions editoriales.
+
+### Local QA
+
+Depuis `docs/angular`:
+
+```text
+npm ci
+npm run build:verify
+```
+
+Depuis la racine du repo:
+
+```text
+git diff --quiet -- docs/site
+```
+
+Avant d'ouvrir une PR qui touche les docs/outillage, lance aussi:
+
+```text
+./scripts/verify-editorconfig.sh
+```
+
+Cela valide les sections et l'indentation attendue pour `steelconf` et `*.muf` dans le flux QA local.
+
+### CI quick jobs
+
+- `site-urls-quick`: verifie vite les URLs Releases/Marketplace.
+- `site-quick`: lance build site + verification de synchronisation `docs/site`.
+- `doc-editorial-quick`: lance les tests editoriaux README.
+
+### When to run qa-site-local.sh
+
+- Avant une PR qui modifie `docs/angular` ou `docs/site`.
+- Avant une release docs pour verifier la chaine QA locale complete.
+
 
 
 ## Configuration declarative (exemple)
@@ -58,6 +98,8 @@ Raccourcis utiles:
 - `Ctrl+P` find file, `F2` recent files
 - `Ctrl+R` steel run, `Ctrl+Shift+E` jump run error
 - `Ctrl+Shift+G` glob preview, `Ctrl+Shift+I` insert snippet
+- `Ctrl+Shift+L` completion debug (language + completion sources)
+- `Ctrl+Shift+Alt+L` debug verbose (extension + scanners + filters)
 
 Config (optionnel):
 ```text
