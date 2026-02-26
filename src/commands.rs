@@ -230,7 +230,11 @@ fn parse_build(rest: &[String]) -> Result<Cmd> {
     match tool {
         "steelconf" => {
             if rest.len() > 1 {
-                return Err(CommandError::Usage(build_unknown_target_msg("flags not allowed")));
+                return Err(CommandError::Usage(format_usage(
+                    "U002",
+                    "build accepts no flags; use exactly: `steel build steelconf`",
+                    usage_text(),
+                )));
             }
             let mut args = Vec::with_capacity(2);
             args.push("--file".to_string());
@@ -807,7 +811,7 @@ fn exec_editor(file: PathBuf) -> Result<()> {
 }
 
 fn version_string() -> String {
-    "Steel Version 2.2026".to_string()
+    "Steel- 0.1.1 2-2026".to_string()
 }
 
 fn usage_unknown(cmd: &str) -> CommandError {
@@ -855,7 +859,7 @@ fn usage_err(code: &str, msg: impl Into<String>, help: &str) -> CommandError {
 
 
 fn help_text() -> String {
-    "USAGE\n  steel <command> [options]\n\nCOMMANDS\n  run            Run a build (steelconf)\n  build          Build once (alias of run)\n  fmt            Format a steelconf\n  doctor         Diagnose environment\n  graph          Inspect graph\n  ninja          Emit Ninja (stub)\n  cache          Cache utilities\n  toolchain      Toolchain utilities\n  editor         Open steelconf editor\n  mitsou         Open Mitsou editor\n  editor-setup   Install editor settings for steelconf (vim/nano/emacs/etc)\n  help           Show help\n  version        Show version\n\nGLOBAL FLAGS\n  -h, --help     Show help\n  -v, --version  Show version\n\nKEYWORDS (steelconf core)\n  steel          File header / format marker\n  bake           Recipe block\n  store          Store block\n  capsule        Sandbox / policy block\n  var            Variable block\n  profile        Profile block\n  tool           Tool declaration\n  plan           Plan block\n  switch         Conditional block\n  run            Execution step\n  export         Export recipe\n  exports        Export list\n  wire           Wire outputs/inputs\n\nKEYWORDS (io + build)\n  in             Input binding\n  out            Output binding\n  make           Source collection (glob)\n  takes          Inputs -> flags\n  emits          Outputs -> flags\n  output         Final output\n  set            Add flag/value\n  at             Path anchor\n\nKEYWORDS (cache + sandbox)\n  cache          Cache block\n  mode           Cache or policy mode\n  path           Path policy\n  env            Env policy\n  fs             Filesystem policy\n  net            Network policy\n  time           Time policy\n  allow          Allow rule\n  deny           Deny rule\n  allow_read     Allow read access\n  allow_write    Allow write access\n  allow_write_exact Allow exact write path\n  stable         Mark stable inputs/outputs\n".to_string()
+    "USAGE\n  steel <command> [options]\n\nCOMMANDS\n  build          Build steelconf (no flags; only: `steel build steelconf`)\n  run            Run a build with execution flags\n  fmt            Format a steelconf\n  doctor         Diagnose environment\n  graph          Inspect graph\n  ninja          Emit Ninja (stub)\n  cache          Cache utilities\n  toolchain      Toolchain utilities\n  editor         Open steelconf editor\n  mitsou         Open Mitsou editor\n  editor-setup   Install editor settings for steelconf (vim/nano/emacs/etc)\n  help           Show help\n  version        Show version\n\nRUN FLAGS\n  --root <path>\n  --file <path>\n  --profile <name>\n  --toolchain <path>\n  --bake <name>\n  --all\n  --print\n  --no-cache\n  --log <path>\n  --log-mode <append|truncate>\n\nGLOBAL FLAGS\n  -h, --help     Show help\n  -v, --version  Show version\n\nKEYWORDS (steelconf core)\n  steel          File header / format marker\n  bake           Recipe block\n  store          Store block\n  capsule        Sandbox / policy block\n  var            Variable block\n  profile        Profile block\n  tool           Tool declaration\n  plan           Plan block\n  switch         Conditional block\n  run            Execution step\n  export         Export recipe\n  exports        Export list\n  wire           Wire outputs/inputs\n\nKEYWORDS (io + build)\n  in             Input binding\n  out            Output binding\n  make           Source collection (glob)\n  takes          Inputs -> flags\n  emits          Outputs -> flags\n  output         Final output\n  set            Add flag/value\n  at             Path anchor\n\nKEYWORDS (cache + sandbox)\n  cache          Cache block\n  mode           Cache or policy mode\n  path           Path policy\n  env            Env policy\n  fs             Filesystem policy\n  net            Network policy\n  time           Time policy\n  allow          Allow rule\n  deny           Deny rule\n  allow_read     Allow read access\n  allow_write    Allow write access\n  allow_write_exact Allow exact write path\n  stable         Mark stable inputs/outputs\n".to_string()
 }
 
 #[allow(dead_code)]
