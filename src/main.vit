@@ -473,7 +473,7 @@ fn usage_text() -> str
 
 fn version_text() -> str
   # static placeholder; real project reads from manifest/version module
-  ret "steel 0.1.0 (vitte)\n"
+  ret "steel 0.1.1 2-2026 (vitte)\n"
 .end
 
 # -----------------------------------------------------------------------------
