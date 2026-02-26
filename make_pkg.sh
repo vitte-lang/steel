@@ -8,12 +8,19 @@ IDENT="io.vitte-lang.steel"
 
 MODE="${1:-universal2}"          # x86_64 | universal2
 MIN_OS="${MIN_OS:-}"             # ex: 26.0 (optionnel). Laisse vide = pas de contrainte.
+TOOLCHAIN="${TOOLCHAIN:-stable}" # rustup toolchain a utiliser pour les builds.
+if ! command -v rustup >/dev/null 2>&1; then
+  echo "Error: rustup is required for packaging builds. Install rustup and retry." >&2
+  exit 1
+fi
+RUSTUP_BIN="$(command -v rustup)"
+CARGO_CMD=("${RUSTUP_BIN}" run "${TOOLCHAIN}" cargo)
 
 # --- 0) Pré-requis targets ---
 if [[ "${MODE}" == "x86_64" ]]; then
-  rustup target add x86_64-apple-darwin >/dev/null
+  "${RUSTUP_BIN}" target add --toolchain "${TOOLCHAIN}" x86_64-apple-darwin >/dev/null
 elif [[ "${MODE}" == "universal2" ]]; then
-  rustup target add aarch64-apple-darwin x86_64-apple-darwin >/dev/null
+  "${RUSTUP_BIN}" target add --toolchain "${TOOLCHAIN}" aarch64-apple-darwin x86_64-apple-darwin >/dev/null
 else
   echo "Usage: $0 [x86_64|universal2]"
   exit 2
@@ -25,14 +32,14 @@ mkdir -p dist/bin dist/pkgroot/usr/local/bin dist/tmp
 
 if [[ "${MODE}" == "x86_64" ]]; then
   echo "[1/4] Build Rust release (x86_64) ..."
-  cargo +stable build --release --target x86_64-apple-darwin
+  "${CARGO_CMD[@]}" build --release --target x86_64-apple-darwin
   cp "target/x86_64-apple-darwin/release/${BIN_NAME}" "dist/bin/${BIN_NAME}"
   cp "target/x86_64-apple-darwin/release/steecleditor" "dist/bin/steecleditor"
   FINAL_PKG="dist/${APP_NAME}-${VERSION}-x86_64.pkg"
 else
   echo "[1/4] Build Rust release (aarch64 + x86_64) ..."
-  cargo +stable build --release --target aarch64-apple-darwin
-  cargo +stable build --release --target x86_64-apple-darwin
+  "${CARGO_CMD[@]}" build --release --target aarch64-apple-darwin
+  "${CARGO_CMD[@]}" build --release --target x86_64-apple-darwin
 
   echo "[2/4] lipo universal2 ..."
   lipo -create \
