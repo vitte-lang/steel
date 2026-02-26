@@ -1,39 +1,31 @@
-# Lexique MUF 4 (steelconf)
+# Lexique MUF4
 
-Mini lexique des mots-cles en usage dans les fichiers `steelconf`/`*.muf`.
-Base: implementation dans `src/run_muf.rs` + exemple `steelconf`.
+Ce lexique explique les mots cles les plus utiles de `steelconf`.
 
 ## Structure
-- En-tete: `!muf 4`
-- Bloc: `[tag nom?] ... ..`
-- Directive: `.op arg1 arg2 ...`
-- Commentaire: `;; ...` (ligne entiere ou fin de ligne)
 
-## Blocs top-level
-- `workspace` : metadonnees du workspace (valeurs via `.set`).
-- `profile <name>` : profil (ex: debug/release) via `.set`.
-- `tool <name>` : declare un outil (commande via `.exec`).
-- `bake <name>` : recette de build (sources, run, output).
-- `export` : expose des recettes (via `.ref`).
+- `!muf 4`: en tete du fichier
+- `[bloc nom] ... ..`: bloc
+- `.directive ...`: action/parametre dans un bloc
 
-## Sous-blocs
-- `run <tool>` : etape d'execution dans un `bake`.
+## Blocs importants
 
-## Directives
-- `.set <key> <value>` : parametre generic.
-- `.exec <cmd>` : commande de l'outil.
-- `.make <id> <kind> <pattern>` : sources/inputs (kind: `cglob`, `glob`, `file`, `list`).
-- `.needs <bake>` : dependance de recette.
-- `.output <port> <path>` : sortie principale.
-- `.takes <id> as <flag>` : lie un input a un flag.
-- `.emits <port> as <flag>` : lie une sortie a un flag.
-- `.include <path>` : include header/chemin.
-- `.define <key> [value]` : macro/define.
-- `.libdir <path>` : dossier de libs.
-- `.lib <name>` : lib a linker.
-- `.ref <bake>` : expose une recette (bloc `export`).
+- `tool <name>`: declare un outil (`cc`, `rustc`, etc.)
+- `bake <name>`: recette de build
+- `run <tool>`: etape qui appelle l outil dans un `bake`
+- `profile <name>`: profil (debug/release)
+
+## Directives utiles
+
+- `.exec "cmd"`: commande de l outil
+- `.make <id> <kind> <pattern>`: liste de fichiers source
+- `.takes <id> as "flag"`: branche une entree sur un flag
+- `.emits <port> as "flag"`: branche une sortie sur un flag
+- `.set "flag" value`: ajoute un flag/valeur
+- `.output <port> "path"`: sortie finale
 
 ## Exemple minimal
+
 ```text
 !muf 4
 
