@@ -36,6 +36,12 @@ ng build
 
 This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
 
+## Editorial guardrails (site)
+
+- Downloads must point to a single GitHub Releases URL for all platforms.
+- Keep the VS Code extension card/link visible on Downloads.
+- Examples should remain copy-ready and keep 2-space indentation style.
+
 ## Running unit tests
 
 To execute unit tests with the [Vitest](https://vitest.dev/) test runner, use the following command:
