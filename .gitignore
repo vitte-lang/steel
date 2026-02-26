@@ -44,6 +44,12 @@
 !src/**
 !docs/
 !docs/**
+!tests/
+!tests/**
+!.github/
+!.github/**
+!scripts/
+!scripts/**
 !netlify.toml
 
 # =========================
