@@ -5,7 +5,11 @@
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
+    "build:verify": "npm run check:i18n && npm run build",
+    "qa:local": "npm ci && npm run build:verify",
     "build:site": "ng build && node scripts/prerender-routes.js && node scripts/sitemap.js",
+    "check:urls": "node scripts/check-urls.mjs",
+    "check:i18n": "npm run check:urls && node scripts/verify-i18n.mjs",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },
